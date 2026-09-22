@@ -1,5 +1,11 @@
 # UltraPage Studio
 
+## Abrir el programa
+
+### [▶ Abrir UltraPage Studio](https://ultrapage-studio.eagarcia77.chatgpt.site)
+
+> GitHub muestra el código fuente del proyecto. Para utilizar el editor, seleccione el enlace **Abrir UltraPage Studio**.
+
 Editor visual en español para crear contenido accesible y compatible con Blackboard Ultra.
 
 ## Funciones
@@ -7,9 +13,9 @@ Editor visual en español para crear contenido accesible y compatible con Blackb
 - Edición visual y edición directa de HTML.
 - Vista previa para computadora, tableta y celular.
 - Plantillas de objetivos, instrucciones y avisos.
-- Selector preparado para Blackboard Content Collection y WebDAV.
+- Conexión segura con Blackboard Content Collection mediante WebDAV.
 - Revisión básica de accesibilidad.
-- Herramientas APA 7 opcionales para citas narrativas y parentéticas, referencias con sangría francesa, tablas, figuras, notas, DOI y URL.
+- Herramientas APA 7 para citas narrativas y parentéticas, referencias con sangría francesa, tablas, figuras, notas, DOI y URL.
 - Copia de HTML para utilizarlo en Blackboard Ultra.
 
 ## Desarrollo local
@@ -21,8 +27,8 @@ pnpm dev
 
 ## Seguridad
 
-No incluya credenciales de Blackboard, contraseñas WebDAV ni secretos institucionales en el código fuente. La conexión real debe configurarse mediante variables protegidas del entorno de publicación.
+No incluya credenciales de Blackboard, contraseñas WebDAV ni secretos institucionales en el código fuente. Las credenciales se utilizan temporalmente durante la conexión y no se almacenan en GitHub.
 
-## Estado
+## Implementación
 
-MVP activo. La navegación de Content Collection utiliza datos demostrativos hasta completar la autorización institucional de Blackboard.
+La aplicación utiliza una función de servidor para proteger la conexión WebDAV. Por esa razón, el programa completo se ejecuta en su dirección publicada y no directamente dentro de GitHub Pages.
