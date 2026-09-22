@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 
 type WebDavRequest = {
+  action?: "list" | "read" | "write";
   url?: string;
   username?: string;
   password?: string;
+  content?: string;
+  fileName?: string;
 };
 
 function safeWebDavUrl(raw: string) {
@@ -48,6 +51,47 @@ export async function POST(request: NextRequest) {
     }
     const url = safeWebDavUrl(body.url);
     const authorization = `Basic ${btoa(`${body.username}:${body.password}`)}`;
+    const action = body.action || "list";
+
+    if (action === "read") {
+      if (!/\.(html?|txt)$/i.test(url.pathname)) {
+        return NextResponse.json({ error: "Solo se pueden editar archivos HTML, HTM o TXT." }, { status: 400 });
+      }
+      const response = await fetch(url, { method: "GET", headers: { Authorization: authorization }, redirect: "manual" });
+      if (response.status === 401 || response.status === 403) {
+        return NextResponse.json({ error: "Blackboard rechazó las credenciales o el permiso para abrir este archivo." }, { status: 401 });
+      }
+      if (!response.ok) return NextResponse.json({ error: `No se pudo abrir el archivo. Blackboard respondió con ${response.status}.` }, { status: 502 });
+      const declaredSize = Number(response.headers.get("content-length") || 0);
+      if (declaredSize > 5 * 1024 * 1024) return NextResponse.json({ error: "El archivo supera el límite de edición de 5 MB." }, { status: 413 });
+      const content = await response.text();
+      if (content.length > 5 * 1024 * 1024) return NextResponse.json({ error: "El archivo supera el límite de edición de 5 MB." }, { status: 413 });
+      return NextResponse.json({ opened: true, content, name: decodeURIComponent(url.pathname.split("/").pop() || "documento.html"), href: url.toString() });
+    }
+
+    if (action === "write") {
+      const fileName = (body.fileName || "").trim();
+      if (!/^[^/\\]+\.(html?|txt)$/i.test(fileName) || fileName.includes("..")) {
+        return NextResponse.json({ error: "Use un nombre válido que termine en .html, .htm o .txt." }, { status: 400 });
+      }
+      if (typeof body.content !== "string" || body.content.length > 5 * 1024 * 1024) {
+        return NextResponse.json({ error: "El contenido debe ser texto y no superar 5 MB." }, { status: 400 });
+      }
+      const folderUrl = url.pathname.endsWith("/") ? url : new URL(`${url.toString()}/`);
+      const target = safeWebDavUrl(new URL(encodeURIComponent(fileName), folderUrl).toString());
+      const response = await fetch(target, {
+        method: "PUT",
+        headers: { Authorization: authorization, "Content-Type": fileName.toLowerCase().endsWith(".txt") ? "text/plain; charset=utf-8" : "text/html; charset=utf-8" },
+        body: body.content,
+        redirect: "manual",
+      });
+      if (response.status === 401 || response.status === 403) {
+        return NextResponse.json({ error: "Blackboard rechazó las credenciales o no permite guardar en esta carpeta." }, { status: 401 });
+      }
+      if (!response.ok) return NextResponse.json({ error: `No se pudo guardar. Blackboard respondió con ${response.status}.` }, { status: 502 });
+      return NextResponse.json({ saved: true, name: fileName, href: target.toString() });
+    }
+
     const response = await fetch(url, {
       method: "PROPFIND",
       headers: { Authorization: authorization, Depth: "1", "Content-Type": "application/xml; charset=utf-8" },
