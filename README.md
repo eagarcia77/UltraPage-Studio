@@ -2,7 +2,7 @@
 
 ## Abrir el programa
 
-### [▶ Abrir UltraPage Studio](https://ultrapage-studio.eagarcia77.chatgpt.site)
+### [▶ Abrir UltraPage Studio](https://ultrapage-studio.onrender.com)
 
 > GitHub muestra el código fuente del proyecto. Para utilizar el editor, seleccione el enlace **Abrir UltraPage Studio**.
 
@@ -31,4 +31,4 @@ No incluya credenciales de Blackboard, contraseñas WebDAV ni secretos instituci
 
 ## Implementación
 
-La aplicación utiliza una función de servidor para proteger la conexión WebDAV. Por esa razón, el programa completo se ejecuta en su dirección publicada y no directamente dentro de GitHub Pages.
+La aplicación se ejecuta de forma independiente en Render y utiliza una función de servidor para proteger la conexión WebDAV. GitHub conserva el código fuente y Render publica el programa funcional.
