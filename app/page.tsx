@@ -20,6 +20,43 @@ const demoFiles = [
   { name: "Recursos_visuales", type: "Carpeta", size: "12 archivos", icon: Folder },
 ];
 
+function buildBlackboardHtml(sourceHtml: string) {
+  const parsed = new DOMParser().parseFromString(`<div id="ultrapage-export">${sourceHtml}</div>`, "text/html");
+  const root = parsed.querySelector<HTMLElement>("#ultrapage-export");
+  if (!root) return sourceHtml;
+  const style = (element: Element, defaults: string) => {
+    const current = element.getAttribute("style") || "";
+    element.setAttribute("style", `${defaults}${current ? `;${current}` : ""}`);
+  };
+  style(root, "font-family:Arial,'Segoe UI',sans-serif;color:#242a36;font-size:16px;line-height:1.7");
+  root.querySelectorAll("h1").forEach((element) => style(element, "font-family:Arial,'Segoe UI',sans-serif;font-size:34px;line-height:1.16;font-weight:700;letter-spacing:-0.03em;margin:10px 0 18px;color:#242439"));
+  root.querySelectorAll("h2").forEach((element) => style(element, "font-family:Arial,'Segoe UI',sans-serif;font-size:23px;line-height:1.3;font-weight:700;margin:32px 0 10px;color:#302254"));
+  root.querySelectorAll("h3").forEach((element) => style(element, "font-family:Arial,'Segoe UI',sans-serif;font-size:19px;line-height:1.4;font-weight:700;margin:26px 0 8px;color:#302254"));
+  root.querySelectorAll("p").forEach((element) => style(element, "margin:0 0 16px"));
+  root.querySelectorAll(".eyebrow").forEach((element) => style(element, "color:#6b38d1;font-size:12px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;margin:0 0 10px"));
+  root.querySelectorAll(".lead").forEach((element) => style(element, "font-size:18px;color:#555e70;margin:0 0 20px"));
+  root.querySelectorAll(".callout").forEach((element) => {
+    style(element, "border-left:5px solid #6b38d1;background:#f3effc;padding:18px 20px;margin:28px 0;border-radius:0 8px 8px 0");
+    element.querySelectorAll(":scope > strong,:scope > b").forEach((child) => style(child, "color:#5124a9;font-weight:700"));
+    element.querySelectorAll(":scope > p").forEach((child) => style(child, "margin:5px 0 0"));
+  });
+  root.querySelectorAll("ul").forEach((element) => style(element, "display:block;list-style-type:disc;list-style-position:outside;margin:12px 0 20px;padding-left:28px"));
+  root.querySelectorAll("ol").forEach((element) => style(element, "display:block;list-style-type:decimal;list-style-position:outside;margin:12px 0 20px;padding-left:32px"));
+  root.querySelectorAll("li").forEach((element) => style(element, "display:list-item;margin:4px 0;padding-left:2px"));
+  root.querySelectorAll("a").forEach((element) => style(element, "color:#2457a6;text-decoration:underline"));
+  root.querySelectorAll("blockquote").forEach((element) => style(element, "border-left:5px solid #6b38d1;margin:24px 0;padding:10px 20px;color:#555e70;background:#faf8ff"));
+  root.querySelectorAll("figure").forEach((element) => style(element, "display:block;margin:28px 0"));
+  root.querySelectorAll("img").forEach((element) => style(element, "display:block;max-width:100%;height:auto;border-radius:7px"));
+  root.querySelectorAll("figcaption").forEach((element) => style(element, "display:block;font-size:13px;color:#6f788a;margin-top:8px"));
+  root.querySelectorAll(".apa-reference").forEach((element) => style(element, "padding-left:32px;text-indent:-32px;margin-bottom:12px"));
+  root.querySelectorAll("table").forEach((element) => style(element, "width:100%;border-collapse:collapse;margin:10px 0"));
+  root.querySelectorAll("th").forEach((element) => style(element, "border-top:2px solid #222;border-bottom:1px solid #555;text-align:left;padding:8px;background:#f3effc;font-weight:700"));
+  root.querySelectorAll("td").forEach((element) => style(element, "border-bottom:1px solid #aaa;text-align:left;padding:8px"));
+  root.querySelectorAll("tbody tr:last-child td").forEach((element) => style(element, "border-bottom:2px solid #222"));
+  root.querySelectorAll(".figure-placeholder").forEach((element) => style(element, "min-height:160px;border:2px dashed #c7cdd8;background:#f6f7f9;color:#737d90;text-align:center;padding:40px 20px"));
+  return root.outerHTML;
+}
+
 export default function Home() {
   const editor = useRef<HTMLDivElement>(null);
   const [html, setHtml] = useState(starterHtml);
@@ -35,7 +72,11 @@ export default function Home() {
   const command = (name: string, value?: string) => { document.execCommand(name, false, value); setHtml(editor.current?.innerHTML || html); setSaved(false); editor.current?.focus(); };
   const insertMarkup = (markup: string) => { const next = `${html}${markup}`; setHtml(next); if (editor.current) editor.current.innerHTML = next; setSaved(false); toast.success("Elemento APA 7 insertado"); };
   const save = () => { setHtml(mode === "visual" ? editor.current?.innerHTML || html : html); setSaved(true); toast.success("Página guardada", { description: "Los cambios se conservaron en este borrador." }); };
-  const copyHtml = async () => { await navigator.clipboard.writeText(html); toast.success("HTML copiado", { description: "Pégalo en el editor HTML de Blackboard Ultra." }); };
+  const copyHtml = async () => {
+    const currentHtml = mode === "visual" ? editor.current?.innerHTML || html : html;
+    await navigator.clipboard.writeText(buildBlackboardHtml(currentHtml));
+    toast.success("HTML compatible con Ultra copiado", { description: "Incluye estilos en línea, viñetas y numeración para conservar la vista previa." });
+  };
   const insertFile = (name: string, type: string, href?: string) => {
     const resourceUrl = href || `https://blackboard.example.edu/bbcswebdav/courses/DEMO/${name}`;
     const markup = type === "Imagen" ? `<figure><img src="${resourceUrl}" alt="Describa el contenido de la imagen"><figcaption>Figura 1. Recurso visual del módulo.</figcaption></figure>` : `<p><a href="${resourceUrl}">${name}</a></p>`;
