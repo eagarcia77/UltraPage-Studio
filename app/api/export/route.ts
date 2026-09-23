@@ -165,6 +165,7 @@ async function createDocx(html: string, title: string, author: string) {
         heading1: { run: { font: "Arial", size: 68, bold: true, color: "242439" }, paragraph: { spacing: { before: 200, after: 240 }, keepNext: true } },
         heading2: { run: { font: "Arial", size: 46, bold: true, color: "302254" }, paragraph: { spacing: { before: 380, after: 140 }, keepNext: true } },
         heading3: { run: { font: "Arial", size: 38, bold: true, color: "302254" }, paragraph: { spacing: { before: 300, after: 120 }, keepNext: true } },
+        heading4: { run: { font: "Arial", size: 34, bold: true, color: "302254" }, paragraph: { spacing: { before: 260, after: 100 }, keepNext: true } },
       },
     },
     numbering: {
