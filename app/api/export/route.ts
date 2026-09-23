@@ -221,12 +221,32 @@ function createPdf(html: string, title: string, author: string) {
     pdf.addStructure(root);
     const $ = load(`<body>${html}</body>`);
     const bodyWidth = 468;
+    const watermark = $(".ultrapage-watermark").first();
+    const watermarkText = cleanText(watermark.text());
+    const watermarkStyle = watermark.attr("style") || "";
+    const watermarkValue = (property: string) => watermarkStyle.match(new RegExp(`${property}\\s*:\\s*([^;]+)`, "i"))?.[1]?.trim();
+    const watermarkColor = watermarkValue("color") || "#6B7280";
+    const watermarkOpacity = Math.min(0.5, Math.max(0.05, Number(watermarkValue("opacity")) || 0.16));
+    const watermarkSize = Math.min(140, Math.max(32, Number.parseFloat(watermarkValue("font-size") || "72")));
+    const watermarkAngle = Number(watermarkStyle.match(/rotate\((-?[\d.]+)deg\)/i)?.[1] || -35);
+    const drawWatermark = () => {
+      if (!watermarkText) return;
+      const previousX = pdf.x; const previousY = pdf.y;
+      pdf.save(); pdf.markContent("Artifact");
+      pdf.fillColor(watermarkColor).opacity(watermarkOpacity).font("AccessibleSansBold").fontSize(watermarkSize);
+      pdf.translate(pdf.page.width / 2, pdf.page.height / 2).rotate(watermarkAngle);
+      pdf.text(watermarkText, -240, -watermarkSize / 2, { width: 480, align: "center", lineBreak: false });
+      pdf.endMarkedContent(); pdf.restore(); pdf.opacity(1); pdf.x = previousX; pdf.y = previousY;
+    };
+    drawWatermark();
+    pdf.on("pageAdded", drawWatermark);
     const ensureSpace = (height = 80) => { if (pdf.y + height > pdf.page.height - 72) pdf.addPage(); };
 
     $("body").children().each((_, raw) => {
       const element = raw as Element;
       const tag = element.name.toLowerCase();
       const classes = new Set((element.attribs?.class || "").split(/\s+/).filter(Boolean));
+      if (classes.has("ultrapage-watermark")) return;
       const text = cleanText($(element).text());
       if (!text && tag !== "figure") return;
       ensureSpace(tag === "table" ? 140 : 70);

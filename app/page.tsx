@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Accessibility, AlertTriangle, AlignCenter, AlignJustify, AlignLeft, AlignRight, Bold, BookOpen, Check, ChevronDown, Cloud, Code2, Copy, Download, Eraser, FileImage, FilePlus2, FileText, Folder, Heading2, ImagePlus, Italic, Link2, List, ListOrdered, Loader2, LockKeyhole, Monitor, MoreHorizontal, PanelRight, PlugZap, Plus, Quote, Redo2, Save, Search, Smartphone, Table2, Tablet, Underline, Undo2, Upload } from "lucide-react";
+import { Accessibility, AlertTriangle, AlignCenter, AlignJustify, AlignLeft, AlignRight, Bold, BookOpen, Check, ChevronDown, Cloud, Code2, Columns3, Copy, Download, Eraser, FileImage, FilePlus2, FileText, Folder, Heading2, ImagePlus, Italic, Link2, List, ListOrdered, Loader2, LockKeyhole, Monitor, MoreHorizontal, PanelRight, PlugZap, Plus, Quote, Redo2, Rows3, Save, Search, Smartphone, Stamp, Table2, Tablet, Trash2, Underline, Undo2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,7 @@ import { toast, Toaster } from "sonner";
 const starterHtml = "";
 const exportedPageStyles = `
 :root{color-scheme:light}*{box-sizing:border-box}body{margin:0;background:#f0f2f6;color:#242a36;font-family:Arial,"Segoe UI",sans-serif;font-size:16px;line-height:1.7}.ultra-page{width:min(100% - 32px,860px);min-height:100vh;margin:24px auto;background:#fff;border:1px solid #dce1e9;border-radius:5px;padding:54px clamp(30px,8vw,92px)}h1{font-size:34px;line-height:1.16;letter-spacing:-.035em;margin:10px 0 18px;color:#242439}h2{font-size:23px;line-height:1.3;margin:32px 0 10px;color:#302254}h3{font-size:19px;line-height:1.4;margin:26px 0 8px;color:#302254}h4{font-size:17px;line-height:1.4;margin:22px 0 7px;color:#302254}p{margin:0 0 16px}.eyebrow{color:#6b38d1;font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase}.lead{font-size:18px;color:#555e70}.callout{border-left:5px solid #6b38d1;background:#f3effc;padding:18px 20px;margin:28px 0;border-radius:0 8px 8px 0}.callout strong{color:#5124a9}.callout p{margin:5px 0 0}ul,ol{margin:12px 0 20px;padding-left:28px}li{margin:4px 0}a{color:#2457a6;text-decoration:underline;text-underline-offset:2px}blockquote{border-left:5px solid #6b38d1;margin:24px 0;padding:10px 20px;color:#555e70;background:#faf8ff}figure{margin:28px 0}img{display:block;max-width:100%;height:auto;border-radius:7px}figcaption{font-size:13px;color:#6f788a;margin-top:8px}.apa-reference{padding-left:2rem;text-indent:-2rem;margin-bottom:.75rem}table{width:100%;border-collapse:collapse;margin:10px 0}caption{text-align:left;font-weight:700;margin-bottom:8px}th{text-align:left;padding:8px;background:#f3effc}td{padding:8px}table[data-table-style="grid"],table[data-table-style="grid"] th,table[data-table-style="grid"] td{border:1px solid #555}table[data-table-style="apa7"]{border:0}.apa-table th,table[data-table-style="apa7"] th{border-top:2px solid #222;border-bottom:1px solid #555;border-left:0;border-right:0}.apa-table td,table[data-table-style="apa7"] td{border:0}.apa-table tbody tr:last-child td,table[data-table-style="apa7"] tbody tr:last-child td{border-bottom:2px solid #222}.figure-placeholder{min-height:160px;border:2px dashed #c7cdd8;background:#f6f7f9;display:grid;place-items:center;color:#737d90;text-align:center;padding:20px}@media(max-width:600px){body{background:#fff}.ultra-page{width:100%;margin:0;border:0;padding:30px 22px}h1{font-size:27px}h2{font-size:21px}}@media print{body{background:#fff}.ultra-page{width:100%;margin:0;border:0;padding:0}}
+.ultra-page{position:relative}.ultra-page>:not(.ultrapage-watermark){position:relative;z-index:1}
 `;
 const demoFiles = [
   { name: "Banner_Modulo_4.jpg", type: "Imagen", size: "418 KB", icon: FileImage },
@@ -28,7 +29,10 @@ function buildBlackboardHtml(sourceHtml: string) {
     const current = element.getAttribute("style") || "";
     element.setAttribute("style", `${defaults}${current ? `;${current}` : ""}`);
   };
-  style(root, "font-family:Arial,'Segoe UI',sans-serif;color:#242a36;font-size:16px;line-height:1.7");
+  style(root, "position:relative;font-family:Arial,'Segoe UI',sans-serif;color:#242a36;font-size:16px;line-height:1.7");
+  root.querySelectorAll<HTMLElement>(":scope > :not(.ultrapage-watermark)").forEach((element) => {
+    element.style.position = "relative"; element.style.zIndex = "1";
+  });
   root.querySelectorAll("h1").forEach((element) => style(element, "font-family:Arial,'Segoe UI',sans-serif;font-size:34px;line-height:1.16;font-weight:700;letter-spacing:-0.03em;margin:10px 0 18px;color:#242439"));
   root.querySelectorAll("h2").forEach((element) => style(element, "font-family:Arial,'Segoe UI',sans-serif;font-size:23px;line-height:1.3;font-weight:700;margin:32px 0 10px;color:#302254"));
   root.querySelectorAll("h3").forEach((element) => style(element, "font-family:Arial,'Segoe UI',sans-serif;font-size:19px;line-height:1.4;font-weight:700;margin:26px 0 8px;color:#302254"));
@@ -229,6 +233,72 @@ export default function Home() {
     savedSelection.current = range?.cloneRange() || null;
     toast.success("Formato eliminado");
   };
+  const selectedTableContext = () => {
+    if (!editor.current || !savedSelection.current) return null;
+    const container = savedSelection.current.startContainer;
+    const element = container.nodeType === Node.TEXT_NODE ? container.parentElement : container as HTMLElement;
+    const table = element?.closest<HTMLTableElement>("table");
+    if (!table || !editor.current.contains(table)) return null;
+    return {
+      table,
+      row: element?.closest<HTMLTableRowElement>("tr") || null,
+      cell: element?.closest<HTMLTableCellElement>("th,td") || null,
+    };
+  };
+  const editSelectedTable = (action: "add-row" | "delete-row" | "add-column" | "delete-column" | "grid" | "apa7") => {
+    if (!editor.current) return false;
+    const context = selectedTableContext();
+    if (!context) { toast.error("Seleccione primero una celda de la tabla"); return false; }
+    const { table, row, cell } = context;
+    if (action === "add-row") {
+      const columnCount = table.rows[0]?.cells.length || 1;
+      const body = table.tBodies[0] || table.createTBody();
+      const newRow = body.insertRow(row && row.parentElement === body ? row.sectionRowIndex + 1 : -1);
+      Array.from({ length: columnCount }, () => { const newCell = newRow.insertCell(); newCell.textContent = "Dato"; });
+    }
+    if (action === "delete-row") {
+      const target = row && row.parentElement?.tagName.toLowerCase() === "tbody" ? row : table.tBodies[0]?.rows[table.tBodies[0].rows.length - 1];
+      if (!target) { toast.error("La fila de encabezado no se puede eliminar"); return false; }
+      target.remove();
+    }
+    if (action === "add-column") {
+      const insertAfter = cell?.cellIndex ?? ((table.rows[0]?.cells.length || 1) - 1);
+      Array.from(table.rows).forEach((tableRow) => {
+        const newCell = tableRow.insertCell(Math.min(insertAfter + 1, tableRow.cells.length));
+        if (tableRow.parentElement?.tagName.toLowerCase() === "thead") {
+          const heading = document.createElement("th"); heading.scope = "col"; heading.textContent = `Encabezado ${tableRow.cells.length}`; newCell.replaceWith(heading);
+        } else newCell.textContent = "Dato";
+      });
+    }
+    if (action === "delete-column") {
+      if ((table.rows[0]?.cells.length || 0) <= 1) { toast.error("La tabla debe conservar al menos una columna"); return false; }
+      const index = cell?.cellIndex ?? ((table.rows[0]?.cells.length || 1) - 1);
+      Array.from(table.rows).forEach((tableRow) => { if (tableRow.cells[index]) tableRow.deleteCell(index); });
+    }
+    if (action === "grid" || action === "apa7") table.setAttribute("data-table-style", action);
+    setHtml(editor.current.innerHTML); setSaved(false); savedSelection.current = null;
+    toast.success("Tabla actualizada");
+    return true;
+  };
+  const applyWatermark = ({ text, color, opacity, size, angle }: { text: string; color: string; opacity: number; size: number; angle: number }) => {
+    if (!editor.current) return;
+    editor.current.querySelector(".ultrapage-watermark")?.remove();
+    const watermark = document.createElement("div");
+    watermark.className = "ultrapage-watermark";
+    watermark.setAttribute("contenteditable", "false");
+    watermark.setAttribute("aria-hidden", "true");
+    watermark.textContent = text.trim() || "BORRADOR";
+    watermark.style.cssText = `position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) rotate(${angle}deg);color:${color};opacity:${opacity};font-size:${size}px;font-family:Arial,sans-serif;font-weight:700;letter-spacing:.12em;white-space:nowrap;pointer-events:none;user-select:none;z-index:0`;
+    editor.current.prepend(watermark);
+    setHtml(editor.current.innerHTML); setSaved(false);
+    toast.success("Marca de agua aplicada");
+  };
+  const removeWatermark = () => {
+    if (!editor.current) return;
+    const watermark = editor.current.querySelector(".ultrapage-watermark");
+    if (!watermark) { toast.info("El documento no tiene una marca de agua"); return; }
+    watermark.remove(); setHtml(editor.current.innerHTML); setSaved(false); toast.success("Marca de agua eliminada");
+  };
   const insertMarkup = (markup: string) => { const next = `${html}${markup}`; setHtml(next); if (editor.current) editor.current.innerHTML = next; setSaved(false); toast.success("Elemento insertado"); };
   const save = () => { setHtml(mode === "visual" ? editor.current?.innerHTML || html : html); setSaved(true); toast.success("Página guardada", { description: "Los cambios se conservaron en este borrador." }); };
   const copyHtml = async () => {
@@ -281,7 +351,7 @@ export default function Home() {
         <div className="document-head"><div><div className="breadcrumbs"><span>Contenido del curso</span><span>/</span><span>Módulo 4</span></div><input className="title-input" value={title} onChange={(e) => { setTitle(e.target.value); setSaved(false); }} aria-label="Título de la página" /></div><div className="view-controls" aria-label="Vista previa por dispositivo"><button onClick={() => setDevice("desktop")} className={device === "desktop" ? "active" : ""} aria-label="Computadora"><Monitor size={17}/></button><button onClick={() => setDevice("tablet")} className={device === "tablet" ? "active" : ""} aria-label="Tableta"><Tablet size={17}/></button><button onClick={() => setDevice("mobile")} className={device === "mobile" ? "active" : ""} aria-label="Celular"><Smartphone size={17}/></button><button onClick={() => setRightPanel(!rightPanel)} className={rightPanel ? "active panel-toggle" : "panel-toggle"} aria-label="Mostrar u ocultar panel"><PanelRight size={17}/></button></div></div>
         <Tabs value={mode} onValueChange={(value) => setMode(value as "visual" | "html")} className="editor-tabs">
           <div className="toolbar-row"><TabsList className="mode-tabs"><TabsTrigger value="visual">Diseño</TabsTrigger><TabsTrigger value="html">HTML</TabsTrigger></TabsList>{mode === "visual" && <div className="toolbar" role="toolbar" aria-label="Formato de texto"><button onClick={() => command("undo")} aria-label="Deshacer"><Undo2 /></button><button onClick={() => command("redo")} aria-label="Rehacer"><Redo2 /></button><i/><label className="toolbar-select-label"><span className="sr-only">Estructura del texto</span><select defaultValue="p" onChange={(event) => command("formatBlock", event.target.value)} aria-label="Párrafo o encabezado"><option value="p">Párrafo</option><option value="h1">H1</option><option value="h2">H2</option><option value="h3">H3</option><option value="h4">H4</option></select></label><label className="toolbar-select-label font-family-select"><span className="sr-only">Tipo de letra</span><select defaultValue="" onChange={(event) => applyFont(event.target.value)} aria-label="Tipo de letra"><option value="" disabled>Tipo de letra</option><option value="Arial">Arial</option><option value="Calibri">Calibri</option><option value="Georgia">Georgia</option><option value="Tahoma">Tahoma</option><option value="Times New Roman">Times New Roman</option><option value="Verdana">Verdana</option></select></label><label className="toolbar-select-label font-size-select"><span className="sr-only">Tamaño de letra</span><select defaultValue="" onChange={(event) => applyFontSize(event.target.value)} aria-label="Tamaño de letra"><option value="" disabled>Tamaño</option><option value="10">10 px</option><option value="12">12 px</option><option value="14">14 px</option><option value="16">16 px</option><option value="18">18 px</option><option value="24">24 px</option><option value="32">32 px</option><option value="40">40 px</option></select></label><label className="toolbar-select-label line-spacing-select"><span className="sr-only">Interlineado</span><select defaultValue="" onChange={(event) => applyLineSpacing(event.target.value)} aria-label="Interlineado"><option value="" disabled>Interlineado</option><option value="1">1.0</option><option value="1.15">1.15</option><option value="1.5">1.5</option><option value="2">2.0 doble</option><option value="2.5">2.5</option></select></label><button onClick={() => command("bold")} aria-label="Negrita"><Bold /></button><button onClick={() => command("italic")} aria-label="Itálica"><Italic /></button><button onClick={() => command("underline")} aria-label="Subrayado"><Underline /></button><i/><button onClick={() => command("insertUnorderedList")} aria-label="Lista"><List /></button><button onClick={() => command("insertOrderedList")} aria-label="Lista numerada"><ListOrdered /></button><button onClick={() => { const url = prompt("Dirección del enlace"); if (url) command("createLink", url); }} aria-label="Enlace"><Link2 /></button><ContentDialog trigger={<button aria-label="Insertar desde Content Collection"><ImagePlus /></button>} search={search} setSearch={setSearch} files={filteredFiles} insertFile={insertFile} documentHtml={html} documentFileName={documentFileName} openDocument={openDocument} newDocument={newDocument}/><button aria-label="Más opciones"><MoreHorizontal /></button></div>}</div>
-          {mode === "visual" && <div className="secondary-toolbar" role="toolbar" aria-label="Alineación, sangría y limpieza de formato"><button className="clear-format-button" onClick={clearFormatting} aria-label="Quitar formato" title="Quitar todo el formato del texto seleccionado"><Eraser /><span>Quitar formato</span></button><span className="secondary-divider"/><TableDialog insertMarkup={insertMarkup}/><span className="secondary-divider"/><label className="toolbar-select-label indentation-select"><span className="sr-only">Sangría de párrafo</span><select defaultValue="" onChange={(event) => applyIndentation(event.target.value)} aria-label="Sangría de párrafo"><option value="" disabled>Sangría de párrafo</option><option value="first-line">Primera línea (0.5″)</option><option value="left">Párrafo completo (0.5″)</option><option value="hanging">Sangría francesa (0.5″)</option><option value="none">Quitar sangría</option></select></label><span className="secondary-divider"/><button onClick={() => command("justifyLeft")} aria-label="Alinear a la izquierda" title="Alinear a la izquierda"><AlignLeft /></button><button onClick={() => command("justifyCenter")} aria-label="Centrar texto" title="Centrar texto"><AlignCenter /></button><button onClick={() => command("justifyRight")} aria-label="Alinear a la derecha" title="Alinear a la derecha"><AlignRight /></button><button onClick={() => command("justifyFull")} aria-label="Justificar texto" title="Justificar texto"><AlignJustify /></button></div>}
+          {mode === "visual" && <div className="secondary-toolbar" role="toolbar" aria-label="Alineación, sangría, tablas y marca de agua"><button className="clear-format-button" onClick={clearFormatting} aria-label="Quitar formato" title="Quitar todo el formato del texto seleccionado"><Eraser /><span>Quitar formato</span></button><span className="secondary-divider"/><TableDialog insertMarkup={insertMarkup}/><TableEditDialog editTable={editSelectedTable}/><WatermarkDialog applyWatermark={applyWatermark} removeWatermark={removeWatermark}/><span className="secondary-divider"/><label className="toolbar-select-label indentation-select"><span className="sr-only">Sangría de párrafo</span><select defaultValue="" onChange={(event) => applyIndentation(event.target.value)} aria-label="Sangría de párrafo"><option value="" disabled>Sangría de párrafo</option><option value="first-line">Primera línea (0.5″)</option><option value="left">Párrafo completo (0.5″)</option><option value="hanging">Sangría francesa (0.5″)</option><option value="none">Quitar sangría</option></select></label><span className="secondary-divider"/><button onClick={() => command("justifyLeft")} aria-label="Alinear a la izquierda" title="Alinear a la izquierda"><AlignLeft /></button><button onClick={() => command("justifyCenter")} aria-label="Centrar texto" title="Centrar texto"><AlignCenter /></button><button onClick={() => command("justifyRight")} aria-label="Alinear a la derecha" title="Alinear a la derecha"><AlignRight /></button><button onClick={() => command("justifyFull")} aria-label="Justificar texto" title="Justificar texto"><AlignJustify /></button></div>}
           <TabsContent value="visual" className="canvas-wrap"><div className={`device-frame ${device}`}><div className="ultra-label"><span className="mini-logo">U</span><span>Vista previa en Ultra</span></div><div ref={editor} className="page-canvas" contentEditable suppressContentEditableWarning onInput={(e) => { setHtml(e.currentTarget.innerHTML); setSaved(false); }} aria-label="Contenido editable de la página" /></div></TabsContent>
           <TabsContent value="html" className="code-wrap"><div className="code-header"><div className="code-heading"><span>{codeView === "blackboard" ? "HTML listo para pegar en Blackboard Ultra" : "Código HTML base editable"}</span><div className="code-view-switch" role="group" aria-label="Tipo de código HTML"><button type="button" className={codeView === "blackboard" ? "active" : ""} aria-pressed={codeView === "blackboard"} onClick={() => setCodeView("blackboard")}>Para Blackboard</button><button type="button" className={codeView === "source" ? "active" : ""} aria-pressed={codeView === "source"} onClick={() => setCodeView("source")}>Editar código base</button></div></div><button className="copy-code-button" onClick={copyHtml}><Copy size={14}/> Copiar código</button></div><Textarea value={codeView === "blackboard" ? blackboardHtml : html} readOnly={codeView === "blackboard"} onChange={(e) => { if (codeView === "source") { setHtml(e.target.value); setSaved(false); } }} className={`code-editor ${codeView === "blackboard" ? "compatible" : ""}`} spellCheck={false} aria-label={codeView === "blackboard" ? "Código HTML compatible con Blackboard Ultra" : "Código HTML base editable"} /><p className="code-help">{codeView === "blackboard" ? "Este es el mismo código que utiliza Copiar para Ultra. Pégalo en el editor HTML <> de Blackboard." : "Los cambios realizados aquí se reflejan en la vista Diseño. Cambia a Para Blackboard antes de copiar."}</p></TabsContent>
         </Tabs>
@@ -391,6 +461,24 @@ function TableDialog({ insertMarkup, block = false }: { insertMarkup: (markup: s
     toast.success(tableStyle === "apa7" ? "Tabla APA 7 creada" : "Tabla con todos los bordes creada");
   };
   return <Dialog open={open} onOpenChange={setOpen}><DialogTrigger asChild><button className={block ? "block-button" : "table-tool-button"} aria-label="Crear tabla"><Table2 size={block ? 19 : 17}/><span>Tabla</span></button></DialogTrigger><DialogContent className="table-creator-dialog"><DialogHeader><DialogTitle>Crear tabla accesible</DialogTitle><DialogDescription>Seleccione el tamaño y el estilo de bordes. La primera fila se crea como encabezado de columna.</DialogDescription></DialogHeader><div className="table-creator-grid"><label>Título de la tabla<Input value={title} onChange={(event) => setTitle(event.target.value)}/></label><label>Filas de datos<Input type="number" min={1} max={20} value={rows} onChange={(event) => setRows(Number(event.target.value))}/></label><label>Columnas<Input type="number" min={1} max={10} value={columns} onChange={(event) => setColumns(Number(event.target.value))}/></label><label>Estilo de bordes<select value={tableStyle} onChange={(event) => setTableStyle(event.target.value as "grid" | "apa7")}><option value="grid">Todos los bordes</option><option value="apa7">Bordes APA 7</option></select></label></div><div className={`table-style-preview ${tableStyle}`} aria-label="Vista previa del estilo de tabla"><strong>{tableStyle === "apa7" ? "APA 7" : "Todos los bordes"}</strong><span>Encabezado</span><span>Encabezado</span><span>Dato</span><span>Dato</span></div><div className="apa-actions"><Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button><Button onClick={createTable}><Table2 size={16}/> Insertar tabla</Button></div></DialogContent></Dialog>;
+}
+
+function TableEditDialog({ editTable }: { editTable: (action: "add-row" | "delete-row" | "add-column" | "delete-column" | "grid" | "apa7") => boolean }) {
+  const [open, setOpen] = useState(false);
+  const run = (action: "add-row" | "delete-row" | "add-column" | "delete-column" | "grid" | "apa7") => { if (editTable(action)) setOpen(false); };
+  return <Dialog open={open} onOpenChange={setOpen}><DialogTrigger asChild><button className="table-tool-button" aria-label="Editar tabla" title="Seleccione una celda y edite la tabla"><Table2/><span>Editar tabla</span></button></DialogTrigger><DialogContent className="table-edit-dialog"><DialogHeader><DialogTitle>Editar tabla seleccionada</DialogTitle><DialogDescription>Antes de abrir esta herramienta, coloque el cursor dentro de una celda. Puede escribir directamente en cualquier celda de la tabla.</DialogDescription></DialogHeader><div className="table-edit-actions"><button onClick={() => run("add-row")}><Rows3/><span><strong>Añadir fila</strong><small>Debajo de la fila seleccionada</small></span></button><button onClick={() => run("delete-row")}><Trash2/><span><strong>Eliminar fila</strong><small>Conserva el encabezado</small></span></button><button onClick={() => run("add-column")}><Columns3/><span><strong>Añadir columna</strong><small>A la derecha de la celda</small></span></button><button onClick={() => run("delete-column")}><Trash2/><span><strong>Eliminar columna</strong><small>Conserva al menos una</small></span></button></div><p className="panel-label">CAMBIAR ESTILO</p><div className="apa-actions"><Button variant="outline" onClick={() => run("grid")}>Todos los bordes</Button><Button variant="outline" onClick={() => run("apa7")}>Bordes APA 7</Button></div></DialogContent></Dialog>;
+}
+
+function WatermarkDialog({ applyWatermark, removeWatermark }: { applyWatermark: (options: { text: string; color: string; opacity: number; size: number; angle: number }) => void; removeWatermark: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState("BORRADOR");
+  const [color, setColor] = useState("#6b7280");
+  const [opacity, setOpacity] = useState(0.16);
+  const [size, setSize] = useState(72);
+  const [angle, setAngle] = useState(-35);
+  const apply = () => { applyWatermark({ text, color, opacity, size, angle }); setOpen(false); };
+  const remove = () => { removeWatermark(); setOpen(false); };
+  return <Dialog open={open} onOpenChange={setOpen}><DialogTrigger asChild><button className="table-tool-button" aria-label="Marca de agua"><Stamp/><span>Marca de agua</span></button></DialogTrigger><DialogContent className="watermark-dialog"><DialogHeader><DialogTitle>Crear marca de agua</DialogTitle><DialogDescription>Añada un texto tenue detrás del contenido, como Borrador, Confidencial o Copia.</DialogDescription></DialogHeader><div className="watermark-grid"><label>Texto<Input value={text} maxLength={40} onChange={(event) => setText(event.target.value)}/></label><label>Color<Input type="color" value={color} onChange={(event) => setColor(event.target.value)}/></label><label>Opacidad <span>{Math.round(opacity * 100)}%</span><Input type="range" min="0.05" max="0.5" step="0.01" value={opacity} onChange={(event) => setOpacity(Number(event.target.value))}/></label><label>Tamaño <span>{size}px</span><Input type="range" min="32" max="140" step="2" value={size} onChange={(event) => setSize(Number(event.target.value))}/></label><label>Ángulo <span>{angle}°</span><Input type="range" min="-90" max="90" step="5" value={angle} onChange={(event) => setAngle(Number(event.target.value))}/></label></div><div className="watermark-preview"><span style={{ color, opacity, fontSize: `${Math.min(size, 72)}px`, transform: `rotate(${angle}deg)` }}>{text || "BORRADOR"}</span></div><div className="apa-actions"><Button variant="outline" className="remove-watermark" onClick={remove}><Trash2 size={16}/> Quitar marca</Button><Button onClick={apply}><Stamp size={16}/> Aplicar marca</Button></div></DialogContent></Dialog>;
 }
 
 function ApaDialog({ insertMarkup, fullWidth = false }: { insertMarkup: (markup: string) => void; fullWidth?: boolean }) {
