@@ -54,6 +54,47 @@ function buildBlackboardHtml(sourceHtml: string) {
   root.querySelectorAll("td").forEach((element) => style(element, "border-bottom:1px solid #aaa;text-align:left;padding:8px"));
   root.querySelectorAll("tbody tr:last-child td").forEach((element) => style(element, "border-bottom:2px solid #222"));
   root.querySelectorAll(".figure-placeholder").forEach((element) => style(element, "min-height:160px;border:2px dashed #c7cdd8;background:#f6f7f9;color:#737d90;text-align:center;padding:40px 20px"));
+  const fontify = (element: Element, color: string, size: string, bold = false) => {
+    const font = parsed.createElement("font");
+    font.setAttribute("face", "Arial, Helvetica, sans-serif");
+    font.setAttribute("color", color);
+    font.setAttribute("size", size);
+    while (element.firstChild) font.appendChild(element.firstChild);
+    if (bold) {
+      const strong = parsed.createElement("strong");
+      strong.appendChild(font);
+      element.appendChild(strong);
+    } else element.appendChild(font);
+  };
+  root.querySelectorAll("h1").forEach((element) => fontify(element, "#242439", "6"));
+  root.querySelectorAll("h2").forEach((element) => fontify(element, "#302254", "5"));
+  root.querySelectorAll("h3").forEach((element) => fontify(element, "#302254", "4"));
+  root.querySelectorAll("p").forEach((element) => {
+    if (element.classList.contains("eyebrow")) fontify(element, "#6b38d1", "2", true);
+    else if (element.classList.contains("lead")) fontify(element, "#555e70", "4");
+    else fontify(element, "#242a36", "3");
+  });
+  root.querySelectorAll("li").forEach((element) => fontify(element, "#242a36", "3"));
+  root.querySelectorAll("figcaption").forEach((element) => fontify(element, "#6f788a", "2"));
+  root.querySelectorAll("th").forEach((element) => fontify(element, "#242a36", "3", true));
+  root.querySelectorAll("td").forEach((element) => fontify(element, "#242a36", "3"));
+  root.querySelectorAll(".callout > strong,.callout > b").forEach((element) => fontify(element, "#5124a9", "3"));
+  root.querySelectorAll("ul").forEach((element) => element.setAttribute("type", "disc"));
+  root.querySelectorAll("ol").forEach((element) => element.setAttribute("type", "1"));
+  root.querySelectorAll("table").forEach((element) => {
+    element.setAttribute("width", "100%"); element.setAttribute("border", "0"); element.setAttribute("cellspacing", "0"); element.setAttribute("cellpadding", "8");
+  });
+  root.querySelectorAll("th").forEach((element) => element.setAttribute("bgcolor", "#f3effc"));
+  root.querySelectorAll<HTMLElement>(".callout").forEach((callout) => {
+    const table = parsed.createElement("table");
+    table.setAttribute("role", "presentation"); table.setAttribute("width", "100%"); table.setAttribute("border", "0"); table.setAttribute("cellspacing", "0"); table.setAttribute("cellpadding", "0"); table.setAttribute("bgcolor", "#f3effc");
+    style(table, "width:100%;border-collapse:collapse;background:#f3effc;margin:28px 0");
+    const body = parsed.createElement("tbody"); const row = parsed.createElement("tr");
+    const accent = parsed.createElement("td"); accent.setAttribute("width", "5"); accent.setAttribute("bgcolor", "#6b38d1"); accent.setAttribute("aria-hidden", "true"); accent.innerHTML = "&nbsp;";
+    const content = parsed.createElement("td"); content.setAttribute("bgcolor", "#f3effc"); content.setAttribute("valign", "top"); style(content, "background:#f3effc;padding:18px 20px");
+    while (callout.firstChild) content.appendChild(callout.firstChild);
+    row.append(accent, content); body.appendChild(row); table.appendChild(body); callout.replaceWith(table);
+  });
   return root.outerHTML;
 }
 
