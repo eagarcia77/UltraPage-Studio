@@ -125,15 +125,32 @@ function docxBlocks(html: string) {
       return;
     }
     if (tag === "table") {
+      const tableStyle = $(element).attr("data-table-style") || "grid";
+      const noBorder = { style: BorderStyle.NIL, size: 0, color: "FFFFFF" };
+      const thinBorder = { style: BorderStyle.SINGLE, size: 6, color: "555555" };
+      const strongBorder = { style: BorderStyle.SINGLE, size: 12, color: "222222" };
+      const sourceRows = $(element).find("tr").toArray();
       const rows: TableRow[] = [];
-      $(element).find("tr").each((rowIndex, row) => {
+      sourceRows.forEach((row, rowIndex) => {
+        const isLastRow = rowIndex === sourceRows.length - 1;
         const cells = $(row).children("th,td").toArray().map((cell) => new TableCell({
           children: [new Paragraph({ children: inlineRuns($, cell as Element), spacing: { after: 0 } })],
           shading: cell.name.toLowerCase() === "th" ? { fill: "E9E2F8" } : undefined,
+          borders: tableStyle === "apa7" ? {
+            top: rowIndex === 0 ? strongBorder : noBorder,
+            bottom: rowIndex === 0 ? thinBorder : isLastRow ? strongBorder : noBorder,
+            left: noBorder, right: noBorder,
+          } : undefined,
         }));
         if (cells.length) rows.push(new TableRow({ children: cells, tableHeader: rowIndex === 0 && $(row).children("th").length > 0, cantSplit: true }));
       });
-      if (rows.length) blocks.push(new Table({ rows, width: { size: 100, type: WidthType.PERCENTAGE } }));
+      if (rows.length) blocks.push(new Table({
+        rows,
+        width: { size: 100, type: WidthType.PERCENTAGE },
+        borders: tableStyle === "apa7"
+          ? { top: noBorder, bottom: noBorder, left: noBorder, right: noBorder, insideHorizontal: noBorder, insideVertical: noBorder }
+          : { top: thinBorder, bottom: thinBorder, left: thinBorder, right: thinBorder, insideHorizontal: thinBorder, insideVertical: thinBorder },
+      }));
       return;
     }
     if (tag === "figure") {
@@ -248,6 +265,7 @@ function createPdf(html: string, title: string, author: string) {
         pdf.font("AccessibleSans").fontSize(11).fillColor("#222222").list(items, { width: bodyWidth, listType: tag === "ol" ? "numbered" : "bullet", paragraphGap: 4, structParent: root });
         pdf.moveDown(0.4);
       } else if (tag === "table") {
+        const tableStyle = $(element).attr("data-table-style") || "grid";
         const data = $(element).find("tr").toArray().map((row, rowIndex) => $(row).children("th,td").toArray().map((cell) => ({
           text: cleanText($(cell).text()),
           type: (cell.name.toLowerCase() === "th" || rowIndex === 0 ? "TH" : "TD") as "TH" | "TD",
@@ -255,7 +273,7 @@ function createPdf(html: string, title: string, author: string) {
           padding: 5,
           font: { family: cell.name.toLowerCase() === "th" || rowIndex === 0 ? "AccessibleSansBold" : "AccessibleSans", size: 9 },
         })));
-        if (data.length) pdf.table({ data, maxWidth: bodyWidth, defaultStyle: { border: 0.5, borderColor: "#6B7280" } });
+        if (data.length) pdf.table({ data, maxWidth: bodyWidth, defaultStyle: { border: tableStyle === "apa7" ? { top: 0.75, bottom: 0.75, left: 0, right: 0 } : 0.5, borderColor: tableStyle === "apa7" ? "#222222" : "#6B7280" } });
         pdf.moveDown(0.6);
       } else if (tag === "figure") {
         const alt = cleanText($(element).find("img").attr("alt") || "");
