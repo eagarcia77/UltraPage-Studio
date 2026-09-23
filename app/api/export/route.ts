@@ -84,13 +84,37 @@ function docxBlocks(html: string) {
   $("body").children().each((_, raw) => {
     const element = raw as Element;
     const tag = element.name.toLowerCase();
+    const classes = new Set((element.attribs?.class || "").split(/\s+/).filter(Boolean));
     if (/^h[1-6]$/.test(tag)) {
       const levels = [HeadingLevel.HEADING_1, HeadingLevel.HEADING_2, HeadingLevel.HEADING_3, HeadingLevel.HEADING_4, HeadingLevel.HEADING_5, HeadingLevel.HEADING_6];
       addParagraph(element, { heading: levels[Number(tag[1]) - 1], keepNext: true });
       return;
     }
     if (tag === "p" || tag === "blockquote") {
-      addParagraph(element, tag === "blockquote" ? { indent: { left: 720 }, border: { left: { style: BorderStyle.SINGLE, size: 12, color: "6B38D1", space: 8 } } } : {});
+      if (classes.has("eyebrow")) {
+        blocks.push(new Paragraph({ children: [new TextRun({ text: cleanText($(element).text()).toUpperCase(), bold: true, color: "6B38D1", size: 20, characterSpacing: 40, language: { value: "es-PR" } })], spacing: { after: 100 } }));
+      } else if (classes.has("lead")) {
+        blocks.push(new Paragraph({ children: [new TextRun({ text: cleanText($(element).text()), color: "555E70", size: 30, language: { value: "es-PR" } })], spacing: { after: 220, line: 420 } }));
+      } else if (classes.has("apa-reference")) {
+        addParagraph(element, { indent: { left: 720, hanging: 720 }, spacing: { after: 120, line: 480 } });
+      } else {
+        addParagraph(element, tag === "blockquote" ? { indent: { left: 720 }, shading: { fill: "FAF8FF" }, border: { left: { style: BorderStyle.SINGLE, size: 16, color: "6B38D1", space: 8 } } } : {});
+      }
+      return;
+    }
+    if (tag === "div" && classes.has("callout")) {
+      const titleText = cleanText($(element).children("strong,b").first().text());
+      const calloutParagraphs: Paragraph[] = [];
+      if (titleText) calloutParagraphs.push(new Paragraph({ children: [new TextRun({ text: titleText, bold: true, color: "5124A9", size: 24, language: { value: "es-PR" } })], spacing: { after: 80 } }));
+      $(element).children("p").each((__, paragraph) => { calloutParagraphs.push(new Paragraph({ children: inlineRuns($, paragraph as Element), spacing: { after: 80, line: 360 } })); });
+      if (!calloutParagraphs.length) calloutParagraphs.push(new Paragraph({ children: [new TextRun({ text: cleanText($(element).text()), language: { value: "es-PR" } })] }));
+      const noBorder = { style: BorderStyle.NIL, size: 0, color: "FFFFFF" };
+      blocks.push(new Table({
+        width: { size: 100, type: WidthType.PERCENTAGE },
+        borders: { top: noBorder, bottom: noBorder, right: noBorder, insideHorizontal: noBorder, insideVertical: noBorder, left: { style: BorderStyle.SINGLE, size: 24, color: "6B38D1" } },
+        rows: [new TableRow({ children: [new TableCell({ children: calloutParagraphs, shading: { fill: "F3EFFC" }, margins: { top: 260, bottom: 220, left: 300, right: 300 } })] })],
+      }));
+      blocks.push(new Paragraph({ children: [], spacing: { after: 120 } }));
       return;
     }
     if (tag === "ul" || tag === "ol") {
@@ -138,6 +162,9 @@ async function createDocx(html: string, title: string, author: string) {
           run: { font: "Arial", size: 24, language: { value: "es-PR" } },
           paragraph: { spacing: { line: 360 } },
         },
+        heading1: { run: { font: "Arial", size: 68, bold: true, color: "242439" }, paragraph: { spacing: { before: 200, after: 240 }, keepNext: true } },
+        heading2: { run: { font: "Arial", size: 46, bold: true, color: "302254" }, paragraph: { spacing: { before: 380, after: 140 }, keepNext: true } },
+        heading3: { run: { font: "Arial", size: 38, bold: true, color: "302254" }, paragraph: { spacing: { before: 300, after: 120 }, keepNext: true } },
       },
     },
     numbering: {
@@ -181,12 +208,40 @@ function createPdf(html: string, title: string, author: string) {
     $("body").children().each((_, raw) => {
       const element = raw as Element;
       const tag = element.name.toLowerCase();
+      const classes = new Set((element.attribs?.class || "").split(/\s+/).filter(Boolean));
       const text = cleanText($(element).text());
       if (!text && tag !== "figure") return;
       ensureSpace(tag === "table" ? 140 : 70);
       if (/^h[1-6]$/.test(tag)) {
         const level = Number(tag[1]);
         pdf.font("AccessibleSansBold").fontSize(level === 1 ? 22 : Math.max(12, 19 - level)).fillColor("#242439").text(text, { width: bodyWidth, paragraphGap: 8, structParent: root, structType: `H${level}` });
+      } else if (tag === "p" && classes.has("eyebrow")) {
+        pdf.font("AccessibleSansBold").fontSize(9).fillColor("#6B38D1").text(text.toUpperCase(), { width: bodyWidth, characterSpacing: 1.1, paragraphGap: 5, structParent: root, structType: "P" });
+      } else if (tag === "p" && classes.has("lead")) {
+        pdf.font("AccessibleSans").fontSize(14).fillColor("#555E70").text(text, { width: bodyWidth, lineGap: 4, paragraphGap: 10, structParent: root, structType: "P" });
+      } else if (tag === "div" && classes.has("callout")) {
+        const calloutTitle = cleanText($(element).children("strong,b").first().text());
+        const calloutBody = $(element).children("p").toArray().map((paragraph) => cleanText($(paragraph).text())).filter(Boolean).join("\n");
+        pdf.font("AccessibleSansBold").fontSize(11);
+        const titleHeight = calloutTitle ? pdf.heightOfString(calloutTitle, { width: bodyWidth - 40 }) : 0;
+        pdf.font("AccessibleSans").fontSize(10.5);
+        const bodyHeight = calloutBody ? pdf.heightOfString(calloutBody, { width: bodyWidth - 40, lineGap: 3 }) : 0;
+        const boxHeight = Math.max(54, titleHeight + bodyHeight + (calloutTitle && calloutBody ? 8 : 0) + 32);
+        ensureSpace(boxHeight + 18);
+        const boxX = pdf.page.margins.left;
+        const boxY = pdf.y;
+        pdf.markContent("Artifact", { type: "Layout" });
+        pdf.save().fillColor("#F3EFFC").roundedRect(boxX, boxY, bodyWidth, boxHeight, 5).fill().fillColor("#6B38D1").rect(boxX, boxY, 5, boxHeight).fill().restore();
+        pdf.endMarkedContent();
+        const section = pdf.struct("Sect", { title: calloutTitle || "Contenido destacado", lang: "es-PR" });
+        root.add(section);
+        let textY = boxY + 15;
+        if (calloutTitle) {
+          pdf.font("AccessibleSansBold").fontSize(11).fillColor("#5124A9").text(calloutTitle, boxX + 20, textY, { width: bodyWidth - 40, structParent: section, structType: "P" });
+          textY += titleHeight + 7;
+        }
+        if (calloutBody) pdf.font("AccessibleSans").fontSize(10.5).fillColor("#242A36").text(calloutBody, boxX + 20, textY, { width: bodyWidth - 40, lineGap: 3, structParent: section, structType: "P" });
+        pdf.x = boxX; pdf.y = boxY + boxHeight + 14;
       } else if (tag === "ul" || tag === "ol") {
         const items = $(element).children("li").toArray().map((li) => cleanText($(li).text())).filter(Boolean);
         pdf.font("AccessibleSans").fontSize(11).fillColor("#222222").list(items, { width: bodyWidth, listType: tag === "ol" ? "numbered" : "bullet", paragraphGap: 4, structParent: root });
@@ -209,7 +264,8 @@ function createPdf(html: string, title: string, author: string) {
         root.add(figure);
         pdf.font("AccessibleSans").fontSize(10).fillColor("#4B5563").text(description, { width: bodyWidth, paragraphGap: 8, structParent: figure, structType: "Caption" });
       } else {
-        pdf.font("AccessibleSans").fontSize(11).fillColor("#222222").text(text, { width: bodyWidth, align: "left", lineGap: 3, paragraphGap: 8, indent: tag === "blockquote" ? 24 : 0, structParent: root, structType: "P" });
+        const apaReference = classes.has("apa-reference");
+        pdf.font("AccessibleSans").fontSize(11).fillColor(tag === "blockquote" ? "#555E70" : "#222222").text(text, { width: bodyWidth - (apaReference ? 24 : 0), align: "left", lineGap: 3, paragraphGap: 8, indent: tag === "blockquote" || apaReference ? 24 : 0, structParent: root, structType: "P" });
       }
     });
     pdf.end();
