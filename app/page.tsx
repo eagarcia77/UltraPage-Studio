@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Accessibility, AlertTriangle, Bold, BookOpen, Check, ChevronDown, Cloud, Code2, Copy, Download, FileImage, FilePlus2, FileText, Folder, Heading2, ImagePlus, Italic, Link2, List, ListOrdered, Loader2, LockKeyhole, Monitor, MoreHorizontal, PanelRight, PlugZap, Plus, Quote, Redo2, Save, Search, Smartphone, Table2, Tablet, Underline, Undo2, Upload } from "lucide-react";
+import { Accessibility, AlertTriangle, AlignCenter, AlignJustify, AlignLeft, AlignRight, Bold, BookOpen, Check, ChevronDown, Cloud, Code2, Copy, Download, FileImage, FilePlus2, FileText, Folder, Heading2, ImagePlus, Italic, Link2, List, ListOrdered, Loader2, LockKeyhole, Monitor, MoreHorizontal, PanelRight, PlugZap, Plus, Quote, Redo2, Save, Search, Smartphone, Table2, Tablet, Underline, Undo2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -98,6 +98,10 @@ function buildBlackboardHtml(sourceHtml: string) {
     row.append(accent, content); body.appendChild(row); table.appendChild(body); callout.replaceWith(table);
   });
   root.querySelectorAll("[data-ultrapage-size]").forEach((element) => element.removeAttribute("data-ultrapage-size"));
+  root.querySelectorAll<HTMLElement>("p,h1,h2,h3,h4,h5,h6,li,blockquote,figcaption,td,th").forEach((element) => {
+    const alignment = element.style.textAlign;
+    if (["left", "center", "right", "justify"].includes(alignment)) element.setAttribute("align", alignment);
+  });
   return root.outerHTML;
 }
 
@@ -142,8 +146,8 @@ export default function Home() {
     });
     setHtml(editor.current.innerHTML); setSaved(false); editor.current.focus();
   };
-  const applyLineSpacing = (spacing: string) => {
-    if (!spacing || !editor.current) return;
+  const selectedBlocks = () => {
+    if (!editor.current) return { targets: [] as HTMLElement[], range: null as Range | null };
     const selection = window.getSelection();
     const range = savedSelection.current;
     editor.current.focus();
@@ -157,9 +161,24 @@ export default function Home() {
       if (closest && editor.current.contains(closest)) targets = [closest];
     }
     if (!targets.length) targets = [editor.current];
+    return { targets, range: activeRange || null };
+  };
+  const applyLineSpacing = (spacing: string) => {
+    if (!spacing || !editor.current) return;
+    const { targets, range } = selectedBlocks();
     targets.forEach((block) => { block.style.lineHeight = spacing; });
     setHtml(editor.current.innerHTML); setSaved(false);
-    savedSelection.current = activeRange?.cloneRange() || null;
+    savedSelection.current = range?.cloneRange() || null;
+  };
+  const applyIndentation = (indentation: string) => {
+    if (!indentation || !editor.current) return;
+    const { targets, range } = selectedBlocks();
+    targets.forEach((block) => {
+      if (indentation === "hanging") { block.style.paddingLeft = "32px"; block.style.textIndent = "-32px"; }
+      else { block.style.paddingLeft = ""; block.style.textIndent = ""; }
+    });
+    setHtml(editor.current.innerHTML); setSaved(false);
+    savedSelection.current = range?.cloneRange() || null;
   };
   const insertMarkup = (markup: string) => { const next = `${html}${markup}`; setHtml(next); if (editor.current) editor.current.innerHTML = next; setSaved(false); toast.success("Elemento APA 7 insertado"); };
   const save = () => { setHtml(mode === "visual" ? editor.current?.innerHTML || html : html); setSaved(true); toast.success("Página guardada", { description: "Los cambios se conservaron en este borrador." }); };
@@ -213,6 +232,7 @@ export default function Home() {
         <div className="document-head"><div><div className="breadcrumbs"><span>Contenido del curso</span><span>/</span><span>Módulo 4</span></div><input className="title-input" value={title} onChange={(e) => { setTitle(e.target.value); setSaved(false); }} aria-label="Título de la página" /></div><div className="view-controls" aria-label="Vista previa por dispositivo"><button onClick={() => setDevice("desktop")} className={device === "desktop" ? "active" : ""} aria-label="Computadora"><Monitor size={17}/></button><button onClick={() => setDevice("tablet")} className={device === "tablet" ? "active" : ""} aria-label="Tableta"><Tablet size={17}/></button><button onClick={() => setDevice("mobile")} className={device === "mobile" ? "active" : ""} aria-label="Celular"><Smartphone size={17}/></button><button onClick={() => setRightPanel(!rightPanel)} className={rightPanel ? "active panel-toggle" : "panel-toggle"} aria-label="Mostrar u ocultar panel"><PanelRight size={17}/></button></div></div>
         <Tabs value={mode} onValueChange={(value) => setMode(value as "visual" | "html")} className="editor-tabs">
           <div className="toolbar-row"><TabsList className="mode-tabs"><TabsTrigger value="visual">Diseño</TabsTrigger><TabsTrigger value="html">HTML</TabsTrigger></TabsList>{mode === "visual" && <div className="toolbar" role="toolbar" aria-label="Formato de texto"><button onClick={() => command("undo")} aria-label="Deshacer"><Undo2 /></button><button onClick={() => command("redo")} aria-label="Rehacer"><Redo2 /></button><i/><label className="toolbar-select-label"><span className="sr-only">Estructura del texto</span><select defaultValue="p" onChange={(event) => command("formatBlock", event.target.value)} aria-label="Párrafo o encabezado"><option value="p">Párrafo</option><option value="h1">H1</option><option value="h2">H2</option><option value="h3">H3</option><option value="h4">H4</option></select></label><label className="toolbar-select-label font-family-select"><span className="sr-only">Tipo de letra</span><select defaultValue="" onChange={(event) => applyFont(event.target.value)} aria-label="Tipo de letra"><option value="" disabled>Tipo de letra</option><option value="Arial">Arial</option><option value="Calibri">Calibri</option><option value="Georgia">Georgia</option><option value="Tahoma">Tahoma</option><option value="Times New Roman">Times New Roman</option><option value="Verdana">Verdana</option></select></label><label className="toolbar-select-label font-size-select"><span className="sr-only">Tamaño de letra</span><select defaultValue="" onChange={(event) => applyFontSize(event.target.value)} aria-label="Tamaño de letra"><option value="" disabled>Tamaño</option><option value="10">10 px</option><option value="12">12 px</option><option value="14">14 px</option><option value="16">16 px</option><option value="18">18 px</option><option value="24">24 px</option><option value="32">32 px</option><option value="40">40 px</option></select></label><label className="toolbar-select-label line-spacing-select"><span className="sr-only">Interlineado</span><select defaultValue="" onChange={(event) => applyLineSpacing(event.target.value)} aria-label="Interlineado"><option value="" disabled>Interlineado</option><option value="1">1.0</option><option value="1.15">1.15</option><option value="1.5">1.5</option><option value="2">2.0 doble</option><option value="2.5">2.5</option></select></label><button onClick={() => command("bold")} aria-label="Negrita"><Bold /></button><button onClick={() => command("italic")} aria-label="Itálica"><Italic /></button><button onClick={() => command("underline")} aria-label="Subrayado"><Underline /></button><i/><button onClick={() => command("insertUnorderedList")} aria-label="Lista"><List /></button><button onClick={() => command("insertOrderedList")} aria-label="Lista numerada"><ListOrdered /></button><button onClick={() => { const url = prompt("Dirección del enlace"); if (url) command("createLink", url); }} aria-label="Enlace"><Link2 /></button><ContentDialog trigger={<button aria-label="Insertar desde Content Collection"><ImagePlus /></button>} search={search} setSearch={setSearch} files={filteredFiles} insertFile={insertFile} documentHtml={html} documentFileName={documentFileName} openDocument={openDocument} newDocument={newDocument}/><button aria-label="Más opciones"><MoreHorizontal /></button></div>}</div>
+          {mode === "visual" && <div className="secondary-toolbar" role="toolbar" aria-label="Alineación y sangría"><label className="toolbar-select-label indentation-select"><span className="sr-only">Sangría</span><select defaultValue="" onChange={(event) => applyIndentation(event.target.value)} aria-label="Sangría"><option value="" disabled>Sangría</option><option value="hanging">Sangría francesa</option><option value="none">Quitar sangría</option></select></label><span className="secondary-divider"/><button onClick={() => command("justifyLeft")} aria-label="Alinear a la izquierda" title="Alinear a la izquierda"><AlignLeft /></button><button onClick={() => command("justifyCenter")} aria-label="Centrar texto" title="Centrar texto"><AlignCenter /></button><button onClick={() => command("justifyRight")} aria-label="Alinear a la derecha" title="Alinear a la derecha"><AlignRight /></button><button onClick={() => command("justifyFull")} aria-label="Justificar texto" title="Justificar texto"><AlignJustify /></button></div>}
           <TabsContent value="visual" className="canvas-wrap"><div className={`device-frame ${device}`}><div className="ultra-label"><span className="mini-logo">U</span><span>Vista previa en Ultra</span></div><div ref={editor} className="page-canvas" contentEditable suppressContentEditableWarning onInput={(e) => { setHtml(e.currentTarget.innerHTML); setSaved(false); }} aria-label="Contenido editable de la página" /></div></TabsContent>
           <TabsContent value="html" className="code-wrap"><div className="code-header"><div className="code-heading"><span>{codeView === "blackboard" ? "HTML listo para pegar en Blackboard Ultra" : "Código HTML base editable"}</span><div className="code-view-switch" role="group" aria-label="Tipo de código HTML"><button type="button" className={codeView === "blackboard" ? "active" : ""} aria-pressed={codeView === "blackboard"} onClick={() => setCodeView("blackboard")}>Para Blackboard</button><button type="button" className={codeView === "source" ? "active" : ""} aria-pressed={codeView === "source"} onClick={() => setCodeView("source")}>Editar código base</button></div></div><button className="copy-code-button" onClick={copyHtml}><Copy size={14}/> Copiar código</button></div><Textarea value={codeView === "blackboard" ? blackboardHtml : html} readOnly={codeView === "blackboard"} onChange={(e) => { if (codeView === "source") { setHtml(e.target.value); setSaved(false); } }} className={`code-editor ${codeView === "blackboard" ? "compatible" : ""}`} spellCheck={false} aria-label={codeView === "blackboard" ? "Código HTML compatible con Blackboard Ultra" : "Código HTML base editable"} /><p className="code-help">{codeView === "blackboard" ? "Este es el mismo código que utiliza Copiar para Ultra. Pégalo en el editor HTML <> de Blackboard." : "Los cambios realizados aquí se reflejan en la vista Diseño. Cambia a Para Blackboard antes de copiar."}</p></TabsContent>
         </Tabs>
