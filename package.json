@@ -11,11 +11,15 @@
     "start": "next start -H 0.0.0.0 -p $PORT"
   },
   "dependencies": {
+    "@fontsource/dejavu-sans": "^5.3.0",
+    "cheerio": "^1.2.0",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
+    "docx": "^9.7.1",
     "lucide-react": "^1.31.0",
     "next": "16.3.4",
     "next-themes": "^0.4.6",
+    "pdfkit": "^0.20.2",
     "radix-ui": "^1.6.7",
     "react": "19.2.6",
     "react-dom": "19.2.6",
@@ -25,6 +29,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "4.2.1",
     "@types/node": "22.19.19",
+    "@types/pdfkit": "^0.17.6",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
     "tailwindcss": "4.2.1",

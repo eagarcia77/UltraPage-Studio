@@ -16,13 +16,18 @@ Editor visual en español para crear contenido accesible y compatible con Blackb
 - Conexión segura con Blackboard Content Collection mediante WebDAV.
 - Revisión básica de accesibilidad.
 - Herramientas APA 7 para citas narrativas y parentéticas, referencias con sangría francesa, tablas, figuras, notas, DOI y URL.
+- Exportación a Microsoft Word (`.docx`) con encabezados, listas, tablas, enlaces, idioma y metadatos estructurados.
+- Exportación a PDF etiquetado con perfil PDF/UA, idioma `es-PR`, fuentes incrustadas y metadatos.
+- Descarga de HTML, Word y PDF en la computadora.
+- Guardado de HTML, Word y PDF directamente en Blackboard Content Collection mediante WebDAV.
+- Revisión previa de título, encabezados, texto alternativo, enlaces descriptivos y tablas.
 - Copia de HTML para utilizarlo en Blackboard Ultra.
 
 ## Desarrollo local
 
 ```bash
-pnpm install
-pnpm dev
+npm install
+npm run dev
 ```
 
 ## Seguridad
