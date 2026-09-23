@@ -196,19 +196,23 @@ export default function Home() {
     editor.current.focus();
     if (selection && range) { selection.removeAllRanges(); selection.addRange(range); }
     const activeRange = selection?.rangeCount ? selection.getRangeAt(0) : range;
-    const blocks = Array.from(editor.current.querySelectorAll<HTMLElement>("p,h1,h2,h3,h4,h5,h6,li,blockquote,figcaption,td,th"));
+    const blockSelector = "p,h1,h2,h3,h4,h5,h6,li,blockquote,figcaption,td,th";
+    const semanticBlocks = Array.from(editor.current.querySelectorAll<HTMLElement>(blockSelector));
+    const directDivs = Array.from(editor.current.children).filter((element): element is HTMLElement => element instanceof HTMLElement && element.tagName === "DIV" && !element.classList.contains("ultrapage-watermark"));
+    const blocks = [...semanticBlocks, ...directDivs];
     let targets = activeRange ? blocks.filter((block) => { try { return activeRange.intersectsNode(block); } catch { return false; } }) : [];
+    targets = targets.filter((block) => !targets.some((candidate) => candidate !== block && block.contains(candidate)));
     if (!targets.length && activeRange) {
       const node = activeRange.startContainer.nodeType === Node.TEXT_NODE ? activeRange.startContainer.parentElement : activeRange.startContainer as HTMLElement;
-      const closest = node?.closest<HTMLElement>("p,h1,h2,h3,h4,h5,h6,li,blockquote,figcaption,td,th");
-      if (closest && editor.current.contains(closest)) targets = [closest];
+      const closest = node?.closest<HTMLElement>(`${blockSelector},div`);
+      if (closest && closest !== editor.current && editor.current.contains(closest) && !closest.classList.contains("ultrapage-watermark")) targets = [closest];
     }
-    if (!targets.length) targets = [editor.current];
     return { targets, range: activeRange || null };
   };
   const applyLineSpacing = (spacing: string) => {
     if (!spacing || !editor.current) return;
     const { targets, range } = selectedBlocks();
+    if (!targets.length) { toast.info("Seleccione el texto que desea modificar"); return; }
     targets.forEach((block) => { block.style.lineHeight = spacing; });
     setHtml(editor.current.innerHTML); setSaved(false);
     savedSelection.current = range?.cloneRange() || null;
@@ -216,6 +220,7 @@ export default function Home() {
   const applyIndentation = (indentation: string) => {
     if (!indentation || !editor.current) return;
     const { targets, range } = selectedBlocks();
+    if (!targets.length) { toast.info("Seleccione el párrafo que desea modificar"); return; }
     targets.forEach((block) => {
       block.style.marginLeft = "";
       block.style.paddingLeft = "";
