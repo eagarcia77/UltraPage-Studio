@@ -23,7 +23,7 @@ const demoFiles = [
 const DRAFT_KEY = "ultrapage-studio-draft-v1";
 const HISTORY_KEY = "ultrapage-studio-history-v1";
 type DocumentLanguage = "es-PR" | "en-US";
-type DraftSnapshot = { id: string; html: string; title: string; fileName: string; language?: DocumentLanguage; savedAt: string };
+type DraftSnapshot = { id: string; html: string; title: string; fileName: string; language?: DocumentLanguage; author?: string; description?: string; savedAt: string };
 const languageLabels: Record<DocumentLanguage, string> = { "es-PR": "Español (Puerto Rico)", "en-US": "English (United States)" };
 
 function escapeHtml(value: string) {
@@ -203,16 +203,6 @@ export default function Home() {
   const [documentDescription, setDocumentDescription] = useState("");
 
   useEffect(() => {
-    try {
-      const properties = JSON.parse(localStorage.getItem("ultrapage-document-properties") || "{}") as { author?: string; description?: string };
-      setDocumentAuthor(properties.author || "");
-      setDocumentDescription(properties.description || "");
-    } catch { localStorage.removeItem("ultrapage-document-properties"); }
-  }, []);
-  useEffect(() => {
-    localStorage.setItem("ultrapage-document-properties", JSON.stringify({ author: documentAuthor, description: documentDescription }));
-  }, [documentAuthor, documentDescription]);
-  useEffect(() => {
     const compactLayout = window.matchMedia("(max-width: 1040px)");
     if (compactLayout.matches) setRightPanel(false);
   }, []);
@@ -220,7 +210,7 @@ export default function Home() {
     try {
       const stored = localStorage.getItem(DRAFT_KEY);
       if (stored) {
-        const draft = JSON.parse(stored) as { html?: string; title?: string; fileName?: string; language?: DocumentLanguage };
+        const draft = JSON.parse(stored) as { html?: string; title?: string; fileName?: string; language?: DocumentLanguage; author?: string; description?: string };
         const restoredHtml = typeof draft.html === "string" ? draft.html : "";
         htmlRef.current = restoredHtml;
         setHtml(restoredHtml);
@@ -228,6 +218,8 @@ export default function Home() {
         if (draft.title) setTitle(draft.title);
         if (draft.fileName) setDocumentFileName(draft.fileName);
         if (draft.language === "es-PR" || draft.language === "en-US") setDocumentLanguage(draft.language);
+        setDocumentAuthor(draft.author || "");
+        setDocumentDescription(draft.description || "");
         toast.success("Borrador recuperado", { description: "Se restauró el trabajo guardado automáticamente." });
       }
     } catch { localStorage.removeItem(DRAFT_KEY); }
@@ -236,11 +228,11 @@ export default function Home() {
   useEffect(() => {
     if (!draftLoaded) return;
     const timer = window.setTimeout(() => {
-      localStorage.setItem(DRAFT_KEY, JSON.stringify({ html, title, fileName: documentFileName, language: documentLanguage, updatedAt: new Date().toISOString() }));
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({ html, title, fileName: documentFileName, language: documentLanguage, author: documentAuthor, description: documentDescription, updatedAt: new Date().toISOString() }));
       setSaved(true);
     }, 700);
     return () => window.clearTimeout(timer);
-  }, [draftLoaded, html, title, documentFileName, documentLanguage]);
+  }, [draftLoaded, html, title, documentFileName, documentLanguage, documentAuthor, documentDescription]);
 
   htmlRef.current = html;
   const attachEditor = useCallback((node: HTMLDivElement | null) => {
@@ -510,8 +502,8 @@ export default function Home() {
   const save = () => {
     const currentHtml = mode === "visual" ? editor.current?.innerHTML || html : html;
     htmlRef.current = currentHtml; setHtml(currentHtml);
-    localStorage.setItem(DRAFT_KEY, JSON.stringify({ html: currentHtml, title, fileName: documentFileName, language: documentLanguage, updatedAt: new Date().toISOString() }));
-    const snapshot: DraftSnapshot = { id: crypto.randomUUID?.() || String(Date.now()), html: currentHtml, title, fileName: documentFileName, language: documentLanguage, savedAt: new Date().toISOString() };
+    localStorage.setItem(DRAFT_KEY, JSON.stringify({ html: currentHtml, title, fileName: documentFileName, language: documentLanguage, author: documentAuthor, description: documentDescription, updatedAt: new Date().toISOString() }));
+    const snapshot: DraftSnapshot = { id: crypto.randomUUID?.() || String(Date.now()), html: currentHtml, title, fileName: documentFileName, language: documentLanguage, author: documentAuthor, description: documentDescription, savedAt: new Date().toISOString() };
     try {
       const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]") as DraftSnapshot[];
       if (history[0]?.html !== currentHtml || history[0]?.title !== title) localStorage.setItem(HISTORY_KEY, JSON.stringify([snapshot, ...history].slice(0, 10)));
@@ -519,9 +511,9 @@ export default function Home() {
     setSaved(true); toast.success("Página guardada", { description: "El borrador permanecerá disponible al cerrar o actualizar el navegador." });
   };
   const restoreSnapshot = (snapshot: DraftSnapshot) => {
-    htmlRef.current = snapshot.html; setHtml(snapshot.html); setTitle(snapshot.title); setDocumentFileName(snapshot.fileName); if (snapshot.language) setDocumentLanguage(snapshot.language); setMode("visual"); setSaved(true);
+    htmlRef.current = snapshot.html; setHtml(snapshot.html); setTitle(snapshot.title); setDocumentFileName(snapshot.fileName); if (snapshot.language) setDocumentLanguage(snapshot.language); setDocumentAuthor(snapshot.author || ""); setDocumentDescription(snapshot.description || ""); setMode("visual"); setSaved(true);
     if (editor.current) editor.current.innerHTML = snapshot.html;
-    localStorage.setItem(DRAFT_KEY, JSON.stringify({ html: snapshot.html, title: snapshot.title, fileName: snapshot.fileName, language: snapshot.language || documentLanguage, updatedAt: new Date().toISOString() }));
+    localStorage.setItem(DRAFT_KEY, JSON.stringify({ html: snapshot.html, title: snapshot.title, fileName: snapshot.fileName, language: snapshot.language || documentLanguage, author: snapshot.author || "", description: snapshot.description || "", updatedAt: new Date().toISOString() }));
     toast.success("Versión restaurada", { description: snapshot.title });
   };
   const copyHtml = async () => {
@@ -537,11 +529,15 @@ export default function Home() {
   };
   const openDocument = (name: string, content: string) => {
     const plainTextFile = /\.txt$/i.test(name);
+    const parsedFile = plainTextFile ? null : new DOMParser().parseFromString(content, "text/html");
+    const importedLanguage = parsedFile?.documentElement.lang;
+    const importedAuthor = parsedFile?.querySelector('meta[name="author"]')?.getAttribute("content") || "";
+    const importedDescription = parsedFile?.querySelector('meta[name="description"]')?.getAttribute("content") || "";
     const extracted = content.match(/<main[^>]*class=["'][^"']*ultra-page[^"']*["'][^>]*>([\s\S]*?)<\/main>/i)?.[1] || content.match(/<body[^>]*>([\s\S]*?)<\/body>/i)?.[1] || content;
     const body = plainTextFile
       ? extracted.split(/\n{2,}/).map((paragraph) => `<p>${escapeHtml(paragraph).replace(/\n/g, "<br>")}</p>`).join("")
       : sanitizePastedHtml(extracted);
-    setHtml(body); setDocumentFileName(name); setTitle(name.replace(/\.(html?|txt)$/i, "")); setMode("visual"); setSaved(true);
+    setHtml(body); setDocumentFileName(name); setTitle(name.replace(/\.(html?|txt)$/i, "")); if (importedLanguage === "en-US" || importedLanguage === "es-PR") setDocumentLanguage(importedLanguage); setDocumentAuthor(importedAuthor); setDocumentDescription(importedDescription); setMode("visual"); setSaved(true);
     if (editor.current) editor.current.innerHTML = body;
     toast.success("Archivo abierto de forma segura", { description: `${name} está listo para editar.` });
   };
@@ -558,7 +554,7 @@ export default function Home() {
     if (!name) return;
     const validName = /\.(html?|txt)$/i.test(name) ? name : `${name}.html`;
     const content = "";
-    setDocumentFileName(validName); setTitle(validName.replace(/\.(html?|txt)$/i, "")); setHtml(content); setMode("visual"); setSaved(false);
+    setDocumentFileName(validName); setTitle(validName.replace(/\.(html?|txt)$/i, "")); setHtml(content); setDocumentAuthor(""); setDocumentDescription(""); setDocumentLanguage("es-PR"); setMode("visual"); setSaved(false);
     if (editor.current) editor.current.innerHTML = content;
     toast.success("Documento nuevo creado");
   };
