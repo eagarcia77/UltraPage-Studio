@@ -1,0 +1,42 @@
+name: Sync Native Tools
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-native-tools
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: Refresh read-only native copies
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out UltraPage Studio
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Synchronize source copies
+        run: node scripts/sync-native-tools.mjs
+
+      - name: Commit updates when sources changed
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/native-tools
+          if git diff --cached --quiet; then
+            echo "Native tools are already current."
+          else
+            git commit -m "Sync native tools from source repositories"
+            git push
+          fi
