@@ -22,7 +22,9 @@ const demoFiles = [
 ];
 const DRAFT_KEY = "ultrapage-studio-draft-v1";
 const HISTORY_KEY = "ultrapage-studio-history-v1";
-type DraftSnapshot = { id: string; html: string; title: string; fileName: string; savedAt: string };
+type DocumentLanguage = "es-PR" | "en-US";
+type DraftSnapshot = { id: string; html: string; title: string; fileName: string; language?: DocumentLanguage; savedAt: string };
+const languageLabels: Record<DocumentLanguage, string> = { "es-PR": "Español (Puerto Rico)", "en-US": "English (United States)" };
 
 function escapeHtml(value: string) {
   return value.replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character] || character);
@@ -56,10 +58,11 @@ function sanitizePastedHtml(source: string) {
   return parsed.body.innerHTML;
 }
 
-function buildBlackboardHtml(sourceHtml: string) {
+function buildBlackboardHtml(sourceHtml: string, language: DocumentLanguage = "es-PR") {
   const parsed = new DOMParser().parseFromString(`<div id="ultrapage-export">${sourceHtml}</div>`, "text/html");
   const root = parsed.querySelector<HTMLElement>("#ultrapage-export");
   if (!root) return sourceHtml;
+  root.setAttribute("lang", language);
   root.querySelectorAll("script,style,object,embed,form,input,button").forEach((element) => element.remove());
   root.querySelectorAll<HTMLElement>("*").forEach((element) => {
     Array.from(element.attributes).forEach((attribute) => {
@@ -192,18 +195,20 @@ export default function Home() {
   const [draftLoaded, setDraftLoaded] = useState(false);
   const [search, setSearch] = useState("");
   const [documentFileName, setDocumentFileName] = useState("documento-sin-titulo.html");
+  const [documentLanguage, setDocumentLanguage] = useState<DocumentLanguage>("es-PR");
 
   useEffect(() => {
     try {
       const stored = localStorage.getItem(DRAFT_KEY);
       if (stored) {
-        const draft = JSON.parse(stored) as { html?: string; title?: string; fileName?: string };
+        const draft = JSON.parse(stored) as { html?: string; title?: string; fileName?: string; language?: DocumentLanguage };
         const restoredHtml = typeof draft.html === "string" ? draft.html : "";
         htmlRef.current = restoredHtml;
         setHtml(restoredHtml);
         if (editor.current) editor.current.innerHTML = restoredHtml;
         if (draft.title) setTitle(draft.title);
         if (draft.fileName) setDocumentFileName(draft.fileName);
+        if (draft.language === "es-PR" || draft.language === "en-US") setDocumentLanguage(draft.language);
         toast.success("Borrador recuperado", { description: "Se restauró el trabajo guardado automáticamente." });
       }
     } catch { localStorage.removeItem(DRAFT_KEY); }
@@ -212,11 +217,11 @@ export default function Home() {
   useEffect(() => {
     if (!draftLoaded) return;
     const timer = window.setTimeout(() => {
-      localStorage.setItem(DRAFT_KEY, JSON.stringify({ html, title, fileName: documentFileName, updatedAt: new Date().toISOString() }));
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({ html, title, fileName: documentFileName, language: documentLanguage, updatedAt: new Date().toISOString() }));
       setSaved(true);
     }, 700);
     return () => window.clearTimeout(timer);
-  }, [draftLoaded, html, title, documentFileName]);
+  }, [draftLoaded, html, title, documentFileName, documentLanguage]);
 
   htmlRef.current = html;
   const attachEditor = useCallback((node: HTMLDivElement | null) => {
@@ -232,7 +237,7 @@ export default function Home() {
     }
     setMode(nextMode);
   };
-  useEffect(() => { if (mode === "html") setBlackboardHtml(buildBlackboardHtml(html)); }, [html, mode]);
+  useEffect(() => { if (mode === "html") setBlackboardHtml(buildBlackboardHtml(html, documentLanguage)); }, [html, mode, documentLanguage]);
   useEffect(() => {
     const rememberSelection = () => {
       const selection = window.getSelection();
@@ -456,8 +461,8 @@ export default function Home() {
   const save = () => {
     const currentHtml = mode === "visual" ? editor.current?.innerHTML || html : html;
     htmlRef.current = currentHtml; setHtml(currentHtml);
-    localStorage.setItem(DRAFT_KEY, JSON.stringify({ html: currentHtml, title, fileName: documentFileName, updatedAt: new Date().toISOString() }));
-    const snapshot: DraftSnapshot = { id: crypto.randomUUID?.() || String(Date.now()), html: currentHtml, title, fileName: documentFileName, savedAt: new Date().toISOString() };
+    localStorage.setItem(DRAFT_KEY, JSON.stringify({ html: currentHtml, title, fileName: documentFileName, language: documentLanguage, updatedAt: new Date().toISOString() }));
+    const snapshot: DraftSnapshot = { id: crypto.randomUUID?.() || String(Date.now()), html: currentHtml, title, fileName: documentFileName, language: documentLanguage, savedAt: new Date().toISOString() };
     try {
       const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]") as DraftSnapshot[];
       if (history[0]?.html !== currentHtml || history[0]?.title !== title) localStorage.setItem(HISTORY_KEY, JSON.stringify([snapshot, ...history].slice(0, 10)));
@@ -465,14 +470,14 @@ export default function Home() {
     setSaved(true); toast.success("Página guardada", { description: "El borrador permanecerá disponible al cerrar o actualizar el navegador." });
   };
   const restoreSnapshot = (snapshot: DraftSnapshot) => {
-    htmlRef.current = snapshot.html; setHtml(snapshot.html); setTitle(snapshot.title); setDocumentFileName(snapshot.fileName); setMode("visual"); setSaved(true);
+    htmlRef.current = snapshot.html; setHtml(snapshot.html); setTitle(snapshot.title); setDocumentFileName(snapshot.fileName); if (snapshot.language) setDocumentLanguage(snapshot.language); setMode("visual"); setSaved(true);
     if (editor.current) editor.current.innerHTML = snapshot.html;
-    localStorage.setItem(DRAFT_KEY, JSON.stringify({ html: snapshot.html, title: snapshot.title, fileName: snapshot.fileName, updatedAt: new Date().toISOString() }));
+    localStorage.setItem(DRAFT_KEY, JSON.stringify({ html: snapshot.html, title: snapshot.title, fileName: snapshot.fileName, language: snapshot.language || documentLanguage, updatedAt: new Date().toISOString() }));
     toast.success("Versión restaurada", { description: snapshot.title });
   };
   const copyHtml = async () => {
     const currentHtml = mode === "visual" ? editor.current?.innerHTML || html : html;
-    await navigator.clipboard.writeText(buildBlackboardHtml(currentHtml));
+    await navigator.clipboard.writeText(buildBlackboardHtml(currentHtml, documentLanguage));
     toast.success("HTML compatible con Ultra copiado", { description: "Incluye estilos en línea, viñetas y numeración para conservar la vista previa." });
   };
   const insertFile = (name: string, type: string, href?: string) => {
@@ -511,7 +516,7 @@ export default function Home() {
   const downloadDocument = () => {
     const currentHtml = mode === "visual" ? editor.current?.innerHTML || html : html;
     const safeTitle = title.replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character] || character);
-    const fileContent = documentFileName.toLowerCase().endsWith(".txt") ? currentHtml.replace(/<[^>]+>/g, "") : `<!doctype html><html lang="es-PR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${safeTitle}</title><style>${exportedPageStyles}</style></head><body><main class="ultra-page">${currentHtml}</main></body></html>`;
+    const fileContent = documentFileName.toLowerCase().endsWith(".txt") ? currentHtml.replace(/<[^>]+>/g, "") : `<!doctype html><html lang="${documentLanguage}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${safeTitle}</title><style>${exportedPageStyles}</style></head><body><main class="ultra-page">${currentHtml}</main></body></html>`;
     const blob = new Blob([fileContent], { type: documentFileName.toLowerCase().endsWith(".txt") ? "text/plain;charset=utf-8" : "text/html;charset=utf-8" });
     const downloadUrl = URL.createObjectURL(blob); const link = document.createElement("a"); link.href = downloadUrl; link.download = documentFileName; link.click(); URL.revokeObjectURL(downloadUrl);
     toast.success("Archivo descargado en la computadora");
@@ -539,7 +544,7 @@ export default function Home() {
   }, [mode, html, title, documentFileName]);
 
   const filteredFiles = demoFiles.filter((f) => f.name.toLowerCase().includes(search.toLowerCase()));
-  const pageChecks = accessibilityReport(html, title);
+  const pageChecks = accessibilityReport(html, title, documentLanguage);
   const accessibilityScore = Math.round((pageChecks.filter((check) => check.ok).length / pageChecks.length) * 100);
   const plainText = html.replace(/<[^>]+>/g, " ").replace(/&nbsp;|&amp;|&lt;|&gt;|&#39;|&quot;/g, " ").replace(/\s+/g, " ").trim();
   const wordCount = plainText ? plainText.split(" ").length : 0;
@@ -566,12 +571,12 @@ export default function Home() {
     <header className="topbar">
       <div className="brandmark" aria-hidden="true"><span>U</span></div><div className="brandcopy"><strong>UltraPage Studio</strong><span>Editor para Blackboard Ultra</span></div>
       <div className="course-pill disconnected" aria-label="Estado de conexión"><span className="status-dot disconnected" />Sin curso conectado</div>
-      <div className="header-actions"><ApaDialog insertMarkup={insertMarkup}/><span className={saved ? "save-state" : "save-state pending"}>{saved ? <Check size={14}/> : <Cloud size={14}/>} {saved ? "Guardado" : "Cambios sin guardar"}</span><HistoryDialog restoreSnapshot={restoreSnapshot}/><KeyboardShortcutsDialog/><Button variant="outline" className="publish-button" title="Abrir HTML o TXT de la computadora" onClick={() => localFileInput.current?.click()}><Upload size={16}/> Abrir</Button><ExportDialog html={html} title={title} downloadHtml={downloadDocument}/><Button variant="outline" className="publish-button" onClick={copyHtml}><Copy size={16}/> Copiar para Ultra</Button><Button className="save-button" onClick={save}><Save size={16}/> Guardar</Button></div>
+      <div className="header-actions"><ApaDialog insertMarkup={insertMarkup}/><span className={saved ? "save-state" : "save-state pending"}>{saved ? <Check size={14}/> : <Cloud size={14}/>} {saved ? "Guardado" : "Cambios sin guardar"}</span><HistoryDialog restoreSnapshot={restoreSnapshot}/><KeyboardShortcutsDialog/><Button variant="outline" className="publish-button" title="Abrir HTML o TXT de la computadora" onClick={() => localFileInput.current?.click()}><Upload size={16}/> Abrir</Button><ExportDialog html={html} title={title} language={documentLanguage} downloadHtml={downloadDocument}/><Button variant="outline" className="publish-button" onClick={copyHtml}><Copy size={16}/> Copiar para Ultra</Button><Button className="save-button" onClick={save}><Save size={16}/> Guardar</Button></div>
     </header>
     <div className="workspace">
       <aside className="leftbar" aria-label="Herramientas"><button className="rail-button active" aria-label="Editor"><FileText /></button><button className="rail-button" aria-label="Recursos"><Folder /></button><button className="rail-button" aria-label="Accesibilidad"><Accessibility /></button><button className="rail-button" aria-label="Código"><Code2 /></button><div className="rail-spacer" /><button className="avatar" aria-label="Perfil de Eduardo">EG</button></aside>
       <section className="editor-shell">
-        <div className="document-head"><div><div className="breadcrumbs"><span>Editor independiente</span><span>/</span><span>Documento</span></div><input className="title-input" value={title} onChange={(e) => { setTitle(e.target.value); setSaved(false); }} aria-label="Título de la página" /><div className="document-metrics" aria-live="polite"><span>{wordCount} palabras</span><span>{characterCount} caracteres</span><span>Guardado automático activo</span></div></div><div className="view-controls" aria-label="Vista previa por dispositivo"><button onClick={() => setDevice("desktop")} className={device === "desktop" ? "active" : ""} aria-label="Computadora"><Monitor size={17}/></button><button onClick={() => setDevice("tablet")} className={device === "tablet" ? "active" : ""} aria-label="Tableta"><Tablet size={17}/></button><button onClick={() => setDevice("mobile")} className={device === "mobile" ? "active" : ""} aria-label="Celular"><Smartphone size={17}/></button><button onClick={() => setRightPanel(!rightPanel)} className={rightPanel ? "active panel-toggle" : "panel-toggle"} aria-label="Mostrar u ocultar panel"><PanelRight size={17}/></button></div></div>
+        <div className="document-head"><div><div className="breadcrumbs"><span>Editor independiente</span><span>/</span><span>Documento</span></div><input className="title-input" value={title} onChange={(e) => { setTitle(e.target.value); setSaved(false); }} aria-label="Título de la página" /><div className="document-metrics" aria-live="polite"><span>{wordCount} palabras</span><span>{characterCount} caracteres</span><span>Guardado automático activo</span></div><label className="document-language"><span>Idioma del documento</span><select value={documentLanguage} onChange={(event) => { setDocumentLanguage(event.target.value as DocumentLanguage); setSaved(false); }} aria-label="Idioma principal del documento"><option value="es-PR">Español (Puerto Rico)</option><option value="en-US">English (United States)</option></select></label></div><div className="view-controls" aria-label="Vista previa por dispositivo"><button onClick={() => setDevice("desktop")} className={device === "desktop" ? "active" : ""} aria-label="Computadora"><Monitor size={17}/></button><button onClick={() => setDevice("tablet")} className={device === "tablet" ? "active" : ""} aria-label="Tableta"><Tablet size={17}/></button><button onClick={() => setDevice("mobile")} className={device === "mobile" ? "active" : ""} aria-label="Celular"><Smartphone size={17}/></button><button onClick={() => setRightPanel(!rightPanel)} className={rightPanel ? "active panel-toggle" : "panel-toggle"} aria-label="Mostrar u ocultar panel"><PanelRight size={17}/></button></div></div>
         <Tabs value={mode} onValueChange={changeMode} className="editor-tabs">
           <div className="toolbar-row">
             <TabsList className="mode-tabs"><TabsTrigger value="visual">Diseño</TabsTrigger><TabsTrigger value="html">HTML</TabsTrigger></TabsList>
@@ -595,7 +600,7 @@ export default function Home() {
           <TabsContent value="html" className="code-wrap"><div className="code-header"><div className="code-heading"><span>{codeView === "blackboard" ? "HTML listo para pegar en Blackboard Ultra" : "Código HTML base editable"}</span><div className="code-view-switch" role="group" aria-label="Tipo de código HTML"><button type="button" className={codeView === "blackboard" ? "active" : ""} aria-pressed={codeView === "blackboard"} onClick={() => setCodeView("blackboard")}>Para Blackboard</button><button type="button" className={codeView === "source" ? "active" : ""} aria-pressed={codeView === "source"} onClick={() => setCodeView("source")}>Editar código base</button></div></div><button className="copy-code-button" onClick={copyHtml}><Copy size={14}/> Copiar código</button></div><Textarea value={codeView === "blackboard" ? blackboardHtml : html} readOnly={codeView === "blackboard"} onChange={(e) => { if (codeView === "source") { setHtml(e.target.value); setSaved(false); } }} className={`code-editor ${codeView === "blackboard" ? "compatible" : ""}`} spellCheck={false} aria-label={codeView === "blackboard" ? "Código HTML compatible con Blackboard Ultra" : "Código HTML base editable"} /><p className="code-help">{codeView === "blackboard" ? "Este es el mismo código que utiliza Copiar para Ultra. Pégalo en el editor HTML <> de Blackboard." : "Los cambios realizados aquí se reflejan en la vista Diseño. Cambia a Para Blackboard antes de copiar."}</p></TabsContent>
         </Tabs>
       </section>
-      {rightPanel && <aside className="right-panel"><Tabs defaultValue="blocks"><TabsList className="side-tabs"><TabsTrigger value="blocks">Bloques</TabsTrigger><TabsTrigger value="review">Revisión</TabsTrigger><TabsTrigger value="outline">Esquema</TabsTrigger></TabsList><TabsContent value="blocks"><p className="panel-label">CONTENIDO</p><div className="block-grid"><Block icon={Heading2} label="Encabezado" onClick={() => command("formatBlock", "h2")}/><Block icon={FileText} label="Texto" onClick={() => command("insertParagraph")}/><Block icon={ImagePlus} label="Imagen" onClick={() => toast.info("Selecciona una imagen desde Content Collection.")}/><TableDialog insertMarkup={insertMarkup} block/><LinkDialog insertLink={insertAccessibleLink} block/><Block icon={List} label="Lista" onClick={() => command("insertUnorderedList")}/><Block icon={Plus} label="Aviso" onClick={() => command("insertHTML", '<div class="callout"><strong>Importante</strong><p>Escriba aquí la información destacada.</p></div>')}/></div><p className="panel-label section-label">FORMATO ACADÉMICO</p><ApaDialog insertMarkup={insertMarkup} fullWidth/><p className="panel-label section-label">PLANTILLAS RÁPIDAS</p><button className="template-card" onClick={() => command("insertHTML", '<h2>Objetivos de aprendizaje</h2><ul><li>Objetivo 1</li><li>Objetivo 2</li></ul>')}><span className="template-icon blue"><List /></span><span><strong>Objetivos</strong><small>Lista accesible</small></span><Plus size={16}/></button><button className="template-card" onClick={() => command("insertHTML", '<div class="callout"><strong>Instrucciones</strong><p>Complete los siguientes pasos.</p></div>')}><span className="template-icon gold"><FileText /></span><span><strong>Instrucciones</strong><small>Bloque destacado</small></span><Plus size={16}/></button><ContentDialog trigger={<Button variant="outline" className="collection-button"><Folder size={17}/> Abrir Content Collection</Button>} search={search} setSearch={setSearch} files={filteredFiles} insertFile={insertFile} documentHtml={html} documentFileName={documentFileName} openDocument={openDocument} newDocument={newDocument}/></TabsContent><TabsContent value="review"><div className="score-card"><div className="score-ring">{accessibilityScore}</div><div><strong>{accessibilityScore === 100 ? "Accesibilidad lista" : "Revisión necesaria"}</strong><span>{pageChecks.filter((check) => !check.ok).length} recomendaciones pendientes</span></div></div>{pageChecks.map((check) => <ReviewItem key={check.text} ok={check.ok} text={check.text}/>)}</TabsContent><TabsContent value="outline"><DocumentOutline items={documentOutline} onSelect={focusHeading}/></TabsContent></Tabs></aside>}
+      {rightPanel && <aside className="right-panel"><Tabs defaultValue="blocks"><TabsList className="side-tabs"><TabsTrigger value="blocks">Bloques</TabsTrigger><TabsTrigger value="review">Revisión</TabsTrigger><TabsTrigger value="outline">Esquema</TabsTrigger></TabsList><TabsContent value="blocks"><p className="panel-label">CONTENIDO</p><div className="block-grid"><Block icon={Heading2} label="Encabezado" onClick={() => command("formatBlock", "h2")}/><Block icon={FileText} label="Texto" onClick={() => command("insertParagraph")}/><Block icon={ImagePlus} label="Imagen" onClick={() => toast.info("Selecciona una imagen desde Content Collection.")}/><TableDialog insertMarkup={insertMarkup} block/><LinkDialog insertLink={insertAccessibleLink} block/><Block icon={List} label="Lista" onClick={() => command("insertUnorderedList")}/><Block icon={Plus} label="Aviso" onClick={() => command("insertHTML", '<div class="callout"><strong>Importante</strong><p>Escriba aquí la información destacada.</p></div>')}/></div><p className="panel-label section-label">FORMATO ACADÉMICO</p><ApaDialog insertMarkup={insertMarkup} fullWidth/><p className="panel-label section-label">PLANTILLAS RÁPIDAS</p><button className="template-card" onClick={() => command("insertHTML", '<h2>Objetivos de aprendizaje</h2><ul><li>Objetivo 1</li><li>Objetivo 2</li></ul>')}><span className="template-icon blue"><List /></span><span><strong>Objetivos</strong><small>Lista accesible</small></span><Plus size={16}/></button><button className="template-card" onClick={() => command("insertHTML", '<div class="callout"><strong>Instrucciones</strong><p>Complete los siguientes pasos.</p></div>')}><span className="template-icon gold"><FileText /></span><span><strong>Instrucciones</strong><small>Bloque destacado</small></span><Plus size={16}/></button><ContentDialog documentLanguage={documentLanguage} trigger={<Button variant="outline" className="collection-button"><Folder size={17}/> Abrir Content Collection</Button>} search={search} setSearch={setSearch} files={filteredFiles} insertFile={insertFile} documentHtml={html} documentFileName={documentFileName} openDocument={openDocument} newDocument={newDocument}/></TabsContent><TabsContent value="review"><div className="score-card"><div className="score-ring">{accessibilityScore}</div><div><strong>{accessibilityScore === 100 ? "Accesibilidad lista" : "Revisión necesaria"}</strong><span>{pageChecks.filter((check) => !check.ok).length} recomendaciones pendientes</span></div></div>{pageChecks.map((check) => <ReviewItem key={check.text} ok={check.ok} text={check.text}/>)}</TabsContent><TabsContent value="outline"><DocumentOutline items={documentOutline} onSelect={focusHeading}/></TabsContent></Tabs></aside>}
     </div>
   </main>;
 }
@@ -610,7 +615,7 @@ function DocumentOutline({ items, onSelect }: { items: Array<{ level: number; te
 
 type AccessibilityCheck = { ok: boolean; text: string };
 
-function accessibilityReport(html: string, title: string): AccessibilityCheck[] {
+function accessibilityReport(html: string, title: string, language: DocumentLanguage = "es-PR"): AccessibilityCheck[] {
   const headingLevels = Array.from(html.matchAll(/<h([1-6])\b[^>]*>/gi), (match) => Number(match[1]));
   const headings = Array.from(html.matchAll(/<h([1-6])\b[^>]*>([\s\S]*?)<\/h\1>/gi), (match) => match[2].replace(/<[^>]+>/g, "").trim());
   const h1Count = headingLevels.filter((level) => level === 1).length;
@@ -636,15 +641,15 @@ function accessibilityReport(html: string, title: string): AccessibilityCheck[] 
     { ok: tables.every((table) => /<th\b/i.test(table)), text: tables.length ? "Las tablas incluyen celdas de encabezado" : "No hay tablas que requieran encabezados" },
     { ok: tables.every((table) => /<caption\b/i.test(table) || /aria-label=["'][^"']+["']/i.test(table)), text: tables.length ? "Todas las tablas tienen título o nombre accesible" : "No hay tablas que requieran título" },
     { ok: safeMarkup, text: "El HTML no contiene código ejecutable o inseguro" },
-    { ok: true, text: "La exportación define el idioma como español de Puerto Rico" },
+    { ok: true, text: `El idioma principal está definido como ${languageLabels[language]}` },
   ];
 }
 
-async function requestExport(format: "docx" | "pdf", html: string, title: string) {
+async function requestExport(format: "docx" | "pdf", html: string, title: string, language: DocumentLanguage = "es-PR") {
   const response = await fetch("/api/export", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ format, html, title, author: "Eduardo Augusto García Rodríguez", language: "es-PR" }),
+    body: JSON.stringify({ format, html, title, author: "Eduardo Augusto García Rodríguez", language }),
   });
   if (!response.ok) {
     const problem = await response.json().catch(() => ({})) as { error?: string };
@@ -672,15 +677,15 @@ function arrayBufferToBase64(buffer: ArrayBuffer) {
   return btoa(binary);
 }
 
-function ExportDialog({ html, title, downloadHtml }: { html: string; title: string; downloadHtml: () => void }) {
+function ExportDialog({ html, title, language, downloadHtml }: { html: string; title: string; language: DocumentLanguage; downloadHtml: () => void }) {
   const [open, setOpen] = useState(false);
   const [exporting, setExporting] = useState<"docx" | "pdf" | "">("");
-  const checks = accessibilityReport(html, title);
+  const checks = accessibilityReport(html, title, language);
   const warnings = checks.filter((check) => !check.ok).length;
   const exportDocument = async (format: "docx" | "pdf") => {
     setExporting(format);
     try {
-      const blob = await requestExport(format, html, title);
+      const blob = await requestExport(format, html, title, language);
       downloadBlob(blob, exportFileName(title, format));
       toast.success(format === "docx" ? "Documento Word descargado" : "PDF accesible descargado", { description: "Se conservaron la estructura, el idioma y los metadatos del documento." });
       setOpen(false);
@@ -839,9 +844,10 @@ type ContentDialogProps = {
   documentFileName: string;
   openDocument: (name: string, content: string) => void;
   newDocument: () => void;
+  documentLanguage: DocumentLanguage;
 };
 
-function ContentDialog({ trigger, search, setSearch, files, insertFile, documentHtml, documentFileName, openDocument, newDocument }: ContentDialogProps) {
+function ContentDialog({ trigger, search, setSearch, files, insertFile, documentHtml, documentFileName, openDocument, newDocument, documentLanguage }: ContentDialogProps) {
   const defaultUrl = "";
   const [dialogOpen, setDialogOpen] = useState(false);
   const [url, setUrl] = useState(defaultUrl);
@@ -918,7 +924,7 @@ function ContentDialog({ trigger, search, setSearch, files, insertFile, document
     try {
       let payload: Record<string, string> = { action: "write", url, username, password, fileName: remoteName, content: documentHtml };
       if (remoteFormat === "docx" || remoteFormat === "pdf") {
-        const exported = await requestExport(remoteFormat, documentHtml, remoteName.replace(/\.(docx|pdf)$/i, ""));
+        const exported = await requestExport(remoteFormat, documentHtml, remoteName.replace(/\.(docx|pdf)$/i, ""), documentLanguage);
         payload = { action: "writeBinary", url, username, password, fileName: remoteName, dataBase64: arrayBufferToBase64(await exported.arrayBuffer()) };
       }
       const response = await fetch("/api/webdav", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
