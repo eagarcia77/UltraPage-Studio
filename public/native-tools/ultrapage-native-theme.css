@@ -1,0 +1,91 @@
+/*
+ * UltraPage Studio native-tool compatibility theme.
+ * This layer is reapplied after every manual source synchronization.
+ */
+:root {
+  --ups-purple: #5b2a86;
+  --ups-purple-dark: #35135f;
+  --ups-purple-soft: #f3edfb;
+  --ups-ink: #17132b;
+  --ups-muted: #667085;
+  --ups-border: #d9dce5;
+  --ups-surface: #ffffff;
+  --ups-focus: #7c3aed;
+}
+
+html {
+  color-scheme: light;
+  background: #f6f7fb;
+}
+
+body {
+  color: var(--ups-ink);
+  background: #f6f7fb;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+header, .header, .topbar, .app-header {
+  border-color: var(--ups-border);
+}
+
+button, .button, [type="button"], [type="submit"], select, input, textarea {
+  font: inherit;
+}
+
+button, .button, [type="submit"] {
+  border-radius: 10px;
+}
+
+button:not(.secondary):not(.ghost), .button.primary, [type="submit"] {
+  accent-color: var(--ups-purple);
+}
+
+a {
+  color: var(--ups-purple);
+}
+
+:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--ups-focus) 45%, transparent);
+  outline-offset: 2px;
+}
+
+table {
+  max-width: 100%;
+}
+
+img, video, canvas, svg {
+  max-width: 100%;
+  height: auto;
+}
+
+@media (max-width: 720px) {
+  body {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .container, main, .main, .workspace, .panel {
+    max-width: 100%;
+  }
+
+  table {
+    display: block;
+    overflow-x: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@media (prefers-contrast: more) {
+  :root {
+    --ups-border: #555;
+    --ups-muted: #333;
+  }
+}
