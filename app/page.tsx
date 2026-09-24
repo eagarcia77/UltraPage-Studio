@@ -605,11 +605,32 @@ export default function Home() {
   };
   const importLocalDocument = async (file?: File) => {
     if (!file) return;
-    if (!/\.(html?|txt)$/i.test(file.name)) { toast.error("Formato no compatible", { description: "Seleccione un archivo HTML, HTM o TXT." }); return; }
+    if (!/\.(html?|txt|json)$/i.test(file.name)) { toast.error("Unsupported format", { description: "Select an HTML, HTM, TXT, or UltraPage project file." }); return; }
     if (file.size > 5 * 1024 * 1024) { toast.error("The file is too large", { description: "The local editing limit is 5 MB." }); return; }
-    try { openDocument(file.name, await file.text()); }
-    catch { toast.error("No se pudo abrir el archivo"); }
-    finally { if (localFileInput.current) localFileInput.current.value = ""; }
+    try {
+      const content = await file.text();
+      if (/\.json$/i.test(file.name)) {
+        const project = JSON.parse(content) as { format?: string; version?: number; html?: string; title?: string; fileName?: string; language?: string; author?: string; description?: string };
+        if (project.format !== "ultrapage-project" || project.version !== 1 || typeof project.html !== "string") throw new Error("Invalid UltraPage project");
+        const body = sanitizePastedHtml(project.html);
+        const projectLanguage: DocumentLanguage = project.language === "en-US" ? "en-US" : "es-PR";
+        const projectTitle = typeof project.title === "string" && project.title.trim() ? project.title.trim() : file.name.replace(/\.ultrapage\.json$|\.json$/i, "");
+        const projectFileName = typeof project.fileName === "string" && /\.(html?|txt)$/i.test(project.fileName) ? project.fileName : exportFileName(projectTitle, "html");
+        htmlRef.current = body;
+        setHtml(body);
+        setTitle(projectTitle);
+        setDocumentFileName(projectFileName);
+        setDocumentLanguage(projectLanguage);
+        setDocumentAuthor(typeof project.author === "string" ? project.author : "");
+        setDocumentDescription(typeof project.description === "string" ? project.description : "");
+        setMode("visual");
+        setSaved(true);
+        if (editor.current) editor.current.innerHTML = body;
+        toast.success("UltraPage project restored", { description: "Content, language, and document metadata were recovered." });
+      } else openDocument(file.name, content);
+    } catch (problem) {
+      toast.error("The file could not be opened", { description: problem instanceof Error && problem.message === "Invalid UltraPage project" ? "The JSON file is not a valid UltraPage project." : "Verify that the file is not damaged." });
+    } finally { if (localFileInput.current) localFileInput.current.value = ""; }
   };
   const newDocument = () => {
     const name = prompt("Nombre del archivo nuevo", "nueva-pagina.html")?.trim();
@@ -784,11 +805,11 @@ export default function Home() {
 
   return <main className="min-h-screen bg-[#f4f6f9] text-[#172033]">
     <Toaster position="bottom-right" richColors />
-    <input ref={localFileInput} className="sr-only" type="file" accept=".html,.htm,.txt,text/html,text/plain" onChange={(event) => importLocalDocument(event.target.files?.[0])} aria-label="Abrir archivo HTML o TXT de la computadora"/>
+    <input ref={localFileInput} className="sr-only" type="file" accept=".html,.htm,.txt,.ultrapage.json,.json,text/html,text/plain,application/json" onChange={(event) => importLocalDocument(event.target.files?.[0])} aria-label="Open an HTML, TXT, or UltraPage project file"/>
     <header className="topbar">
       <div className="brandmark" aria-hidden="true"><span>U</span></div><div className="brandcopy"><strong>UltraPage Studio</strong><span>Editor for Blackboard Ultra</span></div>
       <div className="course-pill disconnected" aria-label="Estado de conexión"><span className="status-dot disconnected" />No course connected</div>
-      <div className="header-actions"><ApaDialog insertMarkup={insertMarkup}/><span className={saved ? "save-state" : "save-state pending"}>{saved ? <Check size={14}/> : <Cloud size={14}/>} {saved ? "Saved" : "Unsaved changes"}</span><HistoryDialog restoreSnapshot={restoreSnapshot}/><KeyboardShortcutsDialog/><DocumentPropertiesDialog author={documentAuthor} description={documentDescription} setAuthor={setDocumentAuthor} setDescription={setDocumentDescription}/><Button variant="outline" className="publish-button" title="Abrir HTML o TXT de la computadora" onClick={() => localFileInput.current?.click()}><Upload size={16}/> Open</Button><ExportDialog html={html} title={title} language={documentLanguage} author={documentAuthor} description={documentDescription} downloadHtml={downloadDocument}/><Button variant="outline" className="publish-button" onClick={copyHtml} title="Copiar para el editor visual o HTML de Blackboard Ultra"><Copy size={16}/> Copy for Ultra</Button><Button className="save-button" onClick={save}><Save size={16}/> Save</Button></div>
+      <div className="header-actions"><ApaDialog insertMarkup={insertMarkup}/><span className={saved ? "save-state" : "save-state pending"}>{saved ? <Check size={14}/> : <Cloud size={14}/>} {saved ? "Saved" : "Unsaved changes"}</span><HistoryDialog restoreSnapshot={restoreSnapshot}/><KeyboardShortcutsDialog/><DocumentPropertiesDialog author={documentAuthor} description={documentDescription} setAuthor={setDocumentAuthor} setDescription={setDocumentDescription}/><Button variant="outline" className="publish-button" title="Open HTML, TXT, or UltraPage project" onClick={() => localFileInput.current?.click()}><Upload size={16}/> Open</Button><ExportDialog html={html} title={title} language={documentLanguage} author={documentAuthor} description={documentDescription} downloadHtml={downloadDocument}/><Button variant="outline" className="publish-button" onClick={copyHtml} title="Copiar para el editor visual o HTML de Blackboard Ultra"><Copy size={16}/> Copy for Ultra</Button><Button className="save-button" onClick={save}><Save size={16}/> Save</Button></div>
     </header>
     <div className="workspace">
       <aside className="leftbar" aria-label="Herramientas"><button className="rail-button active" aria-label="Editor"><FileText /></button><button className="rail-button" aria-label="Recursos"><Folder /></button><button className="rail-button" aria-label="Accesibilidad"><Accessibility /></button><button className="rail-button" aria-label="Código"><Code2 /></button><div className="rail-spacer" /><button className="avatar" aria-label="Perfil de Eduardo">EG</button></aside>
@@ -939,6 +960,23 @@ function ExportDialog({ html, title, language, author, description, downloadHtml
   const [exporting, setExporting] = useState<"docx" | "pdf" | "">("");
   const checks = accessibilityReport(html, title, language);
   const warnings = checks.filter((check) => !check.ok).length;
+  const exportProject = () => {
+    const project = {
+      format: "ultrapage-project",
+      version: 1,
+      savedAt: new Date().toISOString(),
+      title,
+      fileName: exportFileName(title, "html"),
+      language,
+      author,
+      description,
+      html,
+    };
+    const blob = new Blob([JSON.stringify(project, null, 2)], { type: "application/json;charset=utf-8" });
+    downloadBlob(blob, exportFileName(title, "ultrapage.json"));
+    toast.success("UltraPage project downloaded", { description: "Open this file later to continue editing with all document properties." });
+    setOpen(false);
+  };
   const exportDocument = async (format: "docx" | "pdf") => {
     setExporting(format);
     try {
@@ -950,7 +988,7 @@ function ExportDialog({ html, title, language, author, description, downloadHtml
       toast.error("Export failed", { description: problem instanceof Error ? problem.message : "Try again." });
     } finally { setExporting(""); }
   };
-  return <Dialog open={open} onOpenChange={setOpen}><DialogTrigger asChild><Button variant="outline" className="publish-button"><Download size={16}/> Export</Button></DialogTrigger><DialogContent className="export-dialog"><DialogHeader><DialogTitle>Export Accessible Document</DialogTitle><DialogDescription>Download the content as Word, PDF, or HTML. The review identifies issues to correct before exporting.</DialogDescription></DialogHeader><div className={`export-summary ${warnings ? "has-warnings" : "ready"}`}><span>{warnings ? <AlertTriangle size={20}/> : <Check size={20}/>}</span><div><strong>{warnings ? `${warnings} accessibility recommendation${warnings === 1 ? "" : "s"}` : "Ready to export"}</strong><small>{warnings ? "You may export now, but correcting them first is recommended." : "The content passed the automated checks."}</small></div></div><div className="export-checks" aria-label="Accessibility results">{checks.map((check) => <ReviewItem key={check.text} ok={check.ok} text={check.text}/>)}</div><div className="export-options"><button onClick={() => exportDocument("docx")} disabled={Boolean(exporting)}><FileText/><span><strong>Microsoft Word</strong><small>.docx structured and editable</small></span>{exporting === "docx" ? <Loader2 className="spin"/> : <Download/>}</button><button onClick={() => exportDocument("pdf")} disabled={Boolean(exporting)}><FileText/><span><strong>Accessible PDF</strong><small>Tagged PDF/UA with language and metadata</small></span>{exporting === "pdf" ? <Loader2 className="spin"/> : <Download/>}</button><button onClick={() => { downloadHtml(); setOpen(false); }} disabled={Boolean(exporting)}><Code2/><span><strong>HTML Page</strong><small>Responsive and Blackboard Ultra compatible</small></span><Download/></button></div><p className="export-note"><Accessibility size={15}/> Automated review helps, but institutional documents should also be validated with Microsoft Accessibility Checker or Adobe Acrobat.</p></DialogContent></Dialog>;
+  return <Dialog open={open} onOpenChange={setOpen}><DialogTrigger asChild><Button variant="outline" className="publish-button"><Download size={16}/> Export</Button></DialogTrigger><DialogContent className="export-dialog"><DialogHeader><DialogTitle>Export Accessible Document</DialogTitle><DialogDescription>Download as Word, PDF, HTML, or an editable UltraPage project. The review identifies issues to correct before exporting.</DialogDescription></DialogHeader><div className={`export-summary ${warnings ? "has-warnings" : "ready"}`}><span>{warnings ? <AlertTriangle size={20}/> : <Check size={20}/>}</span><div><strong>{warnings ? `${warnings} accessibility recommendation${warnings === 1 ? "" : "s"}` : "Ready to export"}</strong><small>{warnings ? "You may export now, but correcting them first is recommended." : "The content passed the automated checks."}</small></div></div><div className="export-checks" aria-label="Accessibility results">{checks.map((check) => <ReviewItem key={check.text} ok={check.ok} text={check.text}/>)}</div><div className="export-options"><button onClick={() => exportDocument("docx")} disabled={Boolean(exporting)}><FileText/><span><strong>Microsoft Word</strong><small>.docx structured and editable</small></span>{exporting === "docx" ? <Loader2 className="spin"/> : <Download/>}</button><button onClick={() => exportDocument("pdf")} disabled={Boolean(exporting)}><FileText/><span><strong>Accessible PDF</strong><small>Tagged PDF/UA with language and metadata</small></span>{exporting === "pdf" ? <Loader2 className="spin"/> : <Download/>}</button><button onClick={() => { downloadHtml(); setOpen(false); }} disabled={Boolean(exporting)}><Code2/><span><strong>HTML Page</strong><small>Responsive and Blackboard Ultra compatible</small></span><Download/></button><button onClick={exportProject} disabled={Boolean(exporting)}><Save/><span><strong>UltraPage Project</strong><small>Editable backup with content and metadata</small></span><Download/></button></div><p className="export-note"><Accessibility size={15}/> Automated review helps, but institutional documents should also be validated with Microsoft Accessibility Checker or Adobe Acrobat.</p></DialogContent></Dialog>;
 }
 
 function DocumentPropertiesDialog({ author, description, setAuthor, setDescription }: { author: string; description: string; setAuthor: (value: string) => void; setDescription: (value: string) => void }) {
