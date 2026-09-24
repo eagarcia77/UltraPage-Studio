@@ -30,6 +30,7 @@ type ExportRequest = {
   title?: string;
   author?: string;
   language?: string;
+  description?: string;
 };
 
 const MAX_HTML_LENGTH = 5 * 1024 * 1024;
@@ -167,12 +168,12 @@ function docxBlocks(html: string, language: string) {
   return blocks;
 }
 
-async function createDocx(html: string, title: string, author: string, language: string) {
+async function createDocx(html: string, title: string, author: string, language: string, description: string) {
   const document = new Document({
     creator: author,
     title,
-    subject: "Documento accesible exportado desde UltraPage Studio",
-    description: "Documento estructurado con encabezados, listas, tablas y enlaces accesibles.",
+    subject: description || "Documento accesible exportado desde UltraPage Studio",
+    description: description || "Documento estructurado con encabezados, listas, tablas y enlaces accesibles.",
     styles: {
       default: {
         document: {
@@ -196,7 +197,7 @@ async function createDocx(html: string, title: string, author: string, language:
   return Packer.toBuffer(document);
 }
 
-function createPdf(html: string, title: string, author: string, language: string) {
+function createPdf(html: string, title: string, author: string, language: string, description: string) {
   return new Promise<Buffer>((resolve, reject) => {
     const chunks: Buffer[] = [];
     const pdf = new PDFDocument({
@@ -207,7 +208,7 @@ function createPdf(html: string, title: string, author: string, language: string
       pdfVersion: "1.7",
       lang: language,
       displayTitle: true,
-      info: { Title: title, Author: author, Subject: "Documento accesible exportado desde UltraPage Studio", Creator: "UltraPage Studio" },
+      info: { Title: title, Author: author, Subject: description || "Documento accesible exportado desde UltraPage Studio", Creator: "UltraPage Studio" },
     });
     pdf.on("data", (chunk) => chunks.push(Buffer.from(chunk)));
     pdf.on("end", () => resolve(Buffer.concat(chunks)));
@@ -319,10 +320,11 @@ export async function POST(request: NextRequest) {
     const title = cleanText(body.title || "Documento accesible").slice(0, 200);
     const author = cleanText(body.author || "UltraPage Studio").slice(0, 120);
     const language = body.language === "en-US" ? "en-US" : "es-PR";
+    const description = cleanText(body.description || "").slice(0, 300);
     if ((format !== "docx" && format !== "pdf") || !html || html.length > MAX_HTML_LENGTH) {
       return NextResponse.json({ error: "Formato o contenido no válido." }, { status: 400 });
     }
-    const data = format === "docx" ? await createDocx(html, title, author, language) : await createPdf(html, title, author, language);
+    const data = format === "docx" ? await createDocx(html, title, author, language, description) : await createPdf(html, title, author, language, description);
     const name = `${safeFileName(title)}.${format}`;
     return new NextResponse(new Uint8Array(data), {
       headers: {
