@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Accessibility, AlertTriangle, AlignCenter, AlignJustify, AlignLeft, AlignRight, Bold, BookOpen, Check, ChevronDown, Cloud, Code2, Columns3, Copy, Download, Eraser, FileImage, FilePlus2, FileText, Folder, Heading2, Highlighter, ImagePlus, Italic, Link2, List, ListOrdered, Loader2, LockKeyhole, Minus, Monitor, MoreHorizontal, Palette, PanelRight, PlugZap, Plus, Quote, Redo2, Rows3, Save, Search, Smartphone, Stamp, Strikethrough, Subscript, Superscript, Table2, Tablet, Trash2, Underline, Undo2, Unlink, Upload } from "lucide-react";
+import { Accessibility, AlertTriangle, AlignCenter, AlignJustify, AlignLeft, AlignRight, Bold, BookOpen, Check, ChevronDown, Cloud, Code2, Columns3, Copy, Download, Eraser, FileImage, FilePlus2, FileText, Folder, Heading2, Highlighter, History, ImagePlus, Italic, Link2, List, ListOrdered, Loader2, LockKeyhole, Minus, Monitor, MoreHorizontal, Palette, PanelRight, PlugZap, Plus, Quote, Redo2, Rows3, Save, Search, Smartphone, Stamp, Strikethrough, Subscript, Superscript, Table2, Tablet, Trash2, Underline, Undo2, Unlink, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -21,6 +21,8 @@ const demoFiles = [
   { name: "Recursos_visuales", type: "Carpeta", size: "12 archivos", icon: Folder },
 ];
 const DRAFT_KEY = "ultrapage-studio-draft-v1";
+const HISTORY_KEY = "ultrapage-studio-history-v1";
+type DraftSnapshot = { id: string; html: string; title: string; fileName: string; savedAt: string };
 
 function escapeHtml(value: string) {
   return value.replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character] || character);
@@ -58,6 +60,13 @@ function buildBlackboardHtml(sourceHtml: string) {
   const parsed = new DOMParser().parseFromString(`<div id="ultrapage-export">${sourceHtml}</div>`, "text/html");
   const root = parsed.querySelector<HTMLElement>("#ultrapage-export");
   if (!root) return sourceHtml;
+  root.querySelectorAll("script,style,object,embed,form,input,button").forEach((element) => element.remove());
+  root.querySelectorAll<HTMLElement>("*").forEach((element) => {
+    Array.from(element.attributes).forEach((attribute) => {
+      if (/^on/i.test(attribute.name)) element.removeAttribute(attribute.name);
+      if ((attribute.name === "href" || attribute.name === "src") && /^javascript:/i.test(attribute.value.trim())) element.removeAttribute(attribute.name);
+    });
+  });
   const style = (element: Element, defaults: string) => {
     const current = element.getAttribute("style") || "";
     element.setAttribute("style", `${defaults}${current ? `;${current}` : ""}`);
@@ -426,12 +435,32 @@ export default function Home() {
     command("insertHTML", cleaned);
     toast.success("Contenido pegado y limpiado", { description: "Se eliminaron estilos y código incompatibles con Blackboard." });
   };
+  const insertAccessibleImage = ({ src, alt, caption, decorative, width }: { src: string; alt: string; caption: string; decorative: boolean; width: number }) => {
+    const cleanSrc = src.trim();
+    if (!/^(https?:\/\/|\/)/i.test(cleanSrc)) { toast.error("Utilice una dirección de imagen válida que comience con https://"); return false; }
+    if (!decorative && !alt.trim()) { toast.error("Añada una descripción de la imagen o márquela como decorativa"); return false; }
+    const safeWidth = Math.min(100, Math.max(10, Number(width) || 100));
+    const image = `<img src="${escapeHtml(cleanSrc)}" alt="${decorative ? "" : escapeHtml(alt.trim())}"${decorative ? ' role="presentation"' : ""} loading="lazy" style="display:block;max-width:${safeWidth}%;height:auto;margin:0 auto">`;
+    const markup = caption.trim() ? `<figure>${image}<figcaption>${escapeHtml(caption.trim())}</figcaption></figure>` : `<figure>${image}</figure>`;
+    command("insertHTML", markup); toast.success("Imagen accesible insertada"); return true;
+  };
   const insertMarkup = (markup: string) => { const next = `${html}${markup}`; setHtml(next); if (editor.current) editor.current.innerHTML = next; setSaved(false); toast.success("Elemento insertado"); };
   const save = () => {
     const currentHtml = mode === "visual" ? editor.current?.innerHTML || html : html;
     htmlRef.current = currentHtml; setHtml(currentHtml);
     localStorage.setItem(DRAFT_KEY, JSON.stringify({ html: currentHtml, title, fileName: documentFileName, updatedAt: new Date().toISOString() }));
+    const snapshot: DraftSnapshot = { id: crypto.randomUUID?.() || String(Date.now()), html: currentHtml, title, fileName: documentFileName, savedAt: new Date().toISOString() };
+    try {
+      const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]") as DraftSnapshot[];
+      if (history[0]?.html !== currentHtml || history[0]?.title !== title) localStorage.setItem(HISTORY_KEY, JSON.stringify([snapshot, ...history].slice(0, 10)));
+    } catch { localStorage.setItem(HISTORY_KEY, JSON.stringify([snapshot])); }
     setSaved(true); toast.success("Página guardada", { description: "El borrador permanecerá disponible al cerrar o actualizar el navegador." });
+  };
+  const restoreSnapshot = (snapshot: DraftSnapshot) => {
+    htmlRef.current = snapshot.html; setHtml(snapshot.html); setTitle(snapshot.title); setDocumentFileName(snapshot.fileName); setMode("visual"); setSaved(true);
+    if (editor.current) editor.current.innerHTML = snapshot.html;
+    localStorage.setItem(DRAFT_KEY, JSON.stringify({ html: snapshot.html, title: snapshot.title, fileName: snapshot.fileName, updatedAt: new Date().toISOString() }));
+    toast.success("Versión restaurada", { description: snapshot.title });
   };
   const copyHtml = async () => {
     const currentHtml = mode === "visual" ? editor.current?.innerHTML || html : html;
@@ -478,7 +507,7 @@ export default function Home() {
     <header className="topbar">
       <div className="brandmark" aria-hidden="true"><span>U</span></div><div className="brandcopy"><strong>UltraPage Studio</strong><span>Editor para Blackboard Ultra</span></div>
       <div className="course-pill"><span className="status-dot" />BADM 5060 · 2027-13<ChevronDown size={15} /></div>
-      <div className="header-actions"><ApaDialog insertMarkup={insertMarkup}/><span className={saved ? "save-state" : "save-state pending"}>{saved ? <Check size={14}/> : <Cloud size={14}/>} {saved ? "Guardado" : "Cambios sin guardar"}</span><ExportDialog html={html} title={title} downloadHtml={downloadDocument}/><Button variant="outline" className="publish-button" onClick={copyHtml}><Copy size={16}/> Copiar para Ultra</Button><Button className="save-button" onClick={save}><Save size={16}/> Guardar</Button></div>
+      <div className="header-actions"><ApaDialog insertMarkup={insertMarkup}/><span className={saved ? "save-state" : "save-state pending"}>{saved ? <Check size={14}/> : <Cloud size={14}/>} {saved ? "Guardado" : "Cambios sin guardar"}</span><HistoryDialog restoreSnapshot={restoreSnapshot}/><ExportDialog html={html} title={title} downloadHtml={downloadDocument}/><Button variant="outline" className="publish-button" onClick={copyHtml}><Copy size={16}/> Copiar para Ultra</Button><Button className="save-button" onClick={save}><Save size={16}/> Guardar</Button></div>
     </header>
     <div className="workspace">
       <aside className="leftbar" aria-label="Herramientas"><button className="rail-button active" aria-label="Editor"><FileText /></button><button className="rail-button" aria-label="Recursos"><Folder /></button><button className="rail-button" aria-label="Accesibilidad"><Accessibility /></button><button className="rail-button" aria-label="Código"><Code2 /></button><div className="rail-spacer" /><button className="avatar" aria-label="Perfil de Eduardo">EG</button></aside>
@@ -496,6 +525,7 @@ export default function Home() {
               <button onClick={() => command("bold")} aria-label="Negrita"><Bold /></button><button onClick={() => command("italic")} aria-label="Itálica"><Italic /></button><button onClick={() => command("underline")} aria-label="Subrayado"><Underline /></button><i/>
               <button onClick={() => command("insertUnorderedList")} aria-label="Lista"><List /></button><button onClick={() => command("insertOrderedList")} aria-label="Lista numerada"><ListOrdered /></button>
               <LinkDialog insertLink={insertAccessibleLink}/>
+              <ImageDialog insertImage={insertAccessibleImage}/>
               <ContentDialog trigger={<button aria-label="Insertar desde Content Collection"><ImagePlus /></button>} search={search} setSearch={setSearch} files={filteredFiles} insertFile={insertFile} documentHtml={html} documentFileName={documentFileName} openDocument={openDocument} newDocument={newDocument}/>
               <AdvancedToolsDialog command={command} replaceText={replaceText}/>
             </div>}
@@ -529,6 +559,7 @@ function accessibilityReport(html: string, title: string): AccessibilityCheck[] 
   const links = Array.from(html.matchAll(/<a\b([^>]*)href=["']([^"']+)["']([^>]*)>([\s\S]*?)<\/a>/gi), (match) => ({ attributes: `${match[1]}${match[3]}`, href: match[2], text: match[4].replace(/<[^>]+>/g, "").trim() }));
   const vagueLink = /^(aquí|clic aquí|click here|más|ver más|enlace)$/i;
   const tables = Array.from(html.matchAll(/<table\b[^>]*>[\s\S]*?<\/table>/gi), (match) => match[0]);
+  const safeMarkup = !/<\/?(?:script|object|embed|form|input|button)\b|\son\w+\s*=|(?:href|src)\s*=\s*["']javascript:/i.test(html);
   return [
     { ok: Boolean(title.trim()), text: "El documento tiene un título identificable" },
     { ok: h1Count === 1, text: h1Count === 1 ? "Existe un solo encabezado H1" : `Debe existir un solo H1; actualmente hay ${h1Count}` },
@@ -539,6 +570,7 @@ function accessibilityReport(html: string, title: string): AccessibilityCheck[] 
     { ok: links.every((link) => !/target=["']_blank["']/i.test(link.attributes) || /rel=["'][^"']*noopener/i.test(link.attributes)), text: "Los enlaces en pestañas nuevas incluyen protección de seguridad" },
     { ok: tables.every((table) => /<th\b/i.test(table)), text: tables.length ? "Las tablas incluyen celdas de encabezado" : "No hay tablas que requieran encabezados" },
     { ok: tables.every((table) => /<caption\b/i.test(table) || /aria-label=["'][^"']+["']/i.test(table)), text: tables.length ? "Todas las tablas tienen título o nombre accesible" : "No hay tablas que requieran título" },
+    { ok: safeMarkup, text: "El HTML no contiene código ejecutable o inseguro" },
     { ok: true, text: "La exportación define el idioma como español de Puerto Rico" },
   ];
 }
@@ -592,6 +624,32 @@ function ExportDialog({ html, title, downloadHtml }: { html: string; title: stri
     } finally { setExporting(""); }
   };
   return <Dialog open={open} onOpenChange={setOpen}><DialogTrigger asChild><Button variant="outline" className="publish-button"><Download size={16}/> Exportar</Button></DialogTrigger><DialogContent className="export-dialog"><DialogHeader><DialogTitle>Exportar documento accesible</DialogTitle><DialogDescription>Descarga el contenido en Word, PDF o HTML. La revisión identifica problemas que conviene corregir antes de exportar.</DialogDescription></DialogHeader><div className={`export-summary ${warnings ? "has-warnings" : "ready"}`}><span>{warnings ? <AlertTriangle size={20}/> : <Check size={20}/>}</span><div><strong>{warnings ? `${warnings} recomendación${warnings === 1 ? "" : "es"} de accesibilidad` : "Listo para exportar"}</strong><small>{warnings ? "Puede exportar ahora, pero es preferible corregirlas." : "El contenido pasó las verificaciones automáticas."}</small></div></div><div className="export-checks" aria-label="Resultados de accesibilidad">{checks.map((check) => <ReviewItem key={check.text} ok={check.ok} text={check.text}/>)}</div><div className="export-options"><button onClick={() => exportDocument("docx")} disabled={Boolean(exporting)}><FileText/><span><strong>Microsoft Word</strong><small>.docx estructurado y editable</small></span>{exporting === "docx" ? <Loader2 className="spin"/> : <Download/>}</button><button onClick={() => exportDocument("pdf")} disabled={Boolean(exporting)}><FileText/><span><strong>PDF accesible</strong><small>PDF/UA etiquetado, idioma y metadatos</small></span>{exporting === "pdf" ? <Loader2 className="spin"/> : <Download/>}</button><button onClick={() => { downloadHtml(); setOpen(false); }} disabled={Boolean(exporting)}><Code2/><span><strong>Página HTML</strong><small>Compatible con Blackboard Ultra</small></span><Download/></button></div><p className="export-note"><Accessibility size={15}/> La revisión automática ayuda, pero un documento institucional debe validarse también con Microsoft Accessibility Checker o Adobe Acrobat.</p></DialogContent></Dialog>;
+}
+
+function HistoryDialog({ restoreSnapshot }: { restoreSnapshot: (snapshot: DraftSnapshot) => void }) {
+  const [open, setOpen] = useState(false);
+  const [history, setHistory] = useState<DraftSnapshot[]>([]);
+  const loadHistory = (nextOpen: boolean) => {
+    setOpen(nextOpen);
+    if (nextOpen) {
+      try { setHistory(JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]") as DraftSnapshot[]); }
+      catch { setHistory([]); }
+    }
+  };
+  const restore = (snapshot: DraftSnapshot) => { restoreSnapshot(snapshot); setOpen(false); };
+  const clear = () => { localStorage.removeItem(HISTORY_KEY); setHistory([]); toast.success("Historial eliminado"); };
+  return <Dialog open={open} onOpenChange={loadHistory}><DialogTrigger asChild><Button variant="outline" className="publish-button"><History size={16}/> Historial</Button></DialogTrigger><DialogContent className="history-dialog"><DialogHeader><DialogTitle>Historial de versiones</DialogTitle><DialogDescription>Cada vez que presiona Guardar se conserva una versión. Puede recuperar hasta las diez más recientes.</DialogDescription></DialogHeader>{history.length ? <div className="history-list">{history.map((snapshot) => <button key={snapshot.id} onClick={() => restore(snapshot)}><History/><span><strong>{snapshot.title || "Documento sin título"}</strong><small>{new Date(snapshot.savedAt).toLocaleString("es-PR")}</small></span><span>Restaurar</span></button>)}</div> : <p className="empty-history">Todavía no hay versiones guardadas manualmente.</p>}<div className="apa-actions">{history.length > 0 && <Button variant="outline" className="remove-watermark" onClick={clear}><Trash2 size={16}/> Borrar historial</Button>}<Button variant="outline" onClick={() => setOpen(false)}>Cerrar</Button></div></DialogContent></Dialog>;
+}
+
+function ImageDialog({ insertImage }: { insertImage: (options: { src: string; alt: string; caption: string; decorative: boolean; width: number }) => boolean }) {
+  const [open, setOpen] = useState(false);
+  const [src, setSrc] = useState("https://");
+  const [alt, setAlt] = useState("");
+  const [caption, setCaption] = useState("");
+  const [decorative, setDecorative] = useState(false);
+  const [width, setWidth] = useState(100);
+  const insert = () => { if (insertImage({ src, alt, caption, decorative, width })) { setOpen(false); setSrc("https://"); setAlt(""); setCaption(""); setDecorative(false); setWidth(100); } };
+  return <Dialog open={open} onOpenChange={setOpen}><DialogTrigger asChild><button aria-label="Insertar imagen accesible" title="Insertar imagen accesible"><FileImage/></button></DialogTrigger><DialogContent className="image-dialog"><DialogHeader><DialogTitle>Insertar imagen accesible</DialogTitle><DialogDescription>Utilice una imagen alojada en Blackboard Content Collection o en una dirección HTTPS estable.</DialogDescription></DialogHeader><div className="image-dialog-grid"><label>Dirección de la imagen<Input value={src} onChange={(event) => setSrc(event.target.value)} placeholder="https://…/imagen.jpg"/></label><label>Texto alternativo<Input value={alt} disabled={decorative} onChange={(event) => setAlt(event.target.value)} placeholder="Describa el propósito de la imagen"/></label><label>Leyenda opcional<Input value={caption} onChange={(event) => setCaption(event.target.value)} placeholder="Figura 1. Descripción"/></label><label className="checkbox-label"><input type="checkbox" checked={decorative} onChange={(event) => setDecorative(event.target.checked)}/> La imagen es decorativa</label><label className="image-width-label">Ancho de la imagen <span>{width}%</span><Input type="range" min="10" max="100" step="5" value={width} onChange={(event) => setWidth(Number(event.target.value))}/></label></div><div className="apa-actions"><Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button><Button onClick={insert}><ImagePlus size={16}/> Insertar imagen</Button></div></DialogContent></Dialog>;
 }
 
 function LinkDialog({ insertLink, block = false }: { insertLink: (options: { text: string; url: string; newTab: boolean }) => boolean; block?: boolean }) {
