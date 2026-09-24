@@ -77,6 +77,7 @@ function inlineRuns($: CheerioAPI, element: Element, style: { bold?: boolean; it
 
 function docxBlocks(html: string, language: string) {
   const $ = load(`<body>${html}</body>`);
+  $("section,nav.ultrapage-toc").each((_, container) => { const element = $(container); element.replaceWith(element.contents()); });
   const blocks: Array<Paragraph | Table> = [];
   const addParagraph = (element: Element, options: IParagraphOptions = {}) => {
     blocks.push(new Paragraph({ ...options, children: inlineRuns($, element, {}, language), spacing: { after: 160, ...(options.spacing || {}) } }));
@@ -221,6 +222,7 @@ function createPdf(html: string, title: string, author: string, language: string
     const root = pdf.struct("Document", { title, lang: language });
     pdf.addStructure(root);
     const $ = load(`<body>${html}</body>`);
+  $("section,nav.ultrapage-toc").each((_, container) => { const element = $(container); element.replaceWith(element.contents()); });
     const bodyWidth = 468;
     const watermark = $(".ultrapage-watermark").first();
     const watermarkText = cleanText(watermark.text());
