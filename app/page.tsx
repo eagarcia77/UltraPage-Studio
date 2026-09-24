@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Accessibility, AlertTriangle, AlignCenter, AlignJustify, AlignLeft, AlignRight, Bold, BookOpen, Check, ChevronDown, Cloud, Code2, Columns3, Copy, Download, Eraser, FileImage, FilePlus2, FileText, Folder, Heading2, Highlighter, History, ImagePlus, Italic, Link2, List, ListOrdered, Loader2, LockKeyhole, Minus, Monitor, MoreHorizontal, Palette, PanelRight, PlugZap, Plus, Quote, Redo2, Rows3, Save, Search, Smartphone, Stamp, Strikethrough, Subscript, Superscript, Table2, Tablet, Trash2, Underline, Undo2, Unlink, Upload } from "lucide-react";
+import { Accessibility, AlertTriangle, AlignCenter, AlignJustify, AlignLeft, AlignRight, Bold, BookOpen, Check, ChevronDown, Cloud, Code2, Columns3, Copy, Download, Eraser, FileImage, FilePlus2, FileText, Folder, Heading2, Highlighter, History, ImagePlus, Italic, Link2, List, ListOrdered, Loader2, LockKeyhole, Minus, Monitor, MoreHorizontal, Palette, PanelRight, PlugZap, Plus, Quote, Redo2, Rows3, Save, Search, Sigma, Smartphone, Stamp, Strikethrough, Subscript, Superscript, Table2, Tablet, Trash2, Underline, Undo2, Unlink, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -444,6 +444,13 @@ export default function Home() {
     const markup = caption.trim() ? `<figure>${image}<figcaption>${escapeHtml(caption.trim())}</figcaption></figure>` : `<figure>${image}</figure>`;
     command("insertHTML", markup); toast.success("Imagen accesible insertada"); return true;
   };
+  const insertAccessibleEquation = ({ formula, description, block }: { formula: string; description: string; block: boolean }) => {
+    if (!formula.trim() || !description.trim()) { toast.error("Escriba la ecuación y su descripción accesible"); return false; }
+    const tag = block ? "div" : "span";
+    const style = block ? 'display:block;text-align:center;margin:20px 0;font-family:Georgia,serif;font-size:1.15em' : 'font-family:Georgia,serif';
+    command("insertHTML", `<${tag} class="accessible-equation" role="math" aria-label="${escapeHtml(description.trim())}" style="${style}">${escapeHtml(formula.trim())}</${tag}>`);
+    toast.success("Ecuación accesible insertada"); return true;
+  };
   const insertMarkup = (markup: string) => { const next = `${html}${markup}`; setHtml(next); if (editor.current) editor.current.innerHTML = next; setSaved(false); toast.success("Elemento insertado"); };
   const save = () => {
     const currentHtml = mode === "visual" ? editor.current?.innerHTML || html : html;
@@ -526,6 +533,7 @@ export default function Home() {
               <button onClick={() => command("insertUnorderedList")} aria-label="Lista"><List /></button><button onClick={() => command("insertOrderedList")} aria-label="Lista numerada"><ListOrdered /></button>
               <LinkDialog insertLink={insertAccessibleLink}/>
               <ImageDialog insertImage={insertAccessibleImage}/>
+              <EquationDialog insertEquation={insertAccessibleEquation}/>
               <ContentDialog trigger={<button aria-label="Insertar desde Content Collection"><ImagePlus /></button>} search={search} setSearch={setSearch} files={filteredFiles} insertFile={insertFile} documentHtml={html} documentFileName={documentFileName} openDocument={openDocument} newDocument={newDocument}/>
               <AdvancedToolsDialog command={command} replaceText={replaceText}/>
             </div>}
@@ -650,6 +658,15 @@ function ImageDialog({ insertImage }: { insertImage: (options: { src: string; al
   const [width, setWidth] = useState(100);
   const insert = () => { if (insertImage({ src, alt, caption, decorative, width })) { setOpen(false); setSrc("https://"); setAlt(""); setCaption(""); setDecorative(false); setWidth(100); } };
   return <Dialog open={open} onOpenChange={setOpen}><DialogTrigger asChild><button aria-label="Insertar imagen accesible" title="Insertar imagen accesible"><FileImage/></button></DialogTrigger><DialogContent className="image-dialog"><DialogHeader><DialogTitle>Insertar imagen accesible</DialogTitle><DialogDescription>Utilice una imagen alojada en Blackboard Content Collection o en una dirección HTTPS estable.</DialogDescription></DialogHeader><div className="image-dialog-grid"><label>Dirección de la imagen<Input value={src} onChange={(event) => setSrc(event.target.value)} placeholder="https://…/imagen.jpg"/></label><label>Texto alternativo<Input value={alt} disabled={decorative} onChange={(event) => setAlt(event.target.value)} placeholder="Describa el propósito de la imagen"/></label><label>Leyenda opcional<Input value={caption} onChange={(event) => setCaption(event.target.value)} placeholder="Figura 1. Descripción"/></label><label className="checkbox-label"><input type="checkbox" checked={decorative} onChange={(event) => setDecorative(event.target.checked)}/> La imagen es decorativa</label><label className="image-width-label">Ancho de la imagen <span>{width}%</span><Input type="range" min="10" max="100" step="5" value={width} onChange={(event) => setWidth(Number(event.target.value))}/></label></div><div className="apa-actions"><Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button><Button onClick={insert}><ImagePlus size={16}/> Insertar imagen</Button></div></DialogContent></Dialog>;
+}
+
+function EquationDialog({ insertEquation }: { insertEquation: (options: { formula: string; description: string; block: boolean }) => boolean }) {
+  const [open, setOpen] = useState(false);
+  const [formula, setFormula] = useState("");
+  const [description, setDescription] = useState("");
+  const [block, setBlock] = useState(true);
+  const insert = () => { if (insertEquation({ formula, description, block })) { setOpen(false); setFormula(""); setDescription(""); } };
+  return <Dialog open={open} onOpenChange={setOpen}><DialogTrigger asChild><button aria-label="Insertar ecuación accesible" title="Insertar ecuación accesible"><Sigma/></button></DialogTrigger><DialogContent className="link-dialog"><DialogHeader><DialogTitle>Insertar ecuación accesible</DialogTitle><DialogDescription>Escriba la expresión con símbolos matemáticos y una descripción que pueda anunciar un lector de pantalla.</DialogDescription></DialogHeader><div className="link-dialog-grid"><label>Ecuación<Input value={formula} onChange={(event) => setFormula(event.target.value)} placeholder="E = mc²"/></label><label>Descripción accesible<Input value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Energía es igual a masa por velocidad de la luz al cuadrado"/></label><label className="checkbox-label"><input type="checkbox" checked={block} onChange={(event) => setBlock(event.target.checked)}/> Mostrar como ecuación independiente</label></div><div className="apa-actions"><Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button><Button onClick={insert}><Sigma size={16}/> Insertar ecuación</Button></div></DialogContent></Dialog>;
 }
 
 function LinkDialog({ insertLink, block = false }: { insertLink: (options: { text: string; url: string; newTab: boolean }) => boolean; block?: boolean }) {
