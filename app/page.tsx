@@ -634,6 +634,110 @@ export default function Home() {
     return () => window.removeEventListener("keydown", shortcuts);
   }, [mode, html, title, documentFileName, rightPanel]);
 
+  const repairAccessibility = () => {
+    const parsed = new DOMParser().parseFromString(`<div id="accessibility-repair-root">${html}</div>`, "text/html");
+    const root = parsed.querySelector<HTMLElement>("#accessibility-repair-root");
+    if (!root) return;
+    let changes = 0;
+    const replaceTag = (element: HTMLElement, tagName: string) => {
+      const replacement = parsed.createElement(tagName);
+      Array.from(element.attributes).forEach((attribute) => replacement.setAttribute(attribute.name, attribute.value));
+      while (element.firstChild) replacement.appendChild(element.firstChild);
+      element.replaceWith(replacement);
+      changes += 1;
+      return replacement;
+    };
+
+    root.querySelectorAll("script,style,object,embed,form,input,button").forEach((element) => { element.remove(); changes += 1; });
+    root.querySelectorAll<HTMLElement>("*").forEach((element) => {
+      Array.from(element.attributes).forEach((attribute) => {
+        if (/^on/i.test(attribute.name) || ((attribute.name === "href" || attribute.name === "src") && /^javascript:/i.test(attribute.value.trim()))) {
+          element.removeAttribute(attribute.name);
+          changes += 1;
+        }
+      });
+      const minimumWidth = element.style.getPropertyValue("min-width");
+      const fixedPixels = minimumWidth.match(/^(\d+(?:\.\d+)?)px$/i);
+      if (fixedPixels && Number(fixedPixels[1]) >= 400) { element.style.removeProperty("min-width"); changes += 1; }
+    });
+
+    root.querySelectorAll<HTMLElement>("h1,h2,h3,h4,h5,h6").forEach((heading) => {
+      if (!heading.textContent?.trim()) { heading.remove(); changes += 1; }
+    });
+    let headings = Array.from(root.querySelectorAll<HTMLElement>("h1,h2,h3,h4,h5,h6"));
+    const h1s = headings.filter((heading) => heading.tagName === "H1");
+    if (!h1s.length) {
+      const heading = parsed.createElement("h1");
+      heading.textContent = title.trim() || "Título del documento";
+      root.prepend(heading);
+      changes += 1;
+    } else if (h1s.length > 1) {
+      h1s.slice(1).forEach((heading) => replaceTag(heading, "h2"));
+    }
+    headings = Array.from(root.querySelectorAll<HTMLElement>("h1,h2,h3,h4,h5,h6"));
+    let previousLevel = 0;
+    headings.forEach((heading) => {
+      const currentLevel = Number(heading.tagName.slice(1));
+      const allowedLevel = previousLevel ? Math.min(currentLevel, previousLevel + 1) : 1;
+      const normalized = currentLevel !== allowedLevel ? replaceTag(heading, `h${allowedLevel}`) : heading;
+      previousLevel = Number(normalized.tagName.slice(1));
+    });
+
+    root.querySelectorAll<HTMLTableElement>("table").forEach((table, tableIndex) => {
+      if (!table.querySelector("caption") && !table.getAttribute("aria-label")?.trim()) {
+        const caption = parsed.createElement("caption");
+        caption.textContent = `Tabla ${tableIndex + 1}. Escriba un título descriptivo`;
+        table.prepend(caption);
+        changes += 1;
+      }
+      const firstRow = table.querySelector("tr");
+      if (firstRow && !firstRow.querySelector("th")) {
+        Array.from(firstRow.querySelectorAll<HTMLTableCellElement>("td")).forEach((cell) => {
+          const header = parsed.createElement("th");
+          Array.from(cell.attributes).forEach((attribute) => header.setAttribute(attribute.name, attribute.value));
+          header.setAttribute("scope", "col");
+          while (cell.firstChild) header.appendChild(cell.firstChild);
+          cell.replaceWith(header);
+          changes += 1;
+        });
+      }
+    });
+
+    root.querySelectorAll<HTMLAnchorElement>('a[target="_blank"]').forEach((link) => {
+      const rel = new Set((link.getAttribute("rel") || "").split(/\s+/).filter(Boolean));
+      if (!rel.has("noopener") || !rel.has("noreferrer")) {
+        rel.add("noopener"); rel.add("noreferrer");
+        link.setAttribute("rel", Array.from(rel).join(" "));
+        changes += 1;
+      }
+    });
+
+    const usedIds = new Set<string>();
+    root.querySelectorAll<HTMLElement>("[id]").forEach((element) => {
+      const original = element.id;
+      if (!usedIds.has(original)) { usedIds.add(original); return; }
+      let suffix = 2;
+      let replacement = `${original}-${suffix}`;
+      while (usedIds.has(replacement)) { suffix += 1; replacement = `${original}-${suffix}`; }
+      element.id = replacement;
+      usedIds.add(replacement);
+      changes += 1;
+    });
+
+    const repaired = sanitizePastedHtml(root.innerHTML);
+    htmlRef.current = repaired;
+    setHtml(repaired);
+    if (editor.current) editor.current.innerHTML = repaired;
+    if (!title.trim()) {
+      const firstHeading = root.querySelector("h1")?.textContent?.trim() || "Documento accesible";
+      setTitle(firstHeading);
+      changes += 1;
+    }
+    setSaved(false);
+    if (changes) toast.success("Corrección segura completada", { description: `${changes} ajuste${changes === 1 ? "" : "s"} aplicado${changes === 1 ? "" : "s"}. Revise las recomendaciones que requieren criterio humano.` });
+    else toast.info("No se encontraron correcciones automáticas pendientes");
+  };
+
   const filteredFiles = demoFiles.filter((f) => f.name.toLowerCase().includes(search.toLowerCase()));
   const pageChecks = accessibilityReport(html, title, documentLanguage);
   const accessibilityScore = Math.round((pageChecks.filter((check) => check.ok).length / pageChecks.length) * 100);
@@ -692,7 +796,7 @@ export default function Home() {
           <TabsContent value="html" className="code-wrap"><div className="code-header"><div className="code-heading"><span>{codeView === "blackboard" ? "HTML listo para pegar en Blackboard Ultra" : "Código HTML base editable"}</span><div className="code-view-switch" role="group" aria-label="Tipo de código HTML"><button type="button" className={codeView === "blackboard" ? "active" : ""} aria-pressed={codeView === "blackboard"} onClick={() => setCodeView("blackboard")}>Para Blackboard</button><button type="button" className={codeView === "source" ? "active" : ""} aria-pressed={codeView === "source"} onClick={() => setCodeView("source")}>Editar código base</button></div></div><button className="copy-code-button" onClick={copyHtml}><Copy size={14}/> Copiar código</button></div><Textarea value={codeView === "blackboard" ? blackboardHtml : html} readOnly={codeView === "blackboard"} onChange={(e) => { if (codeView === "source") { setHtml(e.target.value); setSaved(false); } }} className={`code-editor ${codeView === "blackboard" ? "compatible" : ""}`} spellCheck={false} aria-label={codeView === "blackboard" ? "Código HTML compatible con Blackboard Ultra" : "Código HTML base editable"} /><p className="code-help">{codeView === "blackboard" ? "Este es el mismo código que utiliza Copiar para Ultra. Pégalo en el editor HTML <> de Blackboard." : "Los cambios realizados aquí se reflejan en la vista Diseño. Cambia a Para Blackboard antes de copiar."}</p></TabsContent>
         </Tabs>
       </section>
-      {rightPanel && <><button type="button" className="panel-backdrop" onClick={() => setRightPanel(false)} aria-label="Cerrar panel de herramientas"/><aside id="editor-side-panel" className="right-panel" aria-label="Panel de herramientas"><div className="mobile-panel-heading"><strong>Herramientas del editor</strong><button type="button" onClick={() => setRightPanel(false)} aria-label="Cerrar panel"><X size={18}/></button></div><Tabs defaultValue="blocks"><TabsList className="side-tabs"><TabsTrigger value="blocks">Bloques</TabsTrigger><TabsTrigger value="review">Revisión</TabsTrigger><TabsTrigger value="outline">Esquema</TabsTrigger></TabsList><TabsContent value="blocks"><p className="panel-label">CONTENIDO</p><div className="block-grid"><Block icon={Heading2} label="Encabezado" onClick={() => command("formatBlock", "h2")}/><Block icon={FileText} label="Texto" onClick={() => command("insertParagraph")}/><Block icon={ImagePlus} label="Imagen" onClick={() => toast.info("Selecciona una imagen desde Content Collection.")}/><TableDialog insertMarkup={insertMarkup} block/><LinkDialog insertLink={insertAccessibleLink} block/><Block icon={List} label="Lista" onClick={() => command("insertUnorderedList")}/><Block icon={BookOpen} label="Tabla de contenido" onClick={generateTableOfContents}/><Block icon={Plus} label="Aviso" onClick={() => command("insertHTML", '<div class="callout"><strong>Importante</strong><p>Escriba aquí la información destacada.</p></div>')}/></div><p className="panel-label section-label">FORMATO ACADÉMICO</p><ApaDialog insertMarkup={insertMarkup} fullWidth/><RubricDialog insertMarkup={insertMarkup}/><p className="panel-label section-label">PLANTILLAS RÁPIDAS</p><button className="template-card" onClick={() => command("insertHTML", '<h2>Objetivos de aprendizaje</h2><ul><li>Objetivo 1</li><li>Objetivo 2</li></ul>')}><span className="template-icon blue"><List /></span><span><strong>Objetivos</strong><small>Lista accesible</small></span><Plus size={16}/></button><button className="template-card" onClick={() => command("insertHTML", '<div class="callout"><strong>Instrucciones</strong><p>Complete los siguientes pasos.</p></div>')}><span className="template-icon gold"><FileText /></span><span><strong>Instrucciones</strong><small>Bloque destacado</small></span><Plus size={16}/></button><ModuleTemplateDialog insertMarkup={insertMarkup} hasH1={/<h1\b/i.test(html)}/><p className="panel-label section-label">HERRAMIENTAS DESARROLLADAS</p><div className="connected-tools"><a href="https://eagarcia77.github.io/estiloAPA/" target="_blank" rel="noopener noreferrer"><strong>EstiloAPA</strong><span>Referencias y formato APA 7</span></a><a href="https://eagarcia77.github.io/CTEL-SG/index_generator.html" target="_blank" rel="noopener noreferrer"><strong>Generador de exámenes TXT</strong><span>Convierte preguntas para importarlas en Blackboard Ultra</span></a><a href="https://eagarcia77.github.io/CTEL-SG/QTI21_BlackboardV3.html" target="_blank" rel="noopener noreferrer"><strong>QTI 2.1 Blackboard</strong><span>Paquetes de evaluación</span></a></div><ContentDialog documentLanguage={documentLanguage} documentAuthor={documentAuthor} documentDescription={documentDescription} trigger={<Button variant="outline" className="collection-button"><Folder size={17}/> Abrir Content Collection</Button>} search={search} setSearch={setSearch} files={filteredFiles} insertFile={insertFile} documentHtml={html} documentFileName={documentFileName} openDocument={openDocument} newDocument={newDocument}/></TabsContent><TabsContent value="review"><div className="score-card"><div className="score-ring">{accessibilityScore}</div><div><strong>{accessibilityScore === 100 ? "Accesibilidad lista" : "Revisión necesaria"}</strong><span>{pageChecks.filter((check) => !check.ok).length} recomendaciones pendientes</span></div></div>{pageChecks.map((check) => <ReviewItem key={check.text} ok={check.ok} text={check.text}/>)}</TabsContent><TabsContent value="outline"><DocumentOutline items={documentOutline} onSelect={focusHeading}/></TabsContent></Tabs></aside></>}
+      {rightPanel && <><button type="button" className="panel-backdrop" onClick={() => setRightPanel(false)} aria-label="Cerrar panel de herramientas"/><aside id="editor-side-panel" className="right-panel" aria-label="Panel de herramientas"><div className="mobile-panel-heading"><strong>Herramientas del editor</strong><button type="button" onClick={() => setRightPanel(false)} aria-label="Cerrar panel"><X size={18}/></button></div><Tabs defaultValue="blocks"><TabsList className="side-tabs"><TabsTrigger value="blocks">Bloques</TabsTrigger><TabsTrigger value="review">Revisión</TabsTrigger><TabsTrigger value="outline">Esquema</TabsTrigger></TabsList><TabsContent value="blocks"><p className="panel-label">CONTENIDO</p><div className="block-grid"><Block icon={Heading2} label="Encabezado" onClick={() => command("formatBlock", "h2")}/><Block icon={FileText} label="Texto" onClick={() => command("insertParagraph")}/><Block icon={ImagePlus} label="Imagen" onClick={() => toast.info("Selecciona una imagen desde Content Collection.")}/><TableDialog insertMarkup={insertMarkup} block/><LinkDialog insertLink={insertAccessibleLink} block/><Block icon={List} label="Lista" onClick={() => command("insertUnorderedList")}/><Block icon={BookOpen} label="Tabla de contenido" onClick={generateTableOfContents}/><Block icon={Plus} label="Aviso" onClick={() => command("insertHTML", '<div class="callout"><strong>Importante</strong><p>Escriba aquí la información destacada.</p></div>')}/></div><p className="panel-label section-label">FORMATO ACADÉMICO</p><ApaDialog insertMarkup={insertMarkup} fullWidth/><RubricDialog insertMarkup={insertMarkup}/><p className="panel-label section-label">PLANTILLAS RÁPIDAS</p><button className="template-card" onClick={() => command("insertHTML", '<h2>Objetivos de aprendizaje</h2><ul><li>Objetivo 1</li><li>Objetivo 2</li></ul>')}><span className="template-icon blue"><List /></span><span><strong>Objetivos</strong><small>Lista accesible</small></span><Plus size={16}/></button><button className="template-card" onClick={() => command("insertHTML", '<div class="callout"><strong>Instrucciones</strong><p>Complete los siguientes pasos.</p></div>')}><span className="template-icon gold"><FileText /></span><span><strong>Instrucciones</strong><small>Bloque destacado</small></span><Plus size={16}/></button><ModuleTemplateDialog insertMarkup={insertMarkup} hasH1={/<h1\b/i.test(html)}/><p className="panel-label section-label">HERRAMIENTAS DESARROLLADAS</p><div className="connected-tools"><a href="https://eagarcia77.github.io/estiloAPA/" target="_blank" rel="noopener noreferrer"><strong>EstiloAPA</strong><span>Referencias y formato APA 7</span></a><a href="https://eagarcia77.github.io/CTEL-SG/index_generator.html" target="_blank" rel="noopener noreferrer"><strong>Generador de exámenes TXT</strong><span>Convierte preguntas para importarlas en Blackboard Ultra</span></a><a href="https://eagarcia77.github.io/CTEL-SG/QTI21_BlackboardV3.html" target="_blank" rel="noopener noreferrer"><strong>QTI 2.1 Blackboard</strong><span>Paquetes de evaluación</span></a></div><ContentDialog documentLanguage={documentLanguage} documentAuthor={documentAuthor} documentDescription={documentDescription} trigger={<Button variant="outline" className="collection-button"><Folder size={17}/> Abrir Content Collection</Button>} search={search} setSearch={setSearch} files={filteredFiles} insertFile={insertFile} documentHtml={html} documentFileName={documentFileName} openDocument={openDocument} newDocument={newDocument}/></TabsContent><TabsContent value="review"><div className="score-card"><div className="score-ring">{accessibilityScore}</div><div><strong>{accessibilityScore === 100 ? "Accesibilidad lista" : "Revisión necesaria"}</strong><span>{pageChecks.filter((check) => !check.ok).length} recomendaciones pendientes</span></div></div><button type="button" className="accessibility-repair" onClick={repairAccessibility}><Accessibility size={18}/><span><strong>Corrección segura</strong><small>Repara estructura, tablas, enlaces y HTML sin inventar descripciones.</small></span></button>{pageChecks.map((check) => <ReviewItem key={check.text} ok={check.ok} text={check.text}/>)}</TabsContent><TabsContent value="outline"><DocumentOutline items={documentOutline} onSelect={focusHeading}/></TabsContent></Tabs></aside></>}
     </div>
   </main>;
 }
