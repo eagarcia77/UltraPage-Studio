@@ -475,7 +475,8 @@ export default function Home() {
     toast.success("HTML compatible con Ultra copiado", { description: "Incluye estilos en línea, viñetas y numeración para conservar la vista previa." });
   };
   const insertFile = (name: string, type: string, href?: string) => {
-    const resourceUrl = href || `https://blackboard.example.edu/bbcswebdav/courses/DEMO/${name}`;
+    if (!href) { toast.info("Conecte primero su propio curso o Content Collection"); return; }
+    const resourceUrl = href;
     const markup = type === "Imagen" ? `<figure><img src="${resourceUrl}" alt="Describa el contenido de la imagen"><figcaption>Figura 1. Recurso visual del módulo.</figcaption></figure>` : `<p><a href="${resourceUrl}">${name}</a></p>`;
     command("insertHTML", markup); toast.success("Recurso insertado", { description: `${name} se añadió a la página.` });
   };
@@ -513,13 +514,13 @@ export default function Home() {
     <Toaster position="bottom-right" richColors />
     <header className="topbar">
       <div className="brandmark" aria-hidden="true"><span>U</span></div><div className="brandcopy"><strong>UltraPage Studio</strong><span>Editor para Blackboard Ultra</span></div>
-      <div className="course-pill"><span className="status-dot" />BADM 5060 · 2027-13<ChevronDown size={15} /></div>
+      <div className="course-pill disconnected" aria-label="Estado de conexión"><span className="status-dot disconnected" />Sin curso conectado</div>
       <div className="header-actions"><ApaDialog insertMarkup={insertMarkup}/><span className={saved ? "save-state" : "save-state pending"}>{saved ? <Check size={14}/> : <Cloud size={14}/>} {saved ? "Guardado" : "Cambios sin guardar"}</span><HistoryDialog restoreSnapshot={restoreSnapshot}/><ExportDialog html={html} title={title} downloadHtml={downloadDocument}/><Button variant="outline" className="publish-button" onClick={copyHtml}><Copy size={16}/> Copiar para Ultra</Button><Button className="save-button" onClick={save}><Save size={16}/> Guardar</Button></div>
     </header>
     <div className="workspace">
       <aside className="leftbar" aria-label="Herramientas"><button className="rail-button active" aria-label="Editor"><FileText /></button><button className="rail-button" aria-label="Recursos"><Folder /></button><button className="rail-button" aria-label="Accesibilidad"><Accessibility /></button><button className="rail-button" aria-label="Código"><Code2 /></button><div className="rail-spacer" /><button className="avatar" aria-label="Perfil de Eduardo">EG</button></aside>
       <section className="editor-shell">
-        <div className="document-head"><div><div className="breadcrumbs"><span>Contenido del curso</span><span>/</span><span>Módulo 4</span></div><input className="title-input" value={title} onChange={(e) => { setTitle(e.target.value); setSaved(false); }} aria-label="Título de la página" /><div className="document-metrics" aria-live="polite"><span>{wordCount} palabras</span><span>{characterCount} caracteres</span><span>Guardado automático activo</span></div></div><div className="view-controls" aria-label="Vista previa por dispositivo"><button onClick={() => setDevice("desktop")} className={device === "desktop" ? "active" : ""} aria-label="Computadora"><Monitor size={17}/></button><button onClick={() => setDevice("tablet")} className={device === "tablet" ? "active" : ""} aria-label="Tableta"><Tablet size={17}/></button><button onClick={() => setDevice("mobile")} className={device === "mobile" ? "active" : ""} aria-label="Celular"><Smartphone size={17}/></button><button onClick={() => setRightPanel(!rightPanel)} className={rightPanel ? "active panel-toggle" : "panel-toggle"} aria-label="Mostrar u ocultar panel"><PanelRight size={17}/></button></div></div>
+        <div className="document-head"><div><div className="breadcrumbs"><span>Editor independiente</span><span>/</span><span>Documento</span></div><input className="title-input" value={title} onChange={(e) => { setTitle(e.target.value); setSaved(false); }} aria-label="Título de la página" /><div className="document-metrics" aria-live="polite"><span>{wordCount} palabras</span><span>{characterCount} caracteres</span><span>Guardado automático activo</span></div></div><div className="view-controls" aria-label="Vista previa por dispositivo"><button onClick={() => setDevice("desktop")} className={device === "desktop" ? "active" : ""} aria-label="Computadora"><Monitor size={17}/></button><button onClick={() => setDevice("tablet")} className={device === "tablet" ? "active" : ""} aria-label="Tableta"><Tablet size={17}/></button><button onClick={() => setDevice("mobile")} className={device === "mobile" ? "active" : ""} aria-label="Celular"><Smartphone size={17}/></button><button onClick={() => setRightPanel(!rightPanel)} className={rightPanel ? "active panel-toggle" : "panel-toggle"} aria-label="Mostrar u ocultar panel"><PanelRight size={17}/></button></div></div>
         <Tabs value={mode} onValueChange={changeMode} className="editor-tabs">
           <div className="toolbar-row">
             <TabsList className="mode-tabs"><TabsTrigger value="visual">Diseño</TabsTrigger><TabsTrigger value="html">HTML</TabsTrigger></TabsList>
@@ -751,7 +752,7 @@ type ContentDialogProps = {
 };
 
 function ContentDialog({ trigger, search, setSearch, files, insertFile, documentHtml, documentFileName, openDocument, newDocument }: ContentDialogProps) {
-  const defaultUrl = "https://interbb.blackboard.com/bbcswebdav/courses/202713.34504/201310.51131_ImportedContent_20120820031821";
+  const defaultUrl = "";
   const [dialogOpen, setDialogOpen] = useState(false);
   const [url, setUrl] = useState(defaultUrl);
   const [savedUrls, setSavedUrls] = useState<string[]>([]);
@@ -767,9 +768,9 @@ function ContentDialog({ trigger, search, setSearch, files, insertFile, document
   useEffect(() => {
     try {
       const stored = JSON.parse(localStorage.getItem("ultrapage-webdav-urls") || "[]") as string[];
-      const active = localStorage.getItem("ultrapage-webdav-active");
       setSavedUrls(Array.isArray(stored) ? stored : []);
-      if (active) setUrl(active);
+      localStorage.removeItem("ultrapage-webdav-active");
+      setUrl("");
     } catch { setSavedUrls([]); }
   }, []);
   useEffect(() => { setRemoteName(documentFileName); }, [documentFileName]);
