@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Accessibility, AlertTriangle, AlignCenter, AlignJustify, AlignLeft, AlignRight, Bold, BookOpen, Check, ChevronDown, Cloud, Code2, Columns3, Copy, Download, Eraser, FileImage, FilePlus2, FileText, Folder, Heading2, Highlighter, History, ImagePlus, Italic, Link2, List, ListOrdered, Loader2, LockKeyhole, Minus, Monitor, MoreHorizontal, Palette, PanelRight, PlugZap, Plus, Quote, Redo2, Rows3, Save, Search, Sigma, Smartphone, Stamp, Strikethrough, Subscript, Superscript, Table2, Tablet, Trash2, Underline, Undo2, Unlink, Upload } from "lucide-react";
+import { Accessibility, AlertTriangle, AlignCenter, AlignJustify, AlignLeft, AlignRight, Bold, BookOpen, Check, ChevronDown, Cloud, Code2, Columns3, Copy, Download, Eraser, FileImage, FilePlus2, FileText, Folder, Heading2, Highlighter, History, ImagePlus, Italic, Keyboard, Link2, List, ListOrdered, Loader2, LockKeyhole, Minus, Monitor, MoreHorizontal, Palette, PanelRight, PlugZap, Plus, Quote, Redo2, Rows3, Save, Search, Sigma, Smartphone, Stamp, Strikethrough, Subscript, Superscript, Table2, Tablet, Trash2, Underline, Undo2, Unlink, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -35,7 +35,7 @@ function sanitizePastedHtml(source: string) {
   Array.from(parsed.body.querySelectorAll<HTMLElement>("*")).forEach((element) => {
     if (removeEntirely.has(element.tagName)) { element.remove(); return; }
     if (!allowedTags.has(element.tagName)) { element.replaceWith(...Array.from(element.childNodes)); return; }
-    const safeAttributes = new Set(["href","src","alt","title","scope","colspan","rowspan","data-table-style"]);
+    const safeAttributes = new Set(["href","src","alt","title","scope","colspan","rowspan","class","role","aria-label","aria-hidden","width","height","loading","data-table-style"]);
     Array.from(element.attributes).forEach((attribute) => {
       if (attribute.name === "style") return;
       if (!safeAttributes.has(attribute.name.toLowerCase())) element.removeAttribute(attribute.name);
@@ -178,6 +178,7 @@ function buildBlackboardHtml(sourceHtml: string) {
 
 export default function Home() {
   const editor = useRef<HTMLDivElement>(null);
+  const localFileInput = useRef<HTMLInputElement>(null);
   const savedSelection = useRef<Range | null>(null);
   const [html, setHtml] = useState(starterHtml);
   const htmlRef = useRef(starterHtml);
@@ -481,10 +482,22 @@ export default function Home() {
     command("insertHTML", markup); toast.success("Recurso insertado", { description: `${name} se añadió a la página.` });
   };
   const openDocument = (name: string, content: string) => {
-    const body = content.match(/<body[^>]*>([\s\S]*?)<\/body>/i)?.[1] || content;
+    const plainTextFile = /\.txt$/i.test(name);
+    const extracted = content.match(/<main[^>]*class=["'][^"']*ultra-page[^"']*["'][^>]*>([\s\S]*?)<\/main>/i)?.[1] || content.match(/<body[^>]*>([\s\S]*?)<\/body>/i)?.[1] || content;
+    const body = plainTextFile
+      ? extracted.split(/\n{2,}/).map((paragraph) => `<p>${escapeHtml(paragraph).replace(/\n/g, "<br>")}</p>`).join("")
+      : sanitizePastedHtml(extracted);
     setHtml(body); setDocumentFileName(name); setTitle(name.replace(/\.(html?|txt)$/i, "")); setMode("visual"); setSaved(true);
     if (editor.current) editor.current.innerHTML = body;
-    toast.success("Archivo abierto", { description: `${name} está listo para editar.` });
+    toast.success("Archivo abierto de forma segura", { description: `${name} está listo para editar.` });
+  };
+  const importLocalDocument = async (file?: File) => {
+    if (!file) return;
+    if (!/\.(html?|txt)$/i.test(file.name)) { toast.error("Formato no compatible", { description: "Seleccione un archivo HTML, HTM o TXT." }); return; }
+    if (file.size > 5 * 1024 * 1024) { toast.error("El archivo es demasiado grande", { description: "El límite para edición local es 5 MB." }); return; }
+    try { openDocument(file.name, await file.text()); }
+    catch { toast.error("No se pudo abrir el archivo"); }
+    finally { if (localFileInput.current) localFileInput.current.value = ""; }
   };
   const newDocument = () => {
     const name = prompt("Nombre del archivo nuevo", "nueva-pagina.html")?.trim();
@@ -503,6 +516,28 @@ export default function Home() {
     const downloadUrl = URL.createObjectURL(blob); const link = document.createElement("a"); link.href = downloadUrl; link.download = documentFileName; link.click(); URL.revokeObjectURL(downloadUrl);
     toast.success("Archivo descargado en la computadora");
   };
+  useEffect(() => {
+    const warnBeforeLeaving = (event: BeforeUnloadEvent) => {
+      if (saved) return;
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warnBeforeLeaving);
+    return () => window.removeEventListener("beforeunload", warnBeforeLeaving);
+  }, [saved]);
+  useEffect(() => {
+    const shortcuts = (event: KeyboardEvent) => {
+      const modifier = event.ctrlKey || event.metaKey;
+      if (modifier && event.key.toLowerCase() === "s") { event.preventDefault(); save(); return; }
+      if (mode !== "visual") return;
+      if (event.altKey && /^[1-4]$/.test(event.key)) { event.preventDefault(); command("formatBlock", `h${event.key}`); return; }
+      if (modifier && event.shiftKey && event.key === "7") { event.preventDefault(); command("insertOrderedList"); return; }
+      if (modifier && event.shiftKey && event.key === "8") { event.preventDefault(); command("insertUnorderedList"); }
+    };
+    window.addEventListener("keydown", shortcuts);
+    return () => window.removeEventListener("keydown", shortcuts);
+  }, [mode, html, title, documentFileName]);
+
   const filteredFiles = demoFiles.filter((f) => f.name.toLowerCase().includes(search.toLowerCase()));
   const pageChecks = accessibilityReport(html, title);
   const accessibilityScore = Math.round((pageChecks.filter((check) => check.ok).length / pageChecks.length) * 100);
@@ -527,10 +562,11 @@ export default function Home() {
 
   return <main className="min-h-screen bg-[#f4f6f9] text-[#172033]">
     <Toaster position="bottom-right" richColors />
+    <input ref={localFileInput} className="sr-only" type="file" accept=".html,.htm,.txt,text/html,text/plain" onChange={(event) => importLocalDocument(event.target.files?.[0])} aria-label="Abrir archivo HTML o TXT de la computadora"/>
     <header className="topbar">
       <div className="brandmark" aria-hidden="true"><span>U</span></div><div className="brandcopy"><strong>UltraPage Studio</strong><span>Editor para Blackboard Ultra</span></div>
       <div className="course-pill disconnected" aria-label="Estado de conexión"><span className="status-dot disconnected" />Sin curso conectado</div>
-      <div className="header-actions"><ApaDialog insertMarkup={insertMarkup}/><span className={saved ? "save-state" : "save-state pending"}>{saved ? <Check size={14}/> : <Cloud size={14}/>} {saved ? "Guardado" : "Cambios sin guardar"}</span><HistoryDialog restoreSnapshot={restoreSnapshot}/><ExportDialog html={html} title={title} downloadHtml={downloadDocument}/><Button variant="outline" className="publish-button" onClick={copyHtml}><Copy size={16}/> Copiar para Ultra</Button><Button className="save-button" onClick={save}><Save size={16}/> Guardar</Button></div>
+      <div className="header-actions"><ApaDialog insertMarkup={insertMarkup}/><span className={saved ? "save-state" : "save-state pending"}>{saved ? <Check size={14}/> : <Cloud size={14}/>} {saved ? "Guardado" : "Cambios sin guardar"}</span><HistoryDialog restoreSnapshot={restoreSnapshot}/><KeyboardShortcutsDialog/><Button variant="outline" className="publish-button" title="Abrir HTML o TXT de la computadora" onClick={() => localFileInput.current?.click()}><Upload size={16}/> Abrir</Button><ExportDialog html={html} title={title} downloadHtml={downloadDocument}/><Button variant="outline" className="publish-button" onClick={copyHtml}><Copy size={16}/> Copiar para Ultra</Button><Button className="save-button" onClick={save}><Save size={16}/> Guardar</Button></div>
     </header>
     <div className="workspace">
       <aside className="leftbar" aria-label="Herramientas"><button className="rail-button active" aria-label="Editor"><FileText /></button><button className="rail-button" aria-label="Recursos"><Folder /></button><button className="rail-button" aria-label="Accesibilidad"><Accessibility /></button><button className="rail-button" aria-label="Código"><Code2 /></button><div className="rail-spacer" /><button className="avatar" aria-label="Perfil de Eduardo">EG</button></aside>
@@ -653,6 +689,16 @@ function ExportDialog({ html, title, downloadHtml }: { html: string; title: stri
     } finally { setExporting(""); }
   };
   return <Dialog open={open} onOpenChange={setOpen}><DialogTrigger asChild><Button variant="outline" className="publish-button"><Download size={16}/> Exportar</Button></DialogTrigger><DialogContent className="export-dialog"><DialogHeader><DialogTitle>Exportar documento accesible</DialogTitle><DialogDescription>Descarga el contenido en Word, PDF o HTML. La revisión identifica problemas que conviene corregir antes de exportar.</DialogDescription></DialogHeader><div className={`export-summary ${warnings ? "has-warnings" : "ready"}`}><span>{warnings ? <AlertTriangle size={20}/> : <Check size={20}/>}</span><div><strong>{warnings ? `${warnings} recomendación${warnings === 1 ? "" : "es"} de accesibilidad` : "Listo para exportar"}</strong><small>{warnings ? "Puede exportar ahora, pero es preferible corregirlas." : "El contenido pasó las verificaciones automáticas."}</small></div></div><div className="export-checks" aria-label="Resultados de accesibilidad">{checks.map((check) => <ReviewItem key={check.text} ok={check.ok} text={check.text}/>)}</div><div className="export-options"><button onClick={() => exportDocument("docx")} disabled={Boolean(exporting)}><FileText/><span><strong>Microsoft Word</strong><small>.docx estructurado y editable</small></span>{exporting === "docx" ? <Loader2 className="spin"/> : <Download/>}</button><button onClick={() => exportDocument("pdf")} disabled={Boolean(exporting)}><FileText/><span><strong>PDF accesible</strong><small>PDF/UA etiquetado, idioma y metadatos</small></span>{exporting === "pdf" ? <Loader2 className="spin"/> : <Download/>}</button><button onClick={() => { downloadHtml(); setOpen(false); }} disabled={Boolean(exporting)}><Code2/><span><strong>Página HTML</strong><small>Compatible con Blackboard Ultra</small></span><Download/></button></div><p className="export-note"><Accessibility size={15}/> La revisión automática ayuda, pero un documento institucional debe validarse también con Microsoft Accessibility Checker o Adobe Acrobat.</p></DialogContent></Dialog>;
+}
+
+function KeyboardShortcutsDialog() {
+  const shortcuts = [
+    ["Ctrl/⌘ + S", "Guardar una versión"],
+    ["Alt + 1, 2, 3 o 4", "Aplicar H1, H2, H3 o H4"],
+    ["Ctrl/⌘ + Shift + 7", "Crear lista numerada"],
+    ["Ctrl/⌘ + Shift + 8", "Crear lista con viñetas"],
+  ];
+  return <Dialog><DialogTrigger asChild><Button variant="ghost" size="icon" aria-label="Ver atajos de teclado" title="Atajos de teclado"><Keyboard size={17}/></Button></DialogTrigger><DialogContent className="shortcuts-dialog"><DialogHeader><DialogTitle>Atajos de teclado</DialogTitle><DialogDescription>Edite y estructure el contenido sin apartarse del teclado.</DialogDescription></DialogHeader><dl className="shortcut-list">{shortcuts.map(([keys, action]) => <div key={keys}><dt><kbd>{keys}</kbd></dt><dd>{action}</dd></div>)}</dl><p className="field-help">Los atajos de encabezados y listas funcionan en la vista Diseño. Los atajos habituales de negrita, cursiva, subrayado, copiar, pegar, deshacer y rehacer continúan disponibles.</p></DialogContent></Dialog>;
 }
 
 function HistoryDialog({ restoreSnapshot }: { restoreSnapshot: (snapshot: DraftSnapshot) => void }) {
