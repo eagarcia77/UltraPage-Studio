@@ -32,7 +32,7 @@ function escapeHtml(value: string) {
 
 function sanitizePastedHtml(source: string) {
   const parsed = new DOMParser().parseFromString(source, "text/html");
-  const allowedTags = new Set(["P","DIV","NAV","BR","H1","H2","H3","H4","UL","OL","LI","STRONG","B","EM","I","U","S","SUB","SUP","BLOCKQUOTE","A","TABLE","CAPTION","THEAD","TBODY","TR","TH","TD","FIGURE","FIGCAPTION","IMG"]);
+  const allowedTags = new Set(["P","DIV","NAV","SECTION","BR","H1","H2","H3","H4","UL","OL","LI","STRONG","B","EM","I","U","S","SUB","SUP","BLOCKQUOTE","A","TABLE","CAPTION","THEAD","TBODY","TR","TH","TD","FIGURE","FIGCAPTION","IMG"]);
   const removeEntirely = new Set(["SCRIPT","STYLE","META","LINK","IFRAME","OBJECT","EMBED","FORM","INPUT","BUTTON"]);
   Array.from(parsed.body.querySelectorAll<HTMLElement>("*")).forEach((element) => {
     if (removeEntirely.has(element.tagName)) { element.remove(); return; }
