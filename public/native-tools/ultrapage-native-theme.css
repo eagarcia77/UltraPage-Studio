@@ -1,85 +1,431 @@
 /*
- * UltraPage Studio native-tool compatibility theme.
- * This layer is reapplied after every manual source synchronization.
+ * UltraPage Studio native-tool design system.
+ * Applied only to the copies in UltraPage Studio. Source repositories are untouched.
  */
 :root {
-  --ups-purple: #5b2a86;
-  --ups-purple-dark: #35135f;
-  --ups-purple-soft: #f3edfb;
-  --ups-ink: #17132b;
+  --ups-purple: #6534c8;
+  --ups-purple-dark: #3d176f;
+  --ups-purple-deep: #25103f;
+  --ups-purple-soft: #f3effc;
+  --ups-violet: #8b5cf6;
+  --ups-ink: #1d2533;
   --ups-muted: #667085;
   --ups-border: #d9dce5;
   --ups-surface: #ffffff;
+  --ups-canvas: #f5f6fa;
   --ups-focus: #7c3aed;
+  --ups-success: #157347;
+  --ups-warning: #a15c00;
+  --ups-danger: #b42318;
+
+  /* Map legacy tool tokens to the UltraPage visual system. */
+  --verde: var(--ups-purple) !important;
+  --verde-oscuro: var(--ups-purple-dark) !important;
+  --amarillo: #d8c6fb !important;
+  --fondo: var(--ups-canvas) !important;
+  --borde: var(--ups-border) !important;
+  --texto: var(--ups-ink) !important;
+  --green: var(--ups-purple) !important;
+  --green-dark: var(--ups-purple-dark) !important;
+  --yellow: #d8c6fb !important;
+  --bg: var(--ups-canvas) !important;
+  --card: rgba(255, 255, 255, .97) !important;
+  --text: var(--ups-ink) !important;
+  --muted: var(--ups-muted) !important;
+  --border: var(--ups-border) !important;
+  --purple: var(--ups-purple) !important;
+  --blue: #315ea8 !important;
+  --shadow: 0 14px 40px rgba(34, 23, 57, .10) !important;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
 }
 
 html {
   color-scheme: light;
-  background: #f6f7fb;
+  background: var(--ups-canvas);
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 body {
-  color: var(--ups-ink);
-  background: #f6f7fb;
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  min-width: 0;
+  margin: 0 !important;
+  color: var(--ups-ink) !important;
+  background:
+    radial-gradient(circle at 90% -10%, rgba(139, 92, 246, .12), transparent 30rem),
+    var(--ups-canvas) !important;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
 }
 
-header, .header, .topbar, .app-header {
-  border-color: var(--ups-border);
+body::before {
+  content: "U   UltraPage Studio · Native Tool";
+  position: sticky;
+  top: 0;
+  z-index: 10000;
+  display: block;
+  min-height: 48px;
+  padding: 14px clamp(16px, 4vw, 32px);
+  color: #fff;
+  background: linear-gradient(105deg, var(--ups-purple-deep), var(--ups-purple-dark) 55%, var(--ups-purple));
+  border-bottom: 1px solid rgba(255, 255, 255, .16);
+  box-shadow: 0 5px 18px rgba(25, 12, 44, .17);
+  font-size: 12px;
+  font-weight: 850;
+  letter-spacing: .085em;
+  line-height: 1.25;
+  text-transform: uppercase;
 }
 
-button, .button, [type="button"], [type="submit"], select, input, textarea {
+.navbar {
+  display: none !important;
+}
+
+/* The original pages reference repository-only images. The native copy uses the UltraPage header instead. */
+img[src^="img/"],
+.header-logo[src^="img/"] {
+  display: none !important;
+}
+
+header,
+.hero,
+.header,
+.topbar,
+.app-header {
+  position: relative;
+  overflow: hidden;
+  color: #fff !important;
+  background: linear-gradient(130deg, var(--ups-purple) 0%, var(--ups-purple-dark) 76%) !important;
+  border: 0 !important;
+  border-bottom: 5px solid #bda1f2 !important;
+}
+
+header::after,
+.hero::after {
+  content: "";
+  position: absolute;
+  width: 260px;
+  height: 260px;
+  right: -90px;
+  top: -130px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .09);
+  pointer-events: none;
+}
+
+header h1,
+.hero h1 {
+  position: relative;
+  z-index: 1;
+  max-width: 1000px;
+  margin-inline: auto !important;
+  color: #fff !important;
+  font-size: clamp(1.75rem, 4vw, 2.65rem) !important;
+  letter-spacing: -.035em;
+  line-height: 1.12;
+}
+
+header p,
+.hero p {
+  position: relative;
+  z-index: 1;
+  color: #f2edff !important;
+}
+
+header a,
+.hero a {
+  color: #fff !important;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+
+main,
+.container,
+.app,
+.shell {
+  width: min(100% - 28px, 1280px) !important;
+  max-width: 1280px !important;
+  margin-inline: auto !important;
+}
+
+.card,
+.panel,
+.preview,
+.stat,
+.validation-box,
+.validation-item,
+.upload-section,
+.audit-panel,
+.preview-section {
+  border: 1px solid var(--ups-border) !important;
+  border-radius: 16px !important;
+  background: rgba(255, 255, 255, .98) !important;
+  box-shadow: 0 10px 28px rgba(36, 25, 59, .07) !important;
+}
+
+.card {
+  overflow: clip;
+}
+
+.card-body {
+  padding: clamp(16px, 3vw, 24px) !important;
+}
+
+.section-title {
+  color: #fff !important;
+  background: linear-gradient(110deg, var(--ups-purple), var(--ups-purple-dark)) !important;
+  border-radius: 0 !important;
+  padding: 14px 18px !important;
+  letter-spacing: .01em;
+}
+
+h2,
+h3,
+label {
+  color: var(--ups-purple-dark) !important;
+}
+
+.stat .n,
+.stat strong,
+.validation-box strong {
+  color: var(--ups-purple) !important;
+}
+
+button,
+.btn,
+.button,
+[type="button"],
+[type="submit"],
+select,
+input,
+textarea {
   font: inherit;
 }
 
-button, .button, [type="submit"] {
-  border-radius: 10px;
+button,
+.btn,
+.button,
+[type="button"],
+[type="submit"] {
+  min-height: 44px;
+  border-radius: 10px !important;
+  font-weight: 750 !important;
+  touch-action: manipulation;
 }
 
-button:not(.secondary):not(.ghost), .button.primary, [type="submit"] {
-  accent-color: var(--ups-purple);
+.btn-primary,
+.primary,
+.purple {
+  color: #fff !important;
+  background: var(--ups-purple) !important;
+  border-color: var(--ups-purple) !important;
+}
+
+.btn-primary:hover,
+.primary:hover,
+.purple:hover {
+  color: #fff !important;
+  background: var(--ups-purple-dark) !important;
+  border-color: var(--ups-purple-dark) !important;
+}
+
+.btn-outline-primary {
+  color: var(--ups-purple-dark) !important;
+  background: #fff !important;
+  border-color: #8c68d1 !important;
+}
+
+.btn-outline-primary:hover {
+  color: #fff !important;
+  background: var(--ups-purple) !important;
+}
+
+.secondary {
+  color: var(--ups-purple-deep) !important;
+  background: #dcccf8 !important;
+}
+
+.btn-success {
+  background: var(--ups-success) !important;
+  border-color: var(--ups-success) !important;
+}
+
+.btn-outline-danger {
+  color: var(--ups-danger) !important;
+  border-color: #d78b84 !important;
+}
+
+input,
+select,
+textarea,
+.form-control,
+.form-select {
+  min-height: 44px;
+  color: var(--ups-ink) !important;
+  background: #fff !important;
+  border: 1px solid #cdd2dc !important;
+  border-radius: 10px !important;
+}
+
+textarea,
+textarea.form-control,
+.output,
+.preview {
+  min-height: clamp(280px, 48vh, 500px) !important;
+  font-family: "Cascadia Mono", Consolas, "Courier New", monospace !important;
+  line-height: 1.55;
+}
+
+input:focus,
+select:focus,
+textarea:focus,
+.form-control:focus,
+.form-select:focus {
+  border-color: var(--ups-focus) !important;
+  outline: 3px solid rgba(124, 58, 237, .22) !important;
+  outline-offset: 1px;
+  box-shadow: none !important;
 }
 
 a {
-  color: var(--ups-purple);
+  color: #5524a3;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
 }
 
-:focus-visible {
-  outline: 3px solid color-mix(in srgb, var(--ups-focus) 45%, transparent);
-  outline-offset: 2px;
+button:focus-visible,
+.btn:focus-visible,
+a:focus-visible,
+[tabindex]:focus-visible {
+  outline: 3px solid rgba(124, 58, 237, .45) !important;
+  outline-offset: 3px !important;
+  box-shadow: none !important;
+}
+
+.note,
+.security-note {
+  background: var(--ups-purple-soft) !important;
+  border-left: 5px solid var(--ups-purple) !important;
+}
+
+.chip {
+  color: #48208b !important;
+  background: var(--ups-purple-soft) !important;
+  border-color: #cdbaf2 !important;
+}
+
+code,
+pre,
+code.inline-sample {
+  color: #39215f;
+  background: #f3f0f8 !important;
 }
 
 table {
   max-width: 100%;
 }
 
-img, video, canvas, svg {
+img,
+video,
+canvas,
+svg {
   max-width: 100%;
   height: auto;
 }
 
-@media (max-width: 720px) {
-  body {
-    min-width: 0;
-    overflow-wrap: anywhere;
+.footer,
+footer {
+  color: #ece6f7 !important;
+  background: var(--ups-purple-deep) !important;
+  border-top: 1px solid rgba(255, 255, 255, .12);
+}
+
+* {
+  scrollbar-color: #9a78dc #ece8f4;
+  scrollbar-width: thin;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: #9a78dc;
+  border: 2px solid #ece8f4;
+  border-radius: 999px;
+}
+
+@media (max-width: 760px) {
+  body::before {
+    min-height: 44px;
+    padding: 12px 14px;
+    font-size: 11px;
   }
 
-  .container, main, .main, .workspace, .panel {
-    max-width: 100%;
+  header,
+  .hero {
+    padding: 26px 14px !important;
+  }
+
+  main,
+  .container,
+  .app,
+  .shell {
+    width: 100% !important;
+    padding-inline: 12px !important;
+  }
+
+  main {
+    grid-template-columns: 1fr !important;
+  }
+
+  .card,
+  .panel,
+  .preview,
+  .stat {
+    border-radius: 13px !important;
+  }
+
+  .full {
+    grid-column: auto !important;
+  }
+
+  .toolbar,
+  .button-row,
+  .d-flex {
+    align-items: stretch;
+  }
+
+  .toolbar > button,
+  .button-row > button {
+    flex: 1 1 150px;
   }
 
   table {
     display: block;
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
+  *,
+  *::before,
+  *::after {
     scroll-behavior: auto !important;
-    animation-duration: 0.01ms !important;
+    animation-duration: .01ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+    transition-duration: .01ms !important;
+  }
+
+  button:hover {
+    transform: none !important;
   }
 }
 
@@ -87,5 +433,40 @@ img, video, canvas, svg {
   :root {
     --ups-border: #555;
     --ups-muted: #333;
+  }
+
+  button,
+  input,
+  select,
+  textarea,
+  .card,
+  .panel {
+    border-width: 2px !important;
+  }
+}
+
+@media print {
+  body {
+    background: #fff !important;
+  }
+
+  body::before,
+  .navbar,
+  .toolbar,
+  .button-row,
+  button {
+    display: none !important;
+  }
+
+  main,
+  .container {
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  .card,
+  .panel {
+    box-shadow: none !important;
+    break-inside: avoid;
   }
 }
