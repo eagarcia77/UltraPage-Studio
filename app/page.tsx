@@ -605,9 +605,31 @@ export default function Home() {
   };
   const importLocalDocument = async (file?: File) => {
     if (!file) return;
-    if (!/\.(html?|txt|json)$/i.test(file.name)) { toast.error("Unsupported format", { description: "Select an HTML, HTM, TXT, or UltraPage project file." }); return; }
-    if (file.size > 5 * 1024 * 1024) { toast.error("The file is too large", { description: "The local editing limit is 5 MB." }); return; }
+    if (!/\.(html?|txt|json|docx)$/i.test(file.name)) { toast.error("Unsupported format", { description: "Select an HTML, HTM, TXT, DOCX, or UltraPage project file." }); return; }
+    const maximumSize = /\.docx$/i.test(file.name) ? 10 * 1024 * 1024 : 5 * 1024 * 1024;
+    if (file.size > maximumSize) { toast.error("The file is too large", { description: `The import limit for this file is ${maximumSize / 1024 / 1024} MB.` }); return; }
     try {
+      if (/\.docx$/i.test(file.name)) {
+        const formData = new FormData();
+        formData.append("file", file);
+        const response = await fetch("/api/import", { method: "POST", body: formData });
+        const converted = await response.json() as { html?: string; warnings?: string[]; error?: string };
+        if (!response.ok || typeof converted.html !== "string") throw new Error(converted.error || "The Word document could not be converted.");
+        const body = sanitizePastedHtml(converted.html);
+        const importedTitle = file.name.replace(/\.docx$/i, "");
+        htmlRef.current = body;
+        setHtml(body);
+        setTitle(importedTitle);
+        setDocumentFileName(exportFileName(importedTitle, "html"));
+        setDocumentAuthor("");
+        setDocumentDescription("");
+        setMode("visual");
+        setSaved(false);
+        if (editor.current) editor.current.innerHTML = body;
+        const warningCount = converted.warnings?.length || 0;
+        toast.success("Word document imported", { description: warningCount ? `The document is editable. Review ${warningCount} conversion notice${warningCount === 1 ? "" : "s"} and run Accessibility Review.` : "Headings, lists, tables, and links are ready for editing." });
+        return;
+      }
       const content = await file.text();
       if (/\.json$/i.test(file.name)) {
         const project = JSON.parse(content) as { format?: string; version?: number; html?: string; title?: string; fileName?: string; language?: string; author?: string; description?: string };
@@ -629,7 +651,7 @@ export default function Home() {
         toast.success("UltraPage project restored", { description: "Content, language, and document metadata were recovered." });
       } else openDocument(file.name, content);
     } catch (problem) {
-      toast.error("The file could not be opened", { description: problem instanceof Error && problem.message === "Invalid UltraPage project" ? "The JSON file is not a valid UltraPage project." : "Verify that the file is not damaged." });
+      toast.error("The file could not be opened", { description: problem instanceof Error && problem.message === "Invalid UltraPage project" ? "The JSON file is not a valid UltraPage project." : problem instanceof Error ? problem.message : "Verify that the file is not damaged." });
     } finally { if (localFileInput.current) localFileInput.current.value = ""; }
   };
   const newDocument = () => {
@@ -805,11 +827,11 @@ export default function Home() {
 
   return <main className="min-h-screen bg-[#f4f6f9] text-[#172033]">
     <Toaster position="bottom-right" richColors />
-    <input ref={localFileInput} className="sr-only" type="file" accept=".html,.htm,.txt,.ultrapage.json,.json,text/html,text/plain,application/json" onChange={(event) => importLocalDocument(event.target.files?.[0])} aria-label="Open an HTML, TXT, or UltraPage project file"/>
+    <input ref={localFileInput} className="sr-only" type="file" accept=".html,.htm,.txt,.docx,.ultrapage.json,.json,text/html,text/plain,application/json,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onChange={(event) => importLocalDocument(event.target.files?.[0])} aria-label="Open an HTML, TXT, Word, or UltraPage project file"/>
     <header className="topbar">
       <div className="brandmark" aria-hidden="true"><span>U</span></div><div className="brandcopy"><strong>UltraPage Studio</strong><span>Editor for Blackboard Ultra</span></div>
       <div className="course-pill disconnected" aria-label="Connection status"><span className="status-dot disconnected" />No course connected</div>
-      <div className="header-actions"><ApaDialog insertMarkup={insertMarkup} language={documentLanguage}/><span className={saved ? "save-state" : "save-state pending"}>{saved ? <Check size={14}/> : <Cloud size={14}/>} {saved ? "Saved" : "Unsaved changes"}</span><HistoryDialog restoreSnapshot={restoreSnapshot}/><KeyboardShortcutsDialog/><DocumentPropertiesDialog author={documentAuthor} description={documentDescription} setAuthor={setDocumentAuthor} setDescription={setDocumentDescription}/><Button variant="outline" className="publish-button" title="Open HTML, TXT, or UltraPage project" onClick={() => localFileInput.current?.click()}><Upload size={16}/> Open</Button><ExportDialog html={html} title={title} language={documentLanguage} author={documentAuthor} description={documentDescription} downloadHtml={downloadDocument}/><Button variant="outline" className="publish-button" onClick={copyHtml} title="Copiar para el editor visual o HTML de Blackboard Ultra"><Copy size={16}/> Copy for Ultra</Button><Button className="save-button" onClick={save}><Save size={16}/> Save</Button></div>
+      <div className="header-actions"><ApaDialog insertMarkup={insertMarkup} language={documentLanguage}/><span className={saved ? "save-state" : "save-state pending"}>{saved ? <Check size={14}/> : <Cloud size={14}/>} {saved ? "Saved" : "Unsaved changes"}</span><HistoryDialog restoreSnapshot={restoreSnapshot}/><KeyboardShortcutsDialog/><DocumentPropertiesDialog author={documentAuthor} description={documentDescription} setAuthor={setDocumentAuthor} setDescription={setDocumentDescription}/><Button variant="outline" className="publish-button" title="Open HTML, TXT, Word, or UltraPage project" onClick={() => localFileInput.current?.click()}><Upload size={16}/> Open</Button><ExportDialog html={html} title={title} language={documentLanguage} author={documentAuthor} description={documentDescription} downloadHtml={downloadDocument}/><Button variant="outline" className="publish-button" onClick={copyHtml} title="Copiar para el editor visual o HTML de Blackboard Ultra"><Copy size={16}/> Copy for Ultra</Button><Button className="save-button" onClick={save}><Save size={16}/> Save</Button></div>
     </header>
     <div className="workspace">
       <aside className="leftbar" aria-label="Tools"><button className="rail-button active" aria-label="Editor"><FileText /></button><button className="rail-button" aria-label="Resources"><Folder /></button><button className="rail-button" aria-label="Accessibility"><Accessibility /></button><button className="rail-button" aria-label="Code"><Code2 /></button><div className="rail-spacer" /><button className="avatar" aria-label="Eduardo profile">EG</button></aside>
