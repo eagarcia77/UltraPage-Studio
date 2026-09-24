@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "product": "UltraPage Studio",
+  "policy": {
+    "mode": "read-only-source-copy",
+    "sourceRepositoriesAreModified": false,
+    "synchronization": "manual-github-actions",
+    "themeReappliedAfterSync": true
+  },
+  "importedAt": "2026-09-24T00:00:00Z",
+  "tools": [
+    {
+      "id": "estiloapa",
+      "name": "EstiloAPA",
+      "source": {
+        "repository": "eagarcia77/estiloAPA",
+        "branch": "main",
+        "entry": "index.html",
+        "importedBlobSha": "0e359d17e7aa69dcfd83f6d79bb8a3768e797ad2"
+      },
+      "destination": "public/native-tools/estiloapa/",
+      "route": "/tools#apa",
+      "assetCount": 21,
+      "theme": "ultrapage-theme.css"
+    },
+    {
+      "id": "txt-test-generator",
+      "name": "TXT Test Generator",
+      "source": {
+        "repository": "eagarcia77/CTEL-SG",
+        "branch": "main",
+        "entry": "index_generator.html",
+        "importedBlobSha": "7712dff3a758bf5fcbde60a3ead4246589b1f14c"
+      },
+      "destination": "public/native-tools/txt-test-generator/index.html",
+      "route": "/tools#txt",
+      "assetCount": 1,
+      "theme": "../ultrapage-native-theme.css"
+    },
+    {
+      "id": "qti-blackboard",
+      "name": "QTI 2.1 Blackboard",
+      "source": {
+        "repository": "eagarcia77/CTEL-SG",
+        "branch": "main",
+        "entry": "QTI21_BlackboardV3.html",
+        "importedBlobSha": "359c3534601a1fff9aeeac6050a3865249be1cf5"
+      },
+      "destination": "public/native-tools/qti-blackboard/index.html",
+      "route": "/tools#qti",
+      "assetCount": 1,
+      "theme": "../ultrapage-native-theme.css"
+    }
+  ]
+}
