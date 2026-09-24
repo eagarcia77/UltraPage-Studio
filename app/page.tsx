@@ -779,7 +779,7 @@ export default function Home() {
     });
   };
 
-  const finalPreviewMarkup = blackboardHtml || buildBlackboardHtml(html, documentLanguage);
+  const finalPreviewMarkup = blackboardHtml;
   const finalPreviewDocument = `<!doctype html><html lang="${documentLanguage}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)}</title><style>*{box-sizing:border-box}html{background:#f3f4f7}body{margin:0;padding:32px;background:#fff;color:#242a36;font-family:Arial,'Segoe UI',sans-serif;min-height:100vh}@media(max-width:600px){body{padding:20px 16px}}</style></head><body>${finalPreviewMarkup}</body></html>`;
 
   return <main className="min-h-screen bg-[#f4f6f9] text-[#172033]">
