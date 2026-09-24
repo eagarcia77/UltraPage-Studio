@@ -43,11 +43,11 @@ function safeFileName(value: string) {
   return clean || "documento-accesible";
 }
 
-function inlineRuns($: CheerioAPI, element: Element, style: { bold?: boolean; italics?: boolean; underline?: boolean } = {}): ParagraphChild[] {
+function inlineRuns($: CheerioAPI, element: Element, style: { bold?: boolean; italics?: boolean; underline?: boolean } = {}, language = "es-PR"): ParagraphChild[] {
   const runs: ParagraphChild[] = [];
   for (const node of element.children as AnyNode[]) {
     if (node.type === "text") {
-      if (node.data) runs.push(new TextRun({ text: node.data, ...style, underline: style.underline ? { type: UnderlineType.SINGLE } : undefined, language: { value: "es-PR" } }));
+      if (node.data) runs.push(new TextRun({ text: node.data, ...style, underline: style.underline ? { type: UnderlineType.SINGLE } : undefined, language: { value: language } }));
       continue;
     }
     if (node.type !== "tag") continue;
@@ -65,20 +65,20 @@ function inlineRuns($: CheerioAPI, element: Element, style: { bold?: boolean; it
       const label = cleanText($(node).text()) || node.attribs.href;
       runs.push(new ExternalHyperlink({
         link: node.attribs.href,
-        children: [new TextRun({ text: label, color: "2457A6", underline: { type: UnderlineType.SINGLE }, language: { value: "es-PR" } })],
+        children: [new TextRun({ text: label, color: "2457A6", underline: { type: UnderlineType.SINGLE }, language: { value: language } })],
       }));
     } else {
-      runs.push(...inlineRuns($, node, nextStyle));
+      runs.push(...inlineRuns($, node, nextStyle, language));
     }
   }
-  return runs.length ? runs : [new TextRun({ text: cleanText($(element).text()), language: { value: "es-PR" } })];
+  return runs.length ? runs : [new TextRun({ text: cleanText($(element).text()), language: { value: language } })];
 }
 
-function docxBlocks(html: string) {
+function docxBlocks(html: string, language: string) {
   const $ = load(`<body>${html}</body>`);
   const blocks: Array<Paragraph | Table> = [];
   const addParagraph = (element: Element, options: IParagraphOptions = {}) => {
-    blocks.push(new Paragraph({ ...options, children: inlineRuns($, element), spacing: { after: 160, ...(options.spacing || {}) } }));
+    blocks.push(new Paragraph({ ...options, children: inlineRuns($, element, {}, language), spacing: { after: 160, ...(options.spacing || {}) } }));
   };
 
   $("body").children().each((_, raw) => {
@@ -92,9 +92,9 @@ function docxBlocks(html: string) {
     }
     if (tag === "p" || tag === "blockquote") {
       if (classes.has("eyebrow")) {
-        blocks.push(new Paragraph({ children: [new TextRun({ text: cleanText($(element).text()).toUpperCase(), bold: true, color: "6B38D1", size: 20, characterSpacing: 40, language: { value: "es-PR" } })], spacing: { after: 100 } }));
+        blocks.push(new Paragraph({ children: [new TextRun({ text: cleanText($(element).text()).toUpperCase(), bold: true, color: "6B38D1", size: 20, characterSpacing: 40, language: { value: language } })], spacing: { after: 100 } }));
       } else if (classes.has("lead")) {
-        blocks.push(new Paragraph({ children: [new TextRun({ text: cleanText($(element).text()), color: "555E70", size: 30, language: { value: "es-PR" } })], spacing: { after: 220, line: 420 } }));
+        blocks.push(new Paragraph({ children: [new TextRun({ text: cleanText($(element).text()), color: "555E70", size: 30, language: { value: language } })], spacing: { after: 220, line: 420 } }));
       } else if (classes.has("apa-reference")) {
         addParagraph(element, { indent: { left: 720, hanging: 720 }, spacing: { after: 120, line: 480 } });
       } else {
@@ -105,9 +105,9 @@ function docxBlocks(html: string) {
     if (tag === "div" && classes.has("callout")) {
       const titleText = cleanText($(element).children("strong,b").first().text());
       const calloutParagraphs: Paragraph[] = [];
-      if (titleText) calloutParagraphs.push(new Paragraph({ children: [new TextRun({ text: titleText, bold: true, color: "5124A9", size: 24, language: { value: "es-PR" } })], spacing: { after: 80 } }));
-      $(element).children("p").each((__, paragraph) => { calloutParagraphs.push(new Paragraph({ children: inlineRuns($, paragraph as Element), spacing: { after: 80, line: 360 } })); });
-      if (!calloutParagraphs.length) calloutParagraphs.push(new Paragraph({ children: [new TextRun({ text: cleanText($(element).text()), language: { value: "es-PR" } })] }));
+      if (titleText) calloutParagraphs.push(new Paragraph({ children: [new TextRun({ text: titleText, bold: true, color: "5124A9", size: 24, language: { value: language } })], spacing: { after: 80 } }));
+      $(element).children("p").each((__, paragraph) => { calloutParagraphs.push(new Paragraph({ children: inlineRuns($, paragraph as Element, {}, language), spacing: { after: 80, line: 360 } })); });
+      if (!calloutParagraphs.length) calloutParagraphs.push(new Paragraph({ children: [new TextRun({ text: cleanText($(element).text()), language: { value: language } })] }));
       const noBorder = { style: BorderStyle.NIL, size: 0, color: "FFFFFF" };
       blocks.push(new Table({
         width: { size: 100, type: WidthType.PERCENTAGE },
@@ -119,7 +119,7 @@ function docxBlocks(html: string) {
     }
     if (tag === "ul" || tag === "ol") {
       $(element).children("li").each((__, li) => {
-        const children = inlineRuns($, li as Element);
+        const children = inlineRuns($, li as Element, {}, language);
         blocks.push(new Paragraph(tag === "ul" ? { children, bullet: { level: 0 }, spacing: { after: 100 } } : { children, numbering: { reference: "ordered-list", level: 0 }, spacing: { after: 100 } }));
       });
       return;
@@ -134,7 +134,7 @@ function docxBlocks(html: string) {
       sourceRows.forEach((row, rowIndex) => {
         const isLastRow = rowIndex === sourceRows.length - 1;
         const cells = $(row).children("th,td").toArray().map((cell) => new TableCell({
-          children: [new Paragraph({ children: inlineRuns($, cell as Element), spacing: { after: 0 } })],
+          children: [new Paragraph({ children: inlineRuns($, cell as Element, {}, language), spacing: { after: 0 } })],
           shading: cell.name.toLowerCase() === "th" ? { fill: "E9E2F8" } : undefined,
           borders: tableStyle === "apa7" ? {
             top: rowIndex === 0 ? strongBorder : noBorder,
@@ -157,8 +157,8 @@ function docxBlocks(html: string) {
       const img = $(element).find("img").first();
       const alt = cleanText(img.attr("alt") || "");
       const caption = cleanText($(element).find("figcaption").text());
-      if (alt) blocks.push(new Paragraph({ children: [new TextRun({ text: `[Imagen: ${alt}]`, italics: true, language: { value: "es-PR" } })], spacing: { after: 80 } }));
-      if (caption) blocks.push(new Paragraph({ children: [new TextRun({ text: caption, italics: true, language: { value: "es-PR" } })], spacing: { after: 160 } }));
+      if (alt) blocks.push(new Paragraph({ children: [new TextRun({ text: `[Imagen: ${alt}]`, italics: true, language: { value: language } })], spacing: { after: 80 } }));
+      if (caption) blocks.push(new Paragraph({ children: [new TextRun({ text: caption, italics: true, language: { value: language } })], spacing: { after: 160 } }));
       return;
     }
     const text = cleanText($(element).text());
@@ -167,7 +167,7 @@ function docxBlocks(html: string) {
   return blocks;
 }
 
-async function createDocx(html: string, title: string, author: string) {
+async function createDocx(html: string, title: string, author: string, language: string) {
   const document = new Document({
     creator: author,
     title,
@@ -176,7 +176,7 @@ async function createDocx(html: string, title: string, author: string) {
     styles: {
       default: {
         document: {
-          run: { font: "Arial", size: 24, language: { value: "es-PR" } },
+          run: { font: "Arial", size: 24, language: { value: language } },
           paragraph: { spacing: { line: 360 } },
         },
         heading1: { run: { font: "Arial", size: 68, bold: true, color: "242439" }, paragraph: { spacing: { before: 200, after: 240 }, keepNext: true } },
@@ -190,13 +190,13 @@ async function createDocx(html: string, title: string, author: string) {
     },
     sections: [{
       properties: { page: { margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 } } },
-      children: docxBlocks(html),
+      children: docxBlocks(html, language),
     }],
   });
   return Packer.toBuffer(document);
 }
 
-function createPdf(html: string, title: string, author: string) {
+function createPdf(html: string, title: string, author: string, language: string) {
   return new Promise<Buffer>((resolve, reject) => {
     const chunks: Buffer[] = [];
     const pdf = new PDFDocument({
@@ -205,7 +205,7 @@ function createPdf(html: string, title: string, author: string) {
       tagged: true,
       subset: "PDF/UA" as never,
       pdfVersion: "1.7",
-      lang: "es-PR",
+      lang: language,
       displayTitle: true,
       info: { Title: title, Author: author, Subject: "Documento accesible exportado desde UltraPage Studio", Creator: "UltraPage Studio" },
     });
@@ -217,7 +217,7 @@ function createPdf(html: string, title: string, author: string) {
     pdf.registerFont("AccessibleSans", path.join(fontRoot, "dejavu-sans-latin-400-normal.woff"));
     pdf.registerFont("AccessibleSansBold", path.join(fontRoot, "dejavu-sans-latin-700-normal.woff"));
 
-    const root = pdf.struct("Document", { title, lang: "es-PR" });
+    const root = pdf.struct("Document", { title, lang: language });
     pdf.addStructure(root);
     const $ = load(`<body>${html}</body>`);
     const bodyWidth = 468;
@@ -318,10 +318,11 @@ export async function POST(request: NextRequest) {
     const html = body.html || "";
     const title = cleanText(body.title || "Documento accesible").slice(0, 200);
     const author = cleanText(body.author || "UltraPage Studio").slice(0, 120);
+    const language = body.language === "en-US" ? "en-US" : "es-PR";
     if ((format !== "docx" && format !== "pdf") || !html || html.length > MAX_HTML_LENGTH) {
       return NextResponse.json({ error: "Formato o contenido no válido." }, { status: 400 });
     }
-    const data = format === "docx" ? await createDocx(html, title, author) : await createPdf(html, title, author);
+    const data = format === "docx" ? await createDocx(html, title, author, language) : await createPdf(html, title, author, language);
     const name = `${safeFileName(title)}.${format}`;
     return new NextResponse(new Uint8Array(data), {
       headers: {
