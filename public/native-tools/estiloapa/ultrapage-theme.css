@@ -1,0 +1,16 @@
+:root{--up-purple:#6732c8;--up-purple-dark:#4f249d;--up-purple-soft:#f3effc;--up-text:#172033;--up-muted:#6f788a;--up-border:#dfe3eb;--up-bg:#f4f6f9}
+*{box-sizing:border-box}
+html{background:var(--up-bg)}
+body{margin:0!important;background:var(--up-bg)!important;color:var(--up-text)!important;font-family:Inter,"Segoe UI",Arial,sans-serif!important}
+body::before{content:"UltraPage Studio · Native Tool";display:block;background:#20283a;color:#fff;padding:12px 22px;font-size:12px;font-weight:800;letter-spacing:.08em}
+header,.header,.app-header{background:linear-gradient(135deg,#7444d3,#5424b7)!important;color:#fff!important}
+main,.container,.app,.shell{max-width:1180px;margin-inline:auto}
+.card,.panel,.upload-section,.audit-panel,.preview-section{border-color:var(--up-border)!important;border-radius:14px!important;box-shadow:0 10px 28px rgba(36,48,74,.08)!important}
+button,.btn,input[type="button"],input[type="submit"]{border-radius:8px!important}
+button:not(.btn-outline-secondary):not(.secondary),.btn-primary{background:var(--up-purple)!important;border-color:var(--up-purple)!important;color:#fff!important}
+button:hover,.btn-primary:hover{background:var(--up-purple-dark)!important;border-color:var(--up-purple-dark)!important}
+input,select,textarea{border-color:var(--up-border)!important;border-radius:8px!important}
+input:focus,select:focus,textarea:focus{border-color:#8a62d8!important;box-shadow:0 0 0 3px rgba(103,50,200,.14)!important;outline:none!important}
+a{color:#5525a7}
+.badge,.pill,.status{border-radius:999px}
+@media(max-width:700px){body::before{padding:10px 14px}.container,main,.app,.shell{width:100%!important;padding-inline:12px!important}}
