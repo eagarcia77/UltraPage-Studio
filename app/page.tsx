@@ -218,7 +218,7 @@ export default function Home() {
   const savedSelection = useRef<Range | null>(null);
   const [html, setHtml] = useState(starterHtml);
   const htmlRef = useRef(starterHtml);
-  const [mode, setMode] = useState<"visual" | "html">("visual");
+  const [mode, setMode] = useState<"visual" | "ultra" | "html">("visual");
   const [codeView, setCodeView] = useState<"blackboard" | "source">("blackboard");
   const [blackboardHtml, setBlackboardHtml] = useState("");
   const [device, setDevice] = useState<"desktop" | "tablet" | "mobile">("desktop");
@@ -271,7 +271,7 @@ export default function Home() {
     if (node && node.innerHTML !== htmlRef.current) node.innerHTML = htmlRef.current;
   }, []);
   const changeMode = (value: string) => {
-    const nextMode = value as "visual" | "html";
+    const nextMode = value as "visual" | "ultra" | "html";
     if (mode === "visual" && editor.current) {
       const currentHtml = editor.current.innerHTML;
       htmlRef.current = currentHtml;
@@ -279,7 +279,7 @@ export default function Home() {
     }
     setMode(nextMode);
   };
-  useEffect(() => { if (mode === "html") setBlackboardHtml(buildBlackboardHtml(html, documentLanguage)); }, [html, mode, documentLanguage]);
+  useEffect(() => { if (mode !== "visual") setBlackboardHtml(buildBlackboardHtml(html, documentLanguage)); }, [html, mode, documentLanguage]);
   useEffect(() => {
     const rememberSelection = () => {
       const selection = window.getSelection();
@@ -779,6 +779,9 @@ export default function Home() {
     });
   };
 
+  const finalPreviewMarkup = blackboardHtml || buildBlackboardHtml(html, documentLanguage);
+  const finalPreviewDocument = `<!doctype html><html lang="${documentLanguage}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)}</title><style>*{box-sizing:border-box}html{background:#f3f4f7}body{margin:0;padding:32px;background:#fff;color:#242a36;font-family:Arial,'Segoe UI',sans-serif;min-height:100vh}@media(max-width:600px){body{padding:20px 16px}}</style></head><body>${finalPreviewMarkup}</body></html>`;
+
   return <main className="min-h-screen bg-[#f4f6f9] text-[#172033]">
     <Toaster position="bottom-right" richColors />
     <input ref={localFileInput} className="sr-only" type="file" accept=".html,.htm,.txt,text/html,text/plain" onChange={(event) => importLocalDocument(event.target.files?.[0])} aria-label="Abrir archivo HTML o TXT de la computadora"/>
@@ -793,7 +796,7 @@ export default function Home() {
         <div className="document-head"><div><div className="breadcrumbs"><span>Editor independiente</span><span>/</span><span>Documento</span></div><input className="title-input" value={title} onChange={(e) => { setTitle(e.target.value); setSaved(false); }} aria-label="Título de la página" /><div className="document-metrics" aria-live="polite"><span>{wordCount} palabras</span><span>{characterCount} caracteres</span><span>Guardado automático activo</span></div><label className="document-language"><span>Idioma del documento</span><select value={documentLanguage} onChange={(event) => { setDocumentLanguage(event.target.value as DocumentLanguage); setSaved(false); }} aria-label="Idioma principal del documento"><option value="es-PR">Español (Puerto Rico)</option><option value="en-US">English (United States)</option></select></label></div><div className="view-controls" aria-label="Vista previa por dispositivo"><button onClick={() => setDevice("desktop")} className={device === "desktop" ? "active" : ""} aria-label="Computadora"><Monitor size={17}/></button><button onClick={() => setDevice("tablet")} className={device === "tablet" ? "active" : ""} aria-label="Tableta"><Tablet size={17}/></button><button onClick={() => setDevice("mobile")} className={device === "mobile" ? "active" : ""} aria-label="Celular"><Smartphone size={17}/></button><button onClick={() => setRightPanel(!rightPanel)} className={rightPanel ? "active panel-toggle" : "panel-toggle"} aria-label="Mostrar u ocultar panel" aria-expanded={rightPanel} aria-controls="editor-side-panel"><PanelRight size={17}/></button></div><button type="button" className="mobile-panel-toggle" onClick={() => setRightPanel(true)} aria-expanded={rightPanel} aria-controls="editor-side-panel"><PanelRight size={16}/> Herramientas</button></div>
         <Tabs value={mode} onValueChange={changeMode} className="editor-tabs">
           <div className="toolbar-row">
-            <TabsList className="mode-tabs"><TabsTrigger value="visual">Diseño</TabsTrigger><TabsTrigger value="html">HTML</TabsTrigger></TabsList>
+            <TabsList className="mode-tabs"><TabsTrigger value="visual">Diseño</TabsTrigger><TabsTrigger value="ultra">Vista final</TabsTrigger><TabsTrigger value="html">HTML</TabsTrigger></TabsList>
             {mode === "visual" && <div className="toolbar" role="toolbar" aria-label="Formato de texto">
               <button onClick={() => command("undo")} aria-label="Deshacer"><Undo2 /></button><button onClick={() => command("redo")} aria-label="Rehacer"><Redo2 /></button><i/>
               <label className="toolbar-select-label"><span className="sr-only">Estructura del texto</span><select defaultValue="p" onChange={(event) => command("formatBlock", event.target.value)} aria-label="Párrafo o encabezado"><option value="p">Párrafo</option><option value="h1">H1</option><option value="h2">H2</option><option value="h3">H3</option><option value="h4">H4</option></select></label>
@@ -812,6 +815,7 @@ export default function Home() {
           </div>
           {mode === "visual" && <div className="secondary-toolbar" role="toolbar" aria-label="Alineación, sangría, tablas y marca de agua"><button className="clear-format-button" onClick={clearFormatting} aria-label="Quitar formato" title="Quitar todo el formato del texto seleccionado"><Eraser /><span>Quitar formato</span></button><span className="secondary-divider"/><TableDialog insertMarkup={insertMarkup}/><TableEditDialog editTable={editSelectedTable}/><WatermarkDialog applyWatermark={applyWatermark} removeWatermark={removeWatermark}/><span className="secondary-divider"/><label className="toolbar-select-label indentation-select"><span className="sr-only">Sangría de párrafo</span><select defaultValue="" onChange={(event) => applyIndentation(event.target.value)} aria-label="Sangría de párrafo"><option value="" disabled>Sangría de párrafo</option><option value="first-line">Primera línea (0.5″)</option><option value="left">Párrafo completo (0.5″)</option><option value="hanging">Sangría francesa (0.5″)</option><option value="none">Quitar sangría</option></select></label><span className="secondary-divider"/><button onClick={() => command("justifyLeft")} aria-label="Alinear a la izquierda" title="Alinear a la izquierda"><AlignLeft /></button><button onClick={() => command("justifyCenter")} aria-label="Centrar texto" title="Centrar texto"><AlignCenter /></button><button onClick={() => command("justifyRight")} aria-label="Alinear a la derecha" title="Alinear a la derecha"><AlignRight /></button><button onClick={() => command("justifyFull")} aria-label="Justificar texto" title="Justificar texto"><AlignJustify /></button></div>}
           <TabsContent value="visual" className="canvas-wrap"><div className={`device-frame ${device}`}><div className="ultra-label"><span className="mini-logo">U</span><span>Vista previa en Ultra</span><span className="ruler-status">Reglas: {rulerUnit === "in" ? "pulgadas" : "centímetros"}</span></div><EditorRulers unit={rulerUnit} device={device} onToggle={() => setRulerUnit((current) => current === "in" ? "cm" : "in")}><div ref={attachEditor} className="page-canvas" contentEditable suppressContentEditableWarning onPaste={handlePaste} onInput={(e) => { htmlRef.current = e.currentTarget.innerHTML; setHtml(e.currentTarget.innerHTML); setSaved(false); }} aria-label="Contenido editable de la página" /></EditorRulers></div></TabsContent>
+          <TabsContent value="ultra" className="blackboard-preview-wrap"><div className={`device-frame ${device}`}><div className="ultra-label"><span className="mini-logo">U</span><span>Resultado exacto para Blackboard Ultra</span><span className="final-preview-badge">Solo lectura</span></div><iframe className="blackboard-preview-frame" title="Vista final del contenido preparado para Blackboard Ultra" srcDoc={finalPreviewDocument} sandbox="allow-scripts allow-same-origin allow-presentation"/><p className="final-preview-help">Esta vista utiliza exactamente el mismo HTML que genera <strong>Copiar para Ultra</strong>. Los controles de computadora, tableta y celular ajustan el ancho de la comprobación.</p></div></TabsContent>
           <TabsContent value="html" className="code-wrap"><div className="code-header"><div className="code-heading"><span>{codeView === "blackboard" ? "HTML listo para pegar en Blackboard Ultra" : "Código HTML base editable"}</span><div className="code-view-switch" role="group" aria-label="Tipo de código HTML"><button type="button" className={codeView === "blackboard" ? "active" : ""} aria-pressed={codeView === "blackboard"} onClick={() => setCodeView("blackboard")}>Para Blackboard</button><button type="button" className={codeView === "source" ? "active" : ""} aria-pressed={codeView === "source"} onClick={() => setCodeView("source")}>Editar código base</button></div></div><button className="copy-code-button" onClick={copyHtml}><Copy size={14}/> Copiar código</button></div><Textarea value={codeView === "blackboard" ? blackboardHtml : html} readOnly={codeView === "blackboard"} onChange={(e) => { if (codeView === "source") { setHtml(e.target.value); setSaved(false); } }} className={`code-editor ${codeView === "blackboard" ? "compatible" : ""}`} spellCheck={false} aria-label={codeView === "blackboard" ? "Código HTML compatible con Blackboard Ultra" : "Código HTML base editable"} /><p className="code-help">{codeView === "blackboard" ? "Este código también se incluye en Copiar para Ultra. Puede pegarlo en el editor HTML <> o pegar directamente el formato visual en Blackboard." : "Los cambios realizados aquí se reflejan en la vista Diseño. Cambia a Para Blackboard antes de copiar."}</p></TabsContent>
         </Tabs>
       </section>
