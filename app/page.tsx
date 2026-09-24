@@ -30,6 +30,15 @@ function escapeHtml(value: string) {
   return value.replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character] || character);
 }
 
+function blobToDataUrl(blob: Blob) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => typeof reader.result === "string" ? resolve(reader.result) : reject(new Error("The image could not be read."));
+    reader.onerror = () => reject(new Error("The image could not be read."));
+    reader.readAsDataURL(blob);
+  });
+}
+
 function normalizeMediaEmbed(source: string) {
   try {
     const url = new URL(source.trim());
@@ -90,6 +99,11 @@ function buildBlackboardHtml(sourceHtml: string, language: DocumentLanguage = "e
   if (!root) return sourceHtml;
   root.setAttribute("lang", language);
   root.querySelectorAll("script,style,object,embed,form,input,button").forEach((element) => element.remove());
+  root.querySelectorAll<HTMLImageElement>("img[data-ultrapage-webdav-src]").forEach((image) => {
+    const remoteSource = image.getAttribute("data-ultrapage-webdav-src") || "";
+    if (/^https:\/\//i.test(remoteSource)) image.src = remoteSource;
+    image.removeAttribute("data-ultrapage-webdav-src");
+  });
   root.querySelectorAll<HTMLIFrameElement>("iframe").forEach((frame) => { const safeSource = normalizeMediaEmbed(frame.src); if (!safeSource) frame.remove(); else frame.src = safeSource; });
   root.querySelectorAll<HTMLElement>("*").forEach((element) => {
     Array.from(element.attributes).forEach((attribute) => {
@@ -485,7 +499,10 @@ export default function Home() {
   };
   const insertAccessibleImage = ({ src, alt, caption, decorative, width }: { src: string; alt: string; caption: string; decorative: boolean; width: number }) => {
     const cleanSrc = src.trim();
-    if (!/^(https?:\/\/|\/)/i.test(cleanSrc)) { toast.error("Use a valid image address beginning with https://"); return false; }
+    const hostedImage = /^(https?:\/\/|\/)/i.test(cleanSrc);
+    const embeddedImage = /^data:image\/(png|jpe?g|gif|webp|avif);base64,/i.test(cleanSrc);
+    if (!hostedImage && !embeddedImage) { toast.error("Choose an image from your computer or use a valid HTTPS address"); return false; }
+    if (embeddedImage && cleanSrc.length > 14 * 1024 * 1024) { toast.error("The embedded image is too large. Use an image smaller than 10 MB."); return false; }
     if (!decorative && !alt.trim()) { toast.error("Add an image description or mark it as decorative"); return false; }
     const safeWidth = Math.min(100, Math.max(10, Number(width) || 100));
     const image = `<img src="${escapeHtml(cleanSrc)}" alt="${decorative ? "" : escapeHtml(alt.trim())}"${decorative ? ' role="presentation"' : ""} loading="lazy" style="display:block;max-width:${safeWidth}%;height:auto;margin:0 auto">`;
@@ -583,10 +600,14 @@ export default function Home() {
       }
     }
   };
-  const insertFile = (name: string, type: string, href?: string) => {
+  const insertFile = (name: string, type: string, href?: string, embeddedSrc?: string, alternativeText?: string) => {
     if (!href) { toast.info("Conecte primero su propio curso o Content Collection"); return; }
     const resourceUrl = href;
-    const markup = type === "Imagen" ? `<figure><img src="${resourceUrl}" alt="Describe the image content"><figcaption>Figure 1. Module visual resource.</figcaption></figure>` : `<p><a href="${resourceUrl}">${name}</a></p>`;
+    const imageSource = embeddedSrc || resourceUrl;
+    const webDavSource = embeddedSrc ? ` data-ultrapage-webdav-src="${escapeHtml(resourceUrl)}"` : "";
+    const alt = alternativeText?.trim() || "";
+    const decorativeAttributes = type === "Imagen" && !alt ? ' role="presentation"' : "";
+    const markup = type === "Imagen" ? `<figure><img src="${escapeHtml(imageSource)}"${webDavSource} alt="${escapeHtml(alt)}"${decorativeAttributes} loading="lazy" style="display:block;max-width:100%;height:auto;margin:0 auto"><figcaption>${escapeHtml(name)}</figcaption></figure>` : `<p><a href="${escapeHtml(resourceUrl)}">${escapeHtml(name)}</a></p>`;
     command("insertHTML", markup); toast.success("Resource inserted", { description: `${name} was added to the page.` });
   };
   const openDocument = (name: string, content: string) => {
@@ -1048,12 +1069,31 @@ function HistoryDialog({ restoreSnapshot }: { restoreSnapshot: (snapshot: DraftS
 function ImageDialog({ insertImage }: { insertImage: (options: { src: string; alt: string; caption: string; decorative: boolean; width: number }) => boolean }) {
   const [open, setOpen] = useState(false);
   const [src, setSrc] = useState("https://");
+  const [localName, setLocalName] = useState("");
+  const [readingFile, setReadingFile] = useState(false);
   const [alt, setAlt] = useState("");
   const [caption, setCaption] = useState("");
   const [decorative, setDecorative] = useState(false);
   const [width, setWidth] = useState(100);
-  const insert = () => { if (insertImage({ src, alt, caption, decorative, width })) { setOpen(false); setSrc("https://"); setAlt(""); setCaption(""); setDecorative(false); setWidth(100); } };
-  return <Dialog open={open} onOpenChange={setOpen}><DialogTrigger asChild><button aria-label="Insert Accessible Image" title="Insert Accessible Image"><FileImage/></button></DialogTrigger><DialogContent className="image-dialog"><DialogHeader><DialogTitle>Insert Accessible Image</DialogTitle><DialogDescription>Use an image hosted in Blackboard Content Collection or at a stable HTTPS address.</DialogDescription></DialogHeader><div className="image-dialog-grid"><label>Image URL<Input value={src} onChange={(event) => setSrc(event.target.value)} placeholder="https://…/image.jpg"/></label><label>Alternative text<Input value={alt} disabled={decorative} onChange={(event) => setAlt(event.target.value)} placeholder="Describe the purpose of the image"/></label><label>Optional caption<Input value={caption} onChange={(event) => setCaption(event.target.value)} placeholder="Figure 1. Description"/></label><label className="checkbox-label"><input type="checkbox" checked={decorative} onChange={(event) => setDecorative(event.target.checked)}/> The image is decorative</label><label className="image-width-label">Image width <span>{width}%</span><Input type="range" min="10" max="100" step="5" value={width} onChange={(event) => setWidth(Number(event.target.value))}/></label></div><div className="apa-actions"><Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button><Button onClick={insert}><ImagePlus size={16}/> Insert Image</Button></div></DialogContent></Dialog>;
+  const fileInput = useRef<HTMLInputElement>(null);
+  const reset = () => { setSrc("https://"); setLocalName(""); setAlt(""); setCaption(""); setDecorative(false); setWidth(100); if (fileInput.current) fileInput.current.value = ""; };
+  const chooseLocalImage = async (file?: File) => {
+    if (!file) return;
+    const validType = /^(image\/(png|jpeg|gif|webp|avif))$/i.test(file.type) && /\.(png|jpe?g|gif|webp|avif)$/i.test(file.name);
+    if (!validType) { toast.error("Choose a PNG, JPG, GIF, WebP, or AVIF image"); if (fileInput.current) fileInput.current.value = ""; return; }
+    if (file.size > 10 * 1024 * 1024) { toast.error("The image exceeds the 10 MB limit"); if (fileInput.current) fileInput.current.value = ""; return; }
+    setReadingFile(true);
+    try {
+      setSrc(await blobToDataUrl(file));
+      setLocalName(file.name);
+      if (!caption) setCaption(file.name.replace(/\.[^.]+$/, ""));
+      toast.success("Image ready to insert", { description: file.name });
+    } catch (problem) {
+      toast.error("The image could not be read", { description: problem instanceof Error ? problem.message : "Try another file." });
+    } finally { setReadingFile(false); }
+  };
+  const insert = () => { if (insertImage({ src, alt, caption, decorative, width })) { setOpen(false); reset(); } };
+  return <Dialog open={open} onOpenChange={(nextOpen) => { setOpen(nextOpen); if (!nextOpen) reset(); }}><DialogTrigger asChild><button aria-label="Insert Accessible Image" title="Insert Accessible Image"><FileImage/></button></DialogTrigger><DialogContent className="image-dialog"><DialogHeader><DialogTitle>Insert Accessible Image</DialogTitle><DialogDescription>Choose an image from your computer, select one from WebDAV Content Collection, or use a stable HTTPS address.</DialogDescription></DialogHeader><input ref={fileInput} className="sr-only" type="file" accept=".png,.jpg,.jpeg,.gif,.webp,.avif,image/png,image/jpeg,image/gif,image/webp,image/avif" onChange={(event) => chooseLocalImage(event.target.files?.[0])} aria-label="Choose an image from your computer"/><div className="image-dialog-grid"><Button type="button" variant="outline" onClick={() => fileInput.current?.click()} disabled={readingFile}>{readingFile ? <Loader2 className="spin" size={16}/> : <Upload size={16}/>} {readingFile ? "Reading image…" : "Choose from Computer"}</Button>{localName && <p className="field-help" role="status">Selected: <strong>{localName}</strong></p>}{src.startsWith("data:image/") && <img src={src} alt="Selected image preview" style={{ maxHeight: 180, maxWidth: "100%", objectFit: "contain", margin: "0 auto" }}/>}<label>Image URL<Input value={src.startsWith("data:image/") ? "Embedded local image" : src} disabled={src.startsWith("data:image/")} onChange={(event) => { setSrc(event.target.value); setLocalName(""); }} placeholder="https://…/image.jpg"/></label><label>Alternative text<Input value={alt} disabled={decorative} onChange={(event) => setAlt(event.target.value)} placeholder="Describe the purpose of the image"/></label><label>Optional caption<Input value={caption} onChange={(event) => setCaption(event.target.value)} placeholder="Figure 1. Description"/></label><label className="checkbox-label"><input type="checkbox" checked={decorative} onChange={(event) => setDecorative(event.target.checked)}/> The image is decorative</label><label className="image-width-label">Image width <span>{width}%</span><Input type="range" min="10" max="100" step="5" value={width} onChange={(event) => setWidth(Number(event.target.value))}/></label></div><div className="apa-actions"><Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button><Button onClick={insert} disabled={readingFile}><ImagePlus size={16}/> Insert Image</Button></div></DialogContent></Dialog>;
 }
 
 function MediaDialog({ insertMedia }: { insertMedia: (options: { url: string; title: string; transcript: string; captions: boolean }) => boolean }) {
@@ -1213,7 +1253,7 @@ type ContentDialogProps = {
   search: string;
   setSearch: (v: string) => void;
   files: typeof demoFiles;
-  insertFile: (name: string, type: string, href?: string) => void;
+  insertFile: (name: string, type: string, href?: string, embeddedSrc?: string, alternativeText?: string) => void;
   documentHtml: string;
   documentFileName: string;
   openDocument: (name: string, content: string) => void;
@@ -1280,7 +1320,28 @@ function ContentDialog({ trigger, search, setSearch, files, insertFile, document
     if (file.type === "Carpeta") { await connect(file.href); return; }
     if (!/\.(html?|txt)$/i.test(file.name)) {
       const image = /\.(png|jpe?g|gif|webp|svg)$/i.test(file.name);
-      insertFile(file.name, image ? "Imagen" : "Documento", file.href);
+      if (!image) { insertFile(file.name, "Documento", file.href); return; }
+      if (/\.svg$/i.test(file.name)) { setError("SVG images cannot be embedded because they may contain unsafe code. Use PNG, JPG, GIF, or WebP."); return; }
+      const alternativeText = window.prompt("Alternative text for this image. Leave blank only if the image is decorative.", "");
+      if (alternativeText === null) return;
+      if (!alternativeText.trim() && !window.confirm("Insert this image as decorative with empty alternative text?")) return;
+      setFileLoading(file.href); setError("");
+      try {
+        const response = await fetch("/api/webdav", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "download", url: file.href, username, password }) });
+        if (!response.ok) {
+          const problem = await response.json().catch(() => ({})) as { error?: string };
+          throw new Error(problem.error || "The image could not be downloaded from WebDAV.");
+        }
+        const blob = await response.blob();
+        const inferredType = /\.png$/i.test(file.name) ? "image/png" : /\.jpe?g$/i.test(file.name) ? "image/jpeg" : /\.gif$/i.test(file.name) ? "image/gif" : "image/webp";
+        if (blob.type && blob.type !== "application/octet-stream" && !/^image\/(png|jpeg|gif|webp)$/i.test(blob.type)) throw new Error("WebDAV did not return a supported image file.");
+        if (blob.size > 10 * 1024 * 1024) throw new Error("The image exceeds the 10 MB insertion limit.");
+        const imageBlob = /^image\//i.test(blob.type) ? blob : new Blob([blob], { type: inferredType });
+        insertFile(file.name, "Imagen", file.href, await blobToDataUrl(imageBlob), alternativeText);
+        setDialogOpen(false);
+      } catch (problem) {
+        setError(problem instanceof Error ? problem.message : "The image could not be inserted.");
+      } finally { setFileLoading(""); }
       return;
     }
     setFileLoading(file.href); setError("");
