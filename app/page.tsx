@@ -346,7 +346,7 @@ export default function Home() {
   const applyIndentation = (indentation: string) => {
     if (!indentation || !editor.current) return;
     const { targets, range } = selectedBlocks();
-    if (!targets.length) { toast.info("Seleccione el párrafo que desea modificar"); return; }
+    if (!targets.length) { toast.info("Select the paragraph you want to modify"); return; }
     targets.forEach((block) => {
       block.style.marginLeft = "";
       block.style.paddingLeft = "";
@@ -422,7 +422,7 @@ export default function Home() {
     }
     if (action === "grid" || action === "apa7") table.setAttribute("data-table-style", action);
     setHtml(editor.current.innerHTML); setSaved(false); savedSelection.current = null;
-    toast.success("Tabla actualizada");
+    toast.success("Table updated");
     return true;
   };
   const applyWatermark = ({ text, color, opacity, size, angle }: { text: string; color: string; opacity: number; size: number; angle: number }) => {
@@ -446,7 +446,7 @@ export default function Home() {
   };
   const insertAccessibleLink = ({ text, url, newTab }: { text: string; url: string; newTab: boolean }) => {
     const cleanUrl = url.trim();
-    if (!/^(https?:\/\/|mailto:|tel:|\/|#)/i.test(cleanUrl)) { toast.error("Utilice una dirección válida que comience con https://"); return false; }
+    if (!/^(https?:\/\/|mailto:|tel:|\/|#)/i.test(cleanUrl)) { toast.error("Use a valid address beginning with https://"); return false; }
     const label = text.trim() || cleanUrl;
     const target = newTab ? ' target="_blank" rel="noopener noreferrer"' : "";
     command("insertHTML", `<a href="${escapeHtml(cleanUrl)}"${target}>${escapeHtml(label)}</a>`);
@@ -485,8 +485,8 @@ export default function Home() {
   };
   const insertAccessibleImage = ({ src, alt, caption, decorative, width }: { src: string; alt: string; caption: string; decorative: boolean; width: number }) => {
     const cleanSrc = src.trim();
-    if (!/^(https?:\/\/|\/)/i.test(cleanSrc)) { toast.error("Utilice una dirección de imagen válida que comience con https://"); return false; }
-    if (!decorative && !alt.trim()) { toast.error("Añada una descripción de la imagen o márquela como decorativa"); return false; }
+    if (!/^(https?:\/\/|\/)/i.test(cleanSrc)) { toast.error("Use a valid image address beginning with https://"); return false; }
+    if (!decorative && !alt.trim()) { toast.error("Add an image description or mark it as decorative"); return false; }
     const safeWidth = Math.min(100, Math.max(10, Number(width) || 100));
     const image = `<img src="${escapeHtml(cleanSrc)}" alt="${decorative ? "" : escapeHtml(alt.trim())}"${decorative ? ' role="presentation"' : ""} loading="lazy" style="display:block;max-width:${safeWidth}%;height:auto;margin:0 auto">`;
     const markup = caption.trim() ? `<figure>${image}<figcaption>${escapeHtml(caption.trim())}</figcaption></figure>` : `<figure>${image}</figure>`;
@@ -494,18 +494,18 @@ export default function Home() {
   };
   const insertAccessibleMedia = ({ url, title, transcript, captions }: { url: string; title: string; transcript: string; captions: boolean }) => {
     const embed = normalizeMediaEmbed(url);
-    if (!embed) { toast.error("Utilice un enlace HTTPS válido de YouTube, Vimeo o Kaltura"); return false; }
-    if (!title.trim()) { toast.error("Añada un título descriptivo para el video"); return false; }
+    if (!embed) { toast.error("Use a valid HTTPS link from YouTube, Vimeo, or Kaltura"); return false; }
+    if (!title.trim()) { toast.error("Add a descriptive video title"); return false; }
     const transcriptUrl = transcript.trim();
-    if (transcriptUrl && !/^https:\/\//i.test(transcriptUrl)) { toast.error("La transcripción debe usar una dirección HTTPS"); return false; }
-    if (!captions && !transcriptUrl) { toast.error("Confirme que el video tiene subtítulos o añada una transcripción"); return false; }
+    if (transcriptUrl && !/^https:\/\//i.test(transcriptUrl)) { toast.error("The transcript must use an HTTPS address"); return false; }
+    if (!captions && !transcriptUrl) { toast.error("Confirm that the video has captions or add a transcript"); return false; }
     const safeTitle = escapeHtml(title.trim());
-    const transcriptLink = transcriptUrl ? ` · <a class="media-transcript" href="${escapeHtml(transcriptUrl)}">Transcripción accesible</a>` : "";
+    const transcriptLink = transcriptUrl ? ` · <a class="media-transcript" href="${escapeHtml(transcriptUrl)}">Accessible transcript</a>` : "";
     const markup = `<figure class="responsive-media" data-accessible-media="true" data-captions="${captions ? "true" : "false"}"><div class="media-frame"><iframe src="${escapeHtml(embed)}" title="${safeTitle}" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div><figcaption>${safeTitle}${transcriptLink}</figcaption></figure><p class="media-fallback"><a href="${escapeHtml(url.trim())}">Abrir video: ${safeTitle}</a></p>`;
     command("insertHTML", markup); toast.success("Video accesible insertado"); return true;
   };
   const insertAccessibleEquation = ({ formula, description, block }: { formula: string; description: string; block: boolean }) => {
-    if (!formula.trim() || !description.trim()) { toast.error("Escriba la ecuación y su descripción accesible"); return false; }
+    if (!formula.trim() || !description.trim()) { toast.error("Enter the equation and its accessible description"); return false; }
     const tag = block ? "div" : "span";
     const style = block ? 'display:block;text-align:center;margin:20px 0;font-family:Georgia,serif;font-size:1.15em' : 'font-family:Georgia,serif';
     command("insertHTML", `<${tag} class="accessible-equation" role="math" aria-label="${escapeHtml(description.trim())}" style="${style}">${escapeHtml(formula.trim())}</${tag}>`);
@@ -517,7 +517,7 @@ export default function Home() {
     const parsed = new DOMParser().parseFromString(source, "text/html");
     parsed.querySelectorAll('[data-ultrapage-toc="true"]').forEach((element) => element.remove());
     const headings = Array.from(parsed.body.querySelectorAll<HTMLElement>("h1,h2,h3,h4"));
-    if (!headings.length) { toast.error("No hay encabezados", { description: "Añada H1, H2, H3 o H4 antes de crear la tabla de contenido." }); return; }
+    if (!headings.length) { toast.error("No headings found", { description: "Add H1, H2, H3, or H4 before creating the table of contents." }); return; }
     const usedIds = new Set<string>();
     headings.forEach((heading, index) => {
       const base = (heading.id || heading.textContent || `seccion-${index + 1}`).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || `seccion-${index + 1}`;
@@ -628,7 +628,7 @@ export default function Home() {
     const fileContent = documentFileName.toLowerCase().endsWith(".txt") ? currentHtml.replace(/<[^>]+>/g, "") : `<!doctype html><html lang="${documentLanguage}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="color-scheme" content="light"><title>${safeTitle}</title>${safeAuthor ? `<meta name="author" content="${safeAuthor}">` : ""}${safeDescription ? `<meta name="description" content="${safeDescription}">` : ""}<style>${exportedPageStyles}</style></head><body><main class="ultra-page">${currentHtml}</main></body></html>`;
     const blob = new Blob([fileContent], { type: documentFileName.toLowerCase().endsWith(".txt") ? "text/plain;charset=utf-8" : "text/html;charset=utf-8" });
     const downloadUrl = URL.createObjectURL(blob); const link = document.createElement("a"); link.href = downloadUrl; link.download = documentFileName; link.click(); URL.revokeObjectURL(downloadUrl);
-    toast.success("Archivo descargado en la computadora");
+    toast.success("File downloaded en la computadora");
   };
   useEffect(() => {
     const warnBeforeLeaving = (event: BeforeUnloadEvent) => {
@@ -819,7 +819,7 @@ export default function Home() {
           <TabsContent value="html" className="code-wrap"><div className="code-header"><div className="code-heading"><span>{codeView === "blackboard" ? "HTML ready to paste into Blackboard Ultra" : "Editable source HTML"}</span><div className="code-view-switch" role="group" aria-label="HTML code type"><button type="button" className={codeView === "blackboard" ? "active" : ""} aria-pressed={codeView === "blackboard"} onClick={() => setCodeView("blackboard")}>For Blackboard</button><button type="button" className={codeView === "source" ? "active" : ""} aria-pressed={codeView === "source"} onClick={() => setCodeView("source")}>Edit Source</button></div></div><button className="copy-code-button" onClick={copyHtml}><Copy size={14}/> Copy Code</button></div><Textarea value={codeView === "blackboard" ? blackboardHtml : html} readOnly={codeView === "blackboard"} onChange={(e) => { if (codeView === "source") { setHtml(e.target.value); setSaved(false); } }} className={`code-editor ${codeView === "blackboard" ? "compatible" : ""}`} spellCheck={false} aria-label={codeView === "blackboard" ? "Blackboard Ultra-compatible HTML" : "Editable source HTML"} /><p className="code-help">{codeView === "blackboard" ? "This code is also included with Copy for Ultra. Paste it into Blackboard’s HTML <> editor or paste the visual formatting directly." : "Changes made here appear in Design view. Switch to For Blackboard before copying."}</p></TabsContent>
         </Tabs>
       </section>
-      {rightPanel && <><button type="button" className="panel-backdrop" onClick={() => setRightPanel(false)} aria-label="Close tools panel"/><aside id="editor-side-panel" className="right-panel" aria-label="Tools panel"><div className="mobile-panel-heading"><strong>Editor tools</strong><button type="button" onClick={() => setRightPanel(false)} aria-label="Close panel"><X size={18}/></button></div><Tabs defaultValue="blocks"><TabsList className="side-tabs"><TabsTrigger value="blocks">Blocks</TabsTrigger><TabsTrigger value="review">Review</TabsTrigger><TabsTrigger value="outline">Outline</TabsTrigger></TabsList><TabsContent value="blocks"><p className="panel-label">CONTENT</p><div className="block-grid"><Block icon={Heading2} label="Heading" onClick={() => command("formatBlock", "h2")}/><Block icon={FileText} label="Text" onClick={() => command("insertParagraph")}/><Block icon={ImagePlus} label="Image" onClick={() => toast.info("Selecciona una imagen desde Content Collection.")}/><TableDialog insertMarkup={insertMarkup} block/><LinkDialog insertLink={insertAccessibleLink} block/><Block icon={List} label="List" onClick={() => command("insertUnorderedList")}/><Block icon={BookOpen} label="Table of Contents" onClick={generateTableOfContents}/><Block icon={Plus} label="Callout" onClick={() => command("insertHTML", '<div class="callout"><strong>Importante</strong><p>Escriba aquí la información destacada.</p></div>')}/></div><p className="panel-label section-label">ACADEMIC FORMAT</p><ApaDialog insertMarkup={insertMarkup} fullWidth/><RubricDialog insertMarkup={insertMarkup}/><p className="panel-label section-label">QUICK TEMPLATES</p><button className="template-card" onClick={() => command("insertHTML", '<h2>Objetivos de aprendizaje</h2><ul><li>Objetivo 1</li><li>Objetivo 2</li></ul>')}><span className="template-icon blue"><List /></span><span><strong>Objectives</strong><small>Accessible list</small></span><Plus size={16}/></button><button className="template-card" onClick={() => command("insertHTML", '<div class="callout"><strong>Instrucciones</strong><p>Complete los siguientes pasos.</p></div>')}><span className="template-icon gold"><FileText /></span><span><strong>Instructions</strong><small>Highlighted block</small></span><Plus size={16}/></button><ModuleTemplateDialog insertMarkup={insertMarkup} hasH1={/<h1\b/i.test(html)}/><p className="panel-label section-label">DEVELOPED TOOLS</p><div className="connected-tools"><a href="https://eagarcia77.github.io/estiloAPA/" target="_blank" rel="noopener noreferrer"><strong>EstiloAPA</strong><span>APA 7 references and formatting</span></a><a href="https://eagarcia77.github.io/CTEL-SG/index_generator.html" target="_blank" rel="noopener noreferrer"><strong>TXT Test Generator</strong><span>Converts questions for Blackboard Ultra import</span></a><a href="https://eagarcia77.github.io/CTEL-SG/QTI21_BlackboardV3.html" target="_blank" rel="noopener noreferrer"><strong>QTI 2.1 Blackboard</strong><span>Assessment packages</span></a></div><ContentDialog documentLanguage={documentLanguage} documentAuthor={documentAuthor} documentDescription={documentDescription} trigger={<Button variant="outline" className="collection-button"><Folder size={17}/> Open Content Collection</Button>} search={search} setSearch={setSearch} files={filteredFiles} insertFile={insertFile} documentHtml={html} documentFileName={documentFileName} openDocument={openDocument} newDocument={newDocument}/></TabsContent><TabsContent value="review"><div className="score-card"><div className="score-ring">{accessibilityScore}</div><div><strong>{accessibilityScore === 100 ? "Accessibility ready" : "Review required"}</strong><span>{pageChecks.filter((check) => !check.ok).length} recommendations pending</span></div></div><button type="button" className="accessibility-repair" onClick={repairAccessibility}><Accessibility size={18}/><span><strong>Safe Fix</strong><small>Repairs structure, tables, links, and HTML without inventing descriptions.</small></span></button>{pageChecks.map((check) => <ReviewItem key={check.text} ok={check.ok} text={check.text}/>)}</TabsContent><TabsContent value="outline"><DocumentOutline items={documentOutline} onSelect={focusHeading}/></TabsContent></Tabs></aside></>}
+      {rightPanel && <><button type="button" className="panel-backdrop" onClick={() => setRightPanel(false)} aria-label="Close tools panel"/><aside id="editor-side-panel" className="right-panel" aria-label="Tools panel"><div className="mobile-panel-heading"><strong>Editor tools</strong><button type="button" onClick={() => setRightPanel(false)} aria-label="Close panel"><X size={18}/></button></div><Tabs defaultValue="blocks"><TabsList className="side-tabs"><TabsTrigger value="blocks">Blocks</TabsTrigger><TabsTrigger value="review">Review</TabsTrigger><TabsTrigger value="outline">Outline</TabsTrigger></TabsList><TabsContent value="blocks"><p className="panel-label">CONTENT</p><div className="block-grid"><Block icon={Heading2} label="Heading" onClick={() => command("formatBlock", "h2")}/><Block icon={FileText} label="Text" onClick={() => command("insertParagraph")}/><Block icon={ImagePlus} label="Image" onClick={() => toast.info("Select an image from Content Collection.")}/><TableDialog insertMarkup={insertMarkup} block/><LinkDialog insertLink={insertAccessibleLink} block/><Block icon={List} label="List" onClick={() => command("insertUnorderedList")}/><Block icon={BookOpen} label="Table of Contents" onClick={generateTableOfContents}/><Block icon={Plus} label="Callout" onClick={() => command("insertHTML", '<div class="callout"><strong>Importante</strong><p>Escriba aquí la información destacada.</p></div>')}/></div><p className="panel-label section-label">ACADEMIC FORMAT</p><ApaDialog insertMarkup={insertMarkup} fullWidth/><RubricDialog insertMarkup={insertMarkup}/><p className="panel-label section-label">QUICK TEMPLATES</p><button className="template-card" onClick={() => command("insertHTML", '<h2>Objetivos de aprendizaje</h2><ul><li>Objetivo 1</li><li>Objetivo 2</li></ul>')}><span className="template-icon blue"><List /></span><span><strong>Objectives</strong><small>Accessible list</small></span><Plus size={16}/></button><button className="template-card" onClick={() => command("insertHTML", '<div class="callout"><strong>Instrucciones</strong><p>Complete los siguientes pasos.</p></div>')}><span className="template-icon gold"><FileText /></span><span><strong>Instructions</strong><small>Highlighted block</small></span><Plus size={16}/></button><ModuleTemplateDialog insertMarkup={insertMarkup} hasH1={/<h1\b/i.test(html)}/><p className="panel-label section-label">DEVELOPED TOOLS</p><div className="connected-tools"><a href="https://eagarcia77.github.io/estiloAPA/" target="_blank" rel="noopener noreferrer"><strong>EstiloAPA</strong><span>APA 7 references and formatting</span></a><a href="https://eagarcia77.github.io/CTEL-SG/index_generator.html" target="_blank" rel="noopener noreferrer"><strong>TXT Test Generator</strong><span>Converts questions for Blackboard Ultra import</span></a><a href="https://eagarcia77.github.io/CTEL-SG/QTI21_BlackboardV3.html" target="_blank" rel="noopener noreferrer"><strong>QTI 2.1 Blackboard</strong><span>Assessment packages</span></a></div><ContentDialog documentLanguage={documentLanguage} documentAuthor={documentAuthor} documentDescription={documentDescription} trigger={<Button variant="outline" className="collection-button"><Folder size={17}/> Open Content Collection</Button>} search={search} setSearch={setSearch} files={filteredFiles} insertFile={insertFile} documentHtml={html} documentFileName={documentFileName} openDocument={openDocument} newDocument={newDocument}/></TabsContent><TabsContent value="review"><div className="score-card"><div className="score-ring">{accessibilityScore}</div><div><strong>{accessibilityScore === 100 ? "Accessibility ready" : "Review required"}</strong><span>{pageChecks.filter((check) => !check.ok).length} recommendations pending</span></div></div><button type="button" className="accessibility-repair" onClick={repairAccessibility}><Accessibility size={18}/><span><strong>Safe Fix</strong><small>Repairs structure, tables, links, and HTML without inventing descriptions.</small></span></button>{pageChecks.map((check) => <ReviewItem key={check.text} ok={check.ok} text={check.text}/>)}</TabsContent><TabsContent value="outline"><DocumentOutline items={documentOutline} onSelect={focusHeading}/></TabsContent></Tabs></aside></>}
     </div>
   </main>;
 }
@@ -829,7 +829,7 @@ function ModuleTemplateDialog({ insertMarkup, hasH1 }: { insertMarkup: (markup: 
   const [moduleNumber, setModuleNumber] = useState("");
   const [moduleTitle, setModuleTitle] = useState("");
   const insert = () => {
-    if (!moduleTitle.trim()) { toast.error("Escriba el título del módulo"); return; }
+    if (!moduleTitle.trim()) { toast.error("Enter the module title"); return; }
     const titleTag = hasH1 ? "h2" : "h1";
     const sectionTag = hasH1 ? "h3" : "h2";
     const label = moduleNumber.trim() ? `MÓDULO ${escapeHtml(moduleNumber.trim())}` : "MÓDULO";
@@ -846,7 +846,7 @@ function EditorRulers({ unit, device, onToggle, children }: { unit: "in" | "cm";
   const verticalLabels = Array.from({ length: verticalMax + 1 }, (_, index) => index);
   const horizontalStyle = { "--ruler-segments": horizontalMax, "--ruler-minor-segments": horizontalMax * (unit === "in" ? 4 : 2) } as React.CSSProperties;
   const verticalStyle = { "--ruler-segments": verticalMax, "--ruler-minor-segments": verticalMax * (unit === "in" ? 4 : 2) } as React.CSSProperties;
-  return <div className="editor-rulers" data-unit={unit}><button type="button" className="ruler-corner" onClick={onToggle} aria-label={`Cambiar reglas a ${unit === "in" ? "centímetros" : "pulgadas"}`} title="Cambiar unidad de medida">{unit}</button><div className="horizontal-ruler" style={horizontalStyle} aria-hidden="true">{horizontalLabels.map((value) => <span key={value} style={{ left: `${(value / horizontalMax) * 100}%` }}>{value}</span>)}</div><div className="vertical-ruler" style={verticalStyle} aria-hidden="true">{verticalLabels.map((value) => <span key={value} style={{ top: `${(value / verticalMax) * 100}%` }}>{value}</span>)}</div><div className="measurement-page"><div className="margin-guides" aria-hidden="true"/>{children}</div></div>;
+  return <div className="editor-rulers" data-unit={unit}><button type="button" className="ruler-corner" onClick={onToggle} aria-label={`Change rulers to ${unit === "in" ? "centimeters" : "inches"}`} title="Change measurement unit">{unit}</button><div className="horizontal-ruler" style={horizontalStyle} aria-hidden="true">{horizontalLabels.map((value) => <span key={value} style={{ left: `${(value / horizontalMax) * 100}%` }}>{value}</span>)}</div><div className="vertical-ruler" style={verticalStyle} aria-hidden="true">{verticalLabels.map((value) => <span key={value} style={{ top: `${(value / verticalMax) * 100}%` }}>{value}</span>)}</div><div className="measurement-page"><div className="margin-guides" aria-hidden="true"/>{children}</div></div>;
 }
 
 function Block({ icon: Icon, label, onClick }: { icon: typeof FileText; label: string; onClick: () => void }) { return <button className="block-button" onClick={onClick}><Icon size={19}/><span>{label}</span></button>; }
@@ -910,7 +910,7 @@ async function requestExport(format: "docx" | "pdf", html: string, title: string
   });
   if (!response.ok) {
     const problem = await response.json().catch(() => ({})) as { error?: string };
-    throw new Error(problem.error || "No se pudo generar el archivo.");
+    throw new Error(problem.error || "The file could not be generated.");
   }
   return response.blob();
 }
@@ -947,7 +947,7 @@ function ExportDialog({ html, title, language, author, description, downloadHtml
       toast.success(format === "docx" ? "Word document downloaded" : "Accessible PDF descargado", { description: "Document structure, language, and metadata were preserved." });
       setOpen(false);
     } catch (problem) {
-      toast.error("Export failed", { description: problem instanceof Error ? problem.message : "Intente nuevamente." });
+      toast.error("Export failed", { description: problem instanceof Error ? problem.message : "Try again." });
     } finally { setExporting(""); }
   };
   return <Dialog open={open} onOpenChange={setOpen}><DialogTrigger asChild><Button variant="outline" className="publish-button"><Download size={16}/> Export</Button></DialogTrigger><DialogContent className="export-dialog"><DialogHeader><DialogTitle>Export Accessible Document</DialogTitle><DialogDescription>Download the content as Word, PDF, or HTML. The review identifies issues to correct before exporting.</DialogDescription></DialogHeader><div className={`export-summary ${warnings ? "has-warnings" : "ready"}`}><span>{warnings ? <AlertTriangle size={20}/> : <Check size={20}/>}</span><div><strong>{warnings ? `${warnings} accessibility recommendation${warnings === 1 ? "" : "s"}` : "Ready to export"}</strong><small>{warnings ? "You may export now, but correcting them first is recommended." : "The content passed the automated checks."}</small></div></div><div className="export-checks" aria-label="Accessibility results">{checks.map((check) => <ReviewItem key={check.text} ok={check.ok} text={check.text}/>)}</div><div className="export-options"><button onClick={() => exportDocument("docx")} disabled={Boolean(exporting)}><FileText/><span><strong>Microsoft Word</strong><small>.docx structured and editable</small></span>{exporting === "docx" ? <Loader2 className="spin"/> : <Download/>}</button><button onClick={() => exportDocument("pdf")} disabled={Boolean(exporting)}><FileText/><span><strong>Accessible PDF</strong><small>Tagged PDF/UA with language and metadata</small></span>{exporting === "pdf" ? <Loader2 className="spin"/> : <Download/>}</button><button onClick={() => { downloadHtml(); setOpen(false); }} disabled={Boolean(exporting)}><Code2/><span><strong>HTML Page</strong><small>Responsive and Blackboard Ultra compatible</small></span><Download/></button></div><p className="export-note"><Accessibility size={15}/> Automated review helps, but institutional documents should also be validated with Microsoft Accessibility Checker or Adobe Acrobat.</p></DialogContent></Dialog>;
@@ -1057,17 +1057,17 @@ function AdvancedToolsDialog({ command, replaceText }: { command: (name: string,
 
 function RubricDialog({ insertMarkup }: { insertMarkup: (markup: string) => void }) {
   const [open, setOpen] = useState(false);
-  const [title, setTitle] = useState("Rúbrica de evaluación");
+  const [title, setTitle] = useState("Assessment Rubric");
   const [criteria, setCriteria] = useState(4);
   const [levels, setLevels] = useState(4);
-  const [levelNames, setLevelNames] = useState("Excelente, Competente, En desarrollo, Inicial");
+  const [levelNames, setLevelNames] = useState("Exemplary, Proficient, Developing, Beginning");
   const create = () => {
     const safeCriteria = Math.min(12, Math.max(1, Number(criteria) || 1));
     const safeLevels = Math.min(6, Math.max(2, Number(levels) || 2));
     const provided = levelNames.split(",").map((value) => value.trim()).filter(Boolean);
     const defaultNames = ["Excelente", "Competente", "En desarrollo", "Inicial", "Insuficiente", "No evidenciado"];
     const names = Array.from({ length: safeLevels }, (_, index) => provided[index] || defaultNames[index] || `Nivel ${index + 1}`);
-    const safeTitle = escapeHtml(title.trim() || "Rúbrica de evaluación");
+    const safeTitle = escapeHtml(title.trim() || "Assessment Rubric");
     const headings = names.map((name) => `<th scope="col">${escapeHtml(name)}</th>`).join("");
     const rows = Array.from({ length: safeCriteria }, (_, criterionIndex) => {
       const cells = names.map((_, levelIndex) => `<td><strong>${safeLevels - levelIndex} pts</strong><br>Describa el desempeño esperado.</td>`).join("");
@@ -1076,7 +1076,7 @@ function RubricDialog({ insertMarkup }: { insertMarkup: (markup: string) => void
     insertMarkup(`<table class="rubric-table" data-table-style="grid" aria-label="${safeTitle}"><caption>${safeTitle}</caption><thead><tr><th scope="col">Criterio</th>${headings}</tr></thead><tbody>${rows}</tbody></table><p class="rubric-total"><strong>Puntuación máxima:</strong> ${safeCriteria * safeLevels} puntos</p>`);
     setOpen(false);
   };
-  return <Dialog open={open} onOpenChange={setOpen}><DialogTrigger asChild><Button variant="outline" className="rubric-trigger"><Table2 size={16}/> Create Rubric</Button></DialogTrigger><DialogContent className="rubric-dialog"><DialogHeader><DialogTitle>Accessible Rubric Generator</DialogTitle><DialogDescription>Creates a table with row and column headers compatible with Blackboard, HTML, Word, and PDF.</DialogDescription></DialogHeader><div className="rubric-fields"><label>Título<Input value={title} onChange={(event) => setTitle(event.target.value)}/></label><label>Criteria<Input type="number" min="1" max="12" value={criteria} onChange={(event) => setCriteria(Number(event.target.value))}/></label><label>Levels<Input type="number" min="2" max="6" value={levels} onChange={(event) => setLevels(Number(event.target.value))}/></label><label className="rubric-levels">Level names<Input value={levelNames} onChange={(event) => setLevelNames(event.target.value)} placeholder="Excelente, Competente, En desarrollo, Inicial"/><span>Separate level names with commas.</span></label></div><div className="apa-actions"><Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button><Button onClick={create}><Table2 size={16}/> Insert Rubric</Button></div></DialogContent></Dialog>;
+  return <Dialog open={open} onOpenChange={setOpen}><DialogTrigger asChild><Button variant="outline" className="rubric-trigger"><Table2 size={16}/> Create Rubric</Button></DialogTrigger><DialogContent className="rubric-dialog"><DialogHeader><DialogTitle>Accessible Rubric Generator</DialogTitle><DialogDescription>Creates a table with row and column headers compatible with Blackboard, HTML, Word, and PDF.</DialogDescription></DialogHeader><div className="rubric-fields"><label>Título<Input value={title} onChange={(event) => setTitle(event.target.value)}/></label><label>Criteria<Input type="number" min="1" max="12" value={criteria} onChange={(event) => setCriteria(Number(event.target.value))}/></label><label>Levels<Input type="number" min="2" max="6" value={levels} onChange={(event) => setLevels(Number(event.target.value))}/></label><label className="rubric-levels">Level names<Input value={levelNames} onChange={(event) => setLevelNames(event.target.value)} placeholder="Exemplary, Proficient, Developing, Beginning"/><span>Separate level names with commas.</span></label></div><div className="apa-actions"><Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button><Button onClick={create}><Table2 size={16}/> Insert Rubric</Button></div></DialogContent></Dialog>;
 }
 
 function TableDialog({ insertMarkup, block = false }: { insertMarkup: (markup: string) => void; block?: boolean }) {
@@ -1180,19 +1180,19 @@ function ContentDialog({ trigger, search, setSearch, files, insertFile, document
     setSavedUrls(next); setUrl(cleanUrl);
     localStorage.setItem("ultrapage-webdav-urls", JSON.stringify(next));
     localStorage.setItem("ultrapage-webdav-active", cleanUrl);
-    toast.success("Dirección WebDAV guardada");
+    toast.success("WebDAV address saved");
   };
   const removeUrl = () => {
     const next = savedUrls.filter((savedUrl) => savedUrl !== url);
     setSavedUrls(next); localStorage.setItem("ultrapage-webdav-urls", JSON.stringify(next));
-    changeUrl(""); toast.success("Dirección WebDAV eliminada");
+    changeUrl(""); toast.success("WebDAV address removed");
   };
   const connect = async (targetUrl = url) => {
     setLoading(true); setError("");
     try {
       const response = await fetch("/api/webdav", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "list", url: targetUrl, username, password }) });
       const data = await response.json() as { connected?: boolean; files?: RemoteFile[]; error?: string };
-      if (!response.ok) throw new Error(data.error || "No se pudo establecer la conexión.");
+      if (!response.ok) throw new Error(data.error || "The connection could not be established.");
       setUrl(targetUrl); setRemoteFiles(data.files || []); setConnected(true); toast.success("Content Collection conectado");
     } catch (problem) { setConnected(false); setError(problem instanceof Error ? problem.message : "No se pudo conectar."); }
     finally { setLoading(false); }
@@ -1208,9 +1208,9 @@ function ContentDialog({ trigger, search, setSearch, files, insertFile, document
     try {
       const response = await fetch("/api/webdav", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "read", url: file.href, username, password }) });
       const data = await response.json() as { content?: string; name?: string; error?: string };
-      if (!response.ok || typeof data.content !== "string") throw new Error(data.error || "No se pudo abrir el archivo.");
+      if (!response.ok || typeof data.content !== "string") throw new Error(data.error || "The file could not be opened.");
       openDocument(data.name || file.name, data.content); setRemoteName(data.name || file.name); setDialogOpen(false);
-    } catch (problem) { setError(problem instanceof Error ? problem.message : "No se pudo abrir el archivo."); }
+    } catch (problem) { setError(problem instanceof Error ? problem.message : "The file could not be opened."); }
     finally { setFileLoading(""); }
   };
   const downloadRemote = async (file: RemoteFile) => {
@@ -1223,7 +1223,7 @@ function ContentDialog({ trigger, search, setSearch, files, insertFile, document
         throw new Error(problem.error || "No se pudo descargar el archivo.");
       }
       downloadBlob(await response.blob(), file.name);
-      toast.success("Archivo descargado", { description: "Edítelo en su programa habitual y use “Subir archivo editado” para devolverlo a WebDAV." });
+      toast.success("File downloaded", { description: "Edit it in your usual application and use “Upload Edited File” to return it to WebDAV." });
     } catch (problem) { setError(problem instanceof Error ? problem.message : "No se pudo descargar el archivo."); }
     finally { setFileLoading(""); }
   };
@@ -1231,9 +1231,9 @@ function ContentDialog({ trigger, search, setSearch, files, insertFile, document
     if (!file || !connected) return;
     const allowed = /\.(html?|txt|docx|pdf|pptx|xlsx|png|jpe?g|gif|webp|svg)$/i.test(file.name);
     if (!allowed) { setError("Seleccione HTML, TXT, Word, PDF, PowerPoint, Excel o una imagen compatible."); return; }
-    if (file.size > 25 * 1024 * 1024) { setError("El archivo supera el límite de carga de 25 MB."); return; }
+    if (file.size > 25 * 1024 * 1024) { setError("The file exceeds the 25 MB upload limit."); return; }
     const exists = remoteFiles.some((remote) => remote.type !== "Carpeta" && remote.name.toLowerCase() === file.name.toLowerCase());
-    if (exists && !window.confirm(`${file.name} ya existe. ¿Desea reemplazarlo con la versión editada?`)) { if (uploadInput.current) uploadInput.current.value = ""; return; }
+    if (exists && !window.confirm(`${file.name} already exists. Replace it with the edited version?`)) { if (uploadInput.current) uploadInput.current.value = ""; return; }
     setFileLoading("upload"); setError("");
     try {
       const textFile = /\.(html?|txt)$/i.test(file.name);
@@ -1242,10 +1242,10 @@ function ContentDialog({ trigger, search, setSearch, files, insertFile, document
         : { action: "writeBinary", url, username, password, fileName: file.name, dataBase64: arrayBufferToBase64(await file.arrayBuffer()) };
       const response = await fetch("/api/webdav", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
       const data = await response.json() as { saved?: boolean; error?: string };
-      if (!response.ok || !data.saved) throw new Error(data.error || "No se pudo subir el archivo.");
-      toast.success(exists ? "Archivo reemplazado en WebDAV" : "Archivo subido a WebDAV", { description: file.name });
+      if (!response.ok || !data.saved) throw new Error(data.error || "The file could not be uploaded.");
+      toast.success(exists ? "Archivo reemplazado en WebDAV" : "File uploaded a WebDAV", { description: file.name });
       await connect(url);
-    } catch (problem) { setError(problem instanceof Error ? problem.message : "No se pudo subir el archivo."); }
+    } catch (problem) { setError(problem instanceof Error ? problem.message : "The file could not be uploaded."); }
     finally { setFileLoading(""); if (uploadInput.current) uploadInput.current.value = ""; }
   };
   const changeRemoteFormat = (format: "html" | "docx" | "pdf") => {
@@ -1262,13 +1262,13 @@ function ContentDialog({ trigger, search, setSearch, files, insertFile, document
       }
       const response = await fetch("/api/webdav", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
       const data = await response.json() as { saved?: boolean; error?: string };
-      if (!response.ok || !data.saved) throw new Error(data.error || "No se pudo guardar el archivo.");
+      if (!response.ok || !data.saved) throw new Error(data.error || "The file could not be saved.");
       toast.success("Archivo guardado en WebDAV", { description: remoteName }); await connect(url);
-    } catch (problem) { setError(problem instanceof Error ? problem.message : "No se pudo guardar el archivo."); }
+    } catch (problem) { setError(problem instanceof Error ? problem.message : "The file could not be saved."); }
     finally { setFileLoading(""); }
   };
   const shown = (connected ? remoteFiles : files.map((file) => ({ name: file.name, type: file.type, size: null, href: "" }))).filter((file) => file.name.toLowerCase().includes(search.toLowerCase()));
-  return <Dialog open={dialogOpen} onOpenChange={(open)=>{setDialogOpen(open);if(!open)setPassword("");}}><DialogTrigger asChild>{trigger as React.ReactElement}</DialogTrigger><DialogContent className="collection-dialog"><DialogHeader><DialogTitle>Content Collection</DialogTitle><DialogDescription>Abre y edita HTML/TXT directamente; descarga otros archivos y vuelve a subirlos después de editarlos.</DialogDescription></DialogHeader><input ref={uploadInput} className="sr-only" type="file" accept=".html,.htm,.txt,.docx,.pdf,.pptx,.xlsx,.png,.jpg,.jpeg,.gif,.webp,.svg" onChange={(event) => uploadEditedFile(event.target.files?.[0])} aria-label="Seleccionar archivo editado para subir a WebDAV"/><div className={`connection-card ${connected ? "connected" : ""}`}><div className="connection-heading"><span className="connection-icon">{connected ? <Check size={17}/> : <LockKeyhole size={17}/>}</span><span><strong>{connected ? "Conexión activa" : "Conexión segura WebDAV"}</strong><small>{connected ? `${remoteFiles.length} recursos disponibles` : "Puedes cambiar la dirección; las credenciales no se guardan"}</small></span></div>{savedUrls.length > 0 && <label>Direcciones guardadas<select className="webdav-select" value={savedUrls.includes(url) ? url : ""} onChange={(e)=>changeUrl(e.target.value)}><option value="">Seleccionar otra dirección…</option>{savedUrls.map((savedUrl)=><option key={savedUrl} value={savedUrl}>{savedUrl}</option>)}</select></label>}<label>Dirección WebDAV editable<Input value={url} onChange={(e)=>changeUrl(e.target.value)} placeholder="https://…/bbcswebdav/courses/…" /></label><div className="webdav-actions"><Button type="button" size="sm" variant="outline" onClick={saveUrl} disabled={!url.trim()}>Guardar dirección</Button><Button type="button" size="sm" variant="outline" onClick={()=>changeUrl("")}>Nueva dirección</Button>{savedUrls.includes(url) && <Button type="button" size="sm" variant="ghost" className="remove-webdav" onClick={removeUrl}>Eliminar guardada</Button>}</div><div className="credential-grid"><label>Usuario institucional<Input value={username} autoComplete="username" onChange={(e)=>setUsername(e.target.value)} /></label><label>Contraseña<Input type="password" value={password} autoComplete="current-password" onChange={(e)=>setPassword(e.target.value)} /></label></div>{error && <p className="connection-error" role="alert">{error}</p>}<Button onClick={()=>connect()} disabled={loading || !url || !username || !password}>{loading ? <Loader2 className="spin" size={16}/> : <PlugZap size={16}/>} {loading ? "Conectando…" : connected ? "Actualizar carpeta" : "Conectar con Blackboard"}</Button></div><div className="document-actions"><div className="local-file-actions"><Button type="button" variant="outline" onClick={newDocument}><FilePlus2 size={16}/> Crear archivo nuevo</Button><Button type="button" variant="outline" onClick={() => uploadInput.current?.click()} disabled={!connected || fileLoading === "upload"}>{fileLoading === "upload" ? <Loader2 className="spin" size={16}/> : <Upload size={16}/>} Subir archivo editado</Button></div><div className="remote-save"><select className="webdav-select format-select" value={remoteFormat} onChange={(e)=>changeRemoteFormat(e.target.value as "html" | "docx" | "pdf")} aria-label="Formato para guardar en WebDAV"><option value="html">HTML</option><option value="docx">Word (.docx)</option><option value="pdf">Accessible PDF</option></select><Input value={remoteName} onChange={(e)=>setRemoteName(e.target.value)} aria-label="Nombre del archivo para WebDAV"/><Button type="button" onClick={saveToWebDav} disabled={!connected || !password || fileLoading === "save"}>{fileLoading === "save" ? <Loader2 className="spin" size={16}/> : <Upload size={16}/>} Guardar en WebDAV</Button></div></div><div className="collection-status"><span className={connected ? "status-dot" : "status-dot demo"}/><span><strong>{connected ? "Carpeta WebDAV actual" : "Vista de demostración"}</strong><small>{connected ? url : "Conéctate para abrir archivos reales"}</small></span></div><div className="search-box"><Search size={17}/><Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar archivos y carpetas"/></div><div className="file-list">{shown.map((file) => { const image = /\.(png|jpe?g|gif|webp|svg)$/i.test(file.name); const editable = /\.(html?|txt)$/i.test(file.name); const folder = file.type === "Carpeta"; const Icon = folder ? Folder : image ? FileImage : FileText; return <div key={`${file.name}-${file.href}`} className="file-row webdav-file-row"><button className="file-main-action" onClick={() => connected ? openRemote(file) : insertFile(file.name, file.type)} disabled={fileLoading === file.href}><span className="file-icon">{fileLoading === file.href ? <Loader2 className="spin" size={19}/> : <Icon size={19}/>}</span><span className="file-name"><strong>{file.name}</strong><small>{folder ? "Abrir carpeta" : editable ? "Abrir y editar en UltraPage" : "Insertar enlace o recurso"}</small></span><span className="file-size">{file.size ? formatBytes(file.size) : ""}</span>{editable || folder ? <ChevronDown className="open-file-icon" size={17}/> : <Plus size={17}/>}</button>{connected && !folder && <button type="button" className="file-download-action" onClick={() => downloadRemote(file)} disabled={fileLoading === `download:${file.href}`} aria-label={`Descargar ${file.name}`} title="Descargar para editar">{fileLoading === `download:${file.href}` ? <Loader2 className="spin" size={16}/> : <Download size={16}/>}</button>}</div>})}</div><p className="demo-note">HTML, HTM y TXT se editan directamente. Para Word, PDF, PowerPoint, Excel o imágenes: descargue, edite con su programa y use “Subir archivo editado”. Si conserva el nombre, puede reemplazar la versión remota. La contraseña se elimina al cerrar.</p></DialogContent></Dialog>;
+  return <Dialog open={dialogOpen} onOpenChange={(open)=>{setDialogOpen(open);if(!open)setPassword("");}}><DialogTrigger asChild>{trigger as React.ReactElement}</DialogTrigger><DialogContent className="collection-dialog"><DialogHeader><DialogTitle>Content Collection</DialogTitle><DialogDescription>Open and edit HTML/TXT directly; download other files and upload them again after editing.</DialogDescription></DialogHeader><input ref={uploadInput} className="sr-only" type="file" accept=".html,.htm,.txt,.docx,.pdf,.pptx,.xlsx,.png,.jpg,.jpeg,.gif,.webp,.svg" onChange={(event) => uploadEditedFile(event.target.files?.[0])} aria-label="Select an edited file to upload to WebDAV"/><div className={`connection-card ${connected ? "connected" : ""}`}><div className="connection-heading"><span className="connection-icon">{connected ? <Check size={17}/> : <LockKeyhole size={17}/>}</span><span><strong>{connected ? "Active connection" : "Secure WebDAV connection"}</strong><small>{connected ? `${remoteFiles.length} resources available` : "You can change the address; credentials are not stored"}</small></span></div>{savedUrls.length > 0 && <label>Saved addresses<select className="webdav-select" value={savedUrls.includes(url) ? url : ""} onChange={(e)=>changeUrl(e.target.value)}><option value="">Select another address…</option>{savedUrls.map((savedUrl)=><option key={savedUrl} value={savedUrl}>{savedUrl}</option>)}</select></label>}<label>Editable WebDAV address<Input value={url} onChange={(e)=>changeUrl(e.target.value)} placeholder="https://…/bbcswebdav/courses/…" /></label><div className="webdav-actions"><Button type="button" size="sm" variant="outline" onClick={saveUrl} disabled={!url.trim()}>Save Address</Button><Button type="button" size="sm" variant="outline" onClick={()=>changeUrl("")}>New Address</Button>{savedUrls.includes(url) && <Button type="button" size="sm" variant="ghost" className="remove-webdav" onClick={removeUrl}>Remove Saved</Button>}</div><div className="credential-grid"><label>Institutional username<Input value={username} autoComplete="username" onChange={(e)=>setUsername(e.target.value)} /></label><label>Password<Input type="password" value={password} autoComplete="current-password" onChange={(e)=>setPassword(e.target.value)} /></label></div>{error && <p className="connection-error" role="alert">{error}</p>}<Button onClick={()=>connect()} disabled={loading || !url || !username || !password}>{loading ? <Loader2 className="spin" size={16}/> : <PlugZap size={16}/>} {loading ? "Connecting…" : connected ? "Refresh Folder" : "Connect to Blackboard"}</Button></div><div className="document-actions"><div className="local-file-actions"><Button type="button" variant="outline" onClick={newDocument}><FilePlus2 size={16}/> Create New File</Button><Button type="button" variant="outline" onClick={() => uploadInput.current?.click()} disabled={!connected || fileLoading === "upload"}>{fileLoading === "upload" ? <Loader2 className="spin" size={16}/> : <Upload size={16}/>} Upload Edited File</Button></div><div className="remote-save"><select className="webdav-select format-select" value={remoteFormat} onChange={(e)=>changeRemoteFormat(e.target.value as "html" | "docx" | "pdf")} aria-label="Format to save in WebDAV"><option value="html">HTML</option><option value="docx">Word (.docx)</option><option value="pdf">Accessible PDF</option></select><Input value={remoteName} onChange={(e)=>setRemoteName(e.target.value)} aria-label="WebDAV file name"/><Button type="button" onClick={saveToWebDav} disabled={!connected || !password || fileLoading === "save"}>{fileLoading === "save" ? <Loader2 className="spin" size={16}/> : <Upload size={16}/>} Save to WebDAV</Button></div></div><div className="collection-status"><span className={connected ? "status-dot" : "status-dot demo"}/><span><strong>{connected ? "Current WebDAV Folder" : "Demo View"}</strong><small>{connected ? url : "Connect to open real files"}</small></span></div><div className="search-box"><Search size={17}/><Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search files and folders"/></div><div className="file-list">{shown.map((file) => { const image = /\.(png|jpe?g|gif|webp|svg)$/i.test(file.name); const editable = /\.(html?|txt)$/i.test(file.name); const folder = file.type === "Carpeta"; const Icon = folder ? Folder : image ? FileImage : FileText; return <div key={`${file.name}-${file.href}`} className="file-row webdav-file-row"><button className="file-main-action" onClick={() => connected ? openRemote(file) : insertFile(file.name, file.type)} disabled={fileLoading === file.href}><span className="file-icon">{fileLoading === file.href ? <Loader2 className="spin" size={19}/> : <Icon size={19}/>}</span><span className="file-name"><strong>{file.name}</strong><small>{folder ? "Open folder" : editable ? "Open and edit in UltraPage" : "Insert link or resource"}</small></span><span className="file-size">{file.size ? formatBytes(file.size) : ""}</span>{editable || folder ? <ChevronDown className="open-file-icon" size={17}/> : <Plus size={17}/>}</button>{connected && !folder && <button type="button" className="file-download-action" onClick={() => downloadRemote(file)} disabled={fileLoading === `download:${file.href}`} aria-label={`Descargar ${file.name}`} title="Download for editing">{fileLoading === `download:${file.href}` ? <Loader2 className="spin" size={16}/> : <Download size={16}/>}</button>}</div>})}</div><p className="demo-note">HTML, HTM y TXT se editan directamente. Para Word, PDF, PowerPoint, Excel o imágenes: descargue, edite con su programa y use “Upload Edited File”. Si conserva el nombre, puede reemplazar la versión remota. The password is cleared when closed.</p></DialogContent></Dialog>;
 }
 
 function formatBytes(bytes: number) { if (bytes < 1024) return `${bytes} B`; if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`; return `${(bytes / 1024 / 1024).toFixed(1)} MB`; }
