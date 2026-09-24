@@ -591,7 +591,7 @@ export default function Home() {
               <LinkDialog insertLink={insertAccessibleLink}/>
               <ImageDialog insertImage={insertAccessibleImage}/>
               <EquationDialog insertEquation={insertAccessibleEquation}/>
-              <ContentDialog trigger={<button aria-label="Insertar desde Content Collection"><ImagePlus /></button>} search={search} setSearch={setSearch} files={filteredFiles} insertFile={insertFile} documentHtml={html} documentFileName={documentFileName} openDocument={openDocument} newDocument={newDocument}/>
+              <ContentDialog documentLanguage={documentLanguage} trigger={<button aria-label="Insertar desde Content Collection"><ImagePlus /></button>} search={search} setSearch={setSearch} files={filteredFiles} insertFile={insertFile} documentHtml={html} documentFileName={documentFileName} openDocument={openDocument} newDocument={newDocument}/>
               <AdvancedToolsDialog command={command} replaceText={replaceText}/>
             </div>}
           </div>
