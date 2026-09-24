@@ -48,3 +48,5 @@
 
 /* La vista previa replica el comportamiento responsivo del HTML exportado. */
 .page-canvas{overflow-wrap:break-word}.page-canvas a{overflow-wrap:anywhere}.page-canvas img,.page-canvas svg,.page-canvas video,.page-canvas canvas{max-width:100%;height:auto}.page-canvas table{display:block;max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}.page-canvas h1{font-size:clamp(27px,5vw,34px)}.page-canvas h2{font-size:clamp(21px,3.6vw,23px)}@media(max-width:600px){.page-canvas .lead{font-size:17px}.page-canvas .callout,.page-canvas blockquote{padding:14px 16px}.page-canvas table{font-size:14px}.page-canvas th,.page-canvas td{min-width:110px;padding:7px}}
+
+.properties-dialog{max-width:600px!important}.properties-grid{display:grid;gap:12px}.properties-grid label{display:flex;flex-direction:column;gap:6px;font-size:12px;font-weight:650;color:#4b5568}.properties-grid textarea{min-height:100px;resize:vertical}.properties-grid label span{align-self:flex-end;font-size:10px;font-weight:500;color:#7b8597}
