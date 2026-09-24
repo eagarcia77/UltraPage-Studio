@@ -51,5 +51,134 @@
       "assetCount": 1,
       "theme": "../ultrapage-native-theme.css"
     }
-  ]
+  ],
+  "syncedAt": "2026-09-24T18:23:25.280Z",
+  "lastSync": {
+    "completedAt": "2026-09-24T18:23:25.280Z",
+    "method": "direct-read-only-sync",
+    "sourceRepositoriesModified": false,
+    "checkedFiles": 23,
+    "updatedFiles": [
+      "public/native-tools/estiloapa/index.html",
+      "public/native-tools/txt-test-generator/index.html",
+      "public/native-tools/qti-blackboard/index.html"
+    ],
+    "sourceBlobs": [
+      {
+        "id": "estiloapa",
+        "path": "index.html",
+        "sha": "0e359d17e7aa69dcfd83f6d79bb8a3768e797ad2"
+      },
+      {
+        "id": "estiloapa",
+        "path": "styles.css",
+        "sha": "1e66af9c297c5893f89e63829b38c7a3701e005c"
+      },
+      {
+        "id": "estiloapa",
+        "path": "scrollbar-v31.css",
+        "sha": "8cf9d7dad0f39b05d7c7965e215c52ed82a3ec66"
+      },
+      {
+        "id": "estiloapa",
+        "path": "app.js",
+        "sha": "5efe46913e7805db40e31e8a089eb60aeb178b98"
+      },
+      {
+        "id": "estiloapa",
+        "path": "edit-stability-v348.js",
+        "sha": "6bae5a0397c727e9cbdd627d27b46d360b9b447e"
+      },
+      {
+        "id": "estiloapa",
+        "path": "enhancements.js",
+        "sha": "f2a9a8464c0337e7e2c6e6b627621c43a479c6cc"
+      },
+      {
+        "id": "estiloapa",
+        "path": "pdf-smart.js",
+        "sha": "48287a75180710aeb4dcb9eca04cf8ff06c7fc57"
+      },
+      {
+        "id": "estiloapa",
+        "path": "apa-table-v29.js",
+        "sha": "543ebd88b5281c489a95fd16b0ebba80e6515b7d"
+      },
+      {
+        "id": "estiloapa",
+        "path": "module-profile.js",
+        "sha": "a9eb8b0fba3fd8c2dc50cac5ba4da5cbde65f67e"
+      },
+      {
+        "id": "estiloapa",
+        "path": "thesis-profile.js",
+        "sha": "0eb3e3c620b427f012f6830fb02c75e23a55bf83"
+      },
+      {
+        "id": "estiloapa",
+        "path": "thesis-alignment.js",
+        "sha": "d6240d1e8d9c4d0a514cf787abbc1aaa98cd3976"
+      },
+      {
+        "id": "estiloapa",
+        "path": "apa-editor-v30.js",
+        "sha": "157626b6a0088044fb0a39e0b77ef430ece2f6f3"
+      },
+      {
+        "id": "estiloapa",
+        "path": "list-normalizer-v31.js",
+        "sha": "becf6031b778d811ca6682733c2537a3746e2b1e"
+      },
+      {
+        "id": "estiloapa",
+        "path": "table-figure-v32.js",
+        "sha": "23afefa27903390ad95aaf200fd46900ac6794a7"
+      },
+      {
+        "id": "estiloapa",
+        "path": "pdf-original-media-v33.js",
+        "sha": "d98404e1df3d3f59e12ca0599dfea1c22e698134"
+      },
+      {
+        "id": "estiloapa",
+        "path": "reference-audit-v30.js",
+        "sha": "f5ca6fa877e729705a60ebccc9a2a986d2670f73"
+      },
+      {
+        "id": "estiloapa",
+        "path": "apa-editor-export-v30.js",
+        "sha": "9b01f673c211fe5f9ba701a2dc8b668c4507cf9a"
+      },
+      {
+        "id": "estiloapa",
+        "path": "thesis-html.js",
+        "sha": "42b1b86021953a1ceab43b30e106f8849ae71578"
+      },
+      {
+        "id": "estiloapa",
+        "path": "thesis-docx.js",
+        "sha": "bb662b5ae507903d49956f4d575efd7bc111c174"
+      },
+      {
+        "id": "estiloapa",
+        "path": "html-enhance.js",
+        "sha": "14796e8013db2b66ff165418446adbc0ddf95984"
+      },
+      {
+        "id": "estiloapa",
+        "path": "docx-enhance.js",
+        "sha": "86154081ed0b2775a23ffd850aa0deac517deef0"
+      },
+      {
+        "id": "txt-test-generator",
+        "path": "index_generator.html",
+        "sha": "7712dff3a758bf5fcbde60a3ead4246589b1f14c"
+      },
+      {
+        "id": "qti-blackboard",
+        "path": "QTI21_BlackboardV3.html",
+        "sha": "359c3534601a1fff9aeeac6050a3865249be1cf5"
+      }
+    ]
+  }
 }
