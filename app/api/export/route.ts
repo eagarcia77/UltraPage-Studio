@@ -7,6 +7,7 @@ import {
   Document,
   ExternalHyperlink,
   HeadingLevel,
+  ImageRun,
   LevelFormat,
   Packer,
   Paragraph,
@@ -33,7 +34,54 @@ type ExportRequest = {
   description?: string;
 };
 
-const MAX_HTML_LENGTH = 5 * 1024 * 1024;
+const MAX_HTML_LENGTH = 24 * 1024 * 1024;
+const MAX_EMBEDDED_IMAGE_BYTES = 10 * 1024 * 1024;
+
+type EmbeddedImage = {
+  data: Buffer;
+  type: "png" | "jpg";
+  width: number;
+  height: number;
+};
+
+function pngDimensions(data: Buffer) {
+  if (data.length < 24 || data.toString("hex", 0, 8) !== "89504e470d0a1a0a") return null;
+  return { width: data.readUInt32BE(16), height: data.readUInt32BE(20) };
+}
+
+function jpegDimensions(data: Buffer) {
+  if (data.length < 4 || data[0] !== 0xff || data[1] !== 0xd8) return null;
+  let offset = 2;
+  while (offset + 9 < data.length) {
+    if (data[offset] !== 0xff) { offset += 1; continue; }
+    const marker = data[offset + 1];
+    if (marker === 0xd8 || marker === 0xd9 || marker === 0x01) { offset += 2; continue; }
+    if (offset + 4 > data.length) break;
+    const segmentLength = data.readUInt16BE(offset + 2);
+    if (segmentLength < 2 || offset + 2 + segmentLength > data.length) break;
+    if ((marker >= 0xc0 && marker <= 0xc3) || (marker >= 0xc5 && marker <= 0xc7) || (marker >= 0xc9 && marker <= 0xcb) || (marker >= 0xcd && marker <= 0xcf)) {
+      return { height: data.readUInt16BE(offset + 5), width: data.readUInt16BE(offset + 7) };
+    }
+    offset += 2 + segmentLength;
+  }
+  return null;
+}
+
+function embeddedImage(source: string): EmbeddedImage | null {
+  const match = source.match(/^data:image\/(png|jpe?g);base64,([a-z0-9+/=\s]+)$/i);
+  if (!match) return null;
+  const data = Buffer.from(match[2].replace(/\s/g, ""), "base64");
+  if (!data.length || data.length > MAX_EMBEDDED_IMAGE_BYTES) return null;
+  const type = match[1].toLowerCase() === "png" ? "png" : "jpg";
+  const dimensions = type === "png" ? pngDimensions(data) : jpegDimensions(data);
+  if (!dimensions || dimensions.width < 1 || dimensions.height < 1 || dimensions.width > 30000 || dimensions.height > 30000) return null;
+  return { data, type, ...dimensions };
+}
+
+function fittedSize(image: EmbeddedImage, maxWidth: number, maxHeight: number) {
+  const scale = Math.min(maxWidth / image.width, maxHeight / image.height, 1);
+  return { width: Math.max(1, Math.round(image.width * scale)), height: Math.max(1, Math.round(image.height * scale)) };
+}
 
 function cleanText(value: string) {
   return value.replace(/\s+/g, " ").trim();
@@ -155,12 +203,27 @@ function docxBlocks(html: string, language: string) {
       }));
       return;
     }
-    if (tag === "figure") {
-      const img = $(element).find("img").first();
+    if (tag === "figure" || tag === "img") {
+      const img = tag === "img" ? $(element) : $(element).find("img").first();
       const alt = cleanText(img.attr("alt") || "");
       const caption = cleanText($(element).find("figcaption").text());
-      if (alt) blocks.push(new Paragraph({ children: [new TextRun({ text: `[Imagen: ${alt}]`, italics: true, language: { value: language } })], spacing: { after: 80 } }));
-      if (caption) blocks.push(new Paragraph({ children: [new TextRun({ text: caption, italics: true, language: { value: language } })], spacing: { after: 160 } }));
+      const image = embeddedImage(img.attr("src") || "");
+      if (image) {
+        const size = fittedSize(image, 540, 620);
+        blocks.push(new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [new ImageRun({
+            data: image.data,
+            type: image.type,
+            transformation: size,
+            altText: { name: alt || caption || "Imagen", title: caption || alt || "Imagen", description: alt || caption || "Imagen incorporada en el documento" },
+          })],
+          spacing: { after: caption ? 80 : 160 },
+        }));
+      } else if (alt) {
+        blocks.push(new Paragraph({ children: [new TextRun({ text: `[Imagen: ${alt}]`, italics: true, language: { value: language } })], spacing: { after: 80 } }));
+      }
+      if (caption) blocks.push(new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: caption, italics: true, language: { value: language } })], spacing: { after: 160 } }));
       return;
     }
     const text = cleanText($(element).text());
@@ -251,7 +314,7 @@ function createPdf(html: string, title: string, author: string, language: string
       const classes = new Set((element.attribs?.class || "").split(/\s+/).filter(Boolean));
       if (classes.has("ultrapage-watermark")) return;
       const text = cleanText($(element).text());
-      if (!text && tag !== "figure") return;
+      if (!text && tag !== "figure" && tag !== "img") return;
       ensureSpace(tag === "table" ? 140 : 70);
       if (/^h[1-6]$/.test(tag)) {
         const level = Number(tag[1]);
@@ -298,13 +361,27 @@ function createPdf(html: string, title: string, author: string, language: string
         })));
         if (data.length) pdf.table({ data, maxWidth: bodyWidth, defaultStyle: { border: tableStyle === "apa7" ? { top: 0.75, bottom: 0.75, left: 0, right: 0 } : 0.5, borderColor: tableStyle === "apa7" ? "#222222" : "#6B7280" } });
         pdf.moveDown(0.6);
-      } else if (tag === "figure") {
-        const alt = cleanText($(element).find("img").attr("alt") || "");
+      } else if (tag === "figure" || tag === "img") {
+        const img = tag === "img" ? $(element) : $(element).find("img").first();
+        const alt = cleanText(img.attr("alt") || "");
         const caption = cleanText($(element).find("figcaption").text());
         const description = [alt ? `Imagen: ${alt}` : "Imagen sin texto alternativo", caption].filter(Boolean).join(". ");
-        const figure = pdf.struct("Figure", { alt: description, lang: "es-PR" });
+        const image = embeddedImage(img.attr("src") || "");
+        const figure = pdf.struct("Figure", { alt: description, lang: language });
         root.add(figure);
-        pdf.font("AccessibleSans").fontSize(10).fillColor("#4B5563").text(description, { width: bodyWidth, paragraphGap: 8, structParent: figure, structType: "Caption" });
+        if (image) {
+          const size = fittedSize(image, bodyWidth, 430);
+          ensureSpace(size.height + (caption ? 36 : 16));
+          const imageX = pdf.page.margins.left + (bodyWidth - size.width) / 2;
+          const imageY = pdf.y;
+          figure.add(() => pdf.image(image.data, imageX, imageY, { width: size.width, height: size.height }));
+          pdf.x = pdf.page.margins.left;
+          pdf.y = imageY + size.height + 6;
+          if (caption) pdf.font("AccessibleSans").fontSize(9.5).fillColor("#4B5563").text(caption, { width: bodyWidth, align: "center", paragraphGap: 8, structParent: figure, structType: "Caption" });
+          else pdf.moveDown(0.5);
+        } else {
+          pdf.font("AccessibleSans").fontSize(10).fillColor("#4B5563").text(description, { width: bodyWidth, paragraphGap: 8, structParent: figure, structType: "Caption" });
+        }
       } else {
         const apaReference = classes.has("apa-reference");
         pdf.font("AccessibleSans").fontSize(11).fillColor(tag === "blockquote" ? "#555E70" : "#222222").text(text, { width: bodyWidth - (apaReference ? 24 : 0), align: "left", lineGap: 3, paragraphGap: 8, indent: tag === "blockquote" || apaReference ? 24 : 0, structParent: root, structType: "P" });
