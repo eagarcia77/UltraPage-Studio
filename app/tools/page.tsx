@@ -38,8 +38,8 @@ const tools: Array<{ id: ToolId; name: string; description: string; compatibilit
   {
     id: "txt",
     name: "TXT Test Generator",
-    description: "Convert and verify questions for Blackboard Ultra TXT import.",
-    compatibility: "Blackboard Ultra TXT only",
+    description: "Convert and verify questions for Blackboard Ultra TXT or Moodle GIFT import.",
+    compatibility: "Blackboard Ultra TXT + Moodle GIFT",
     source: "/native-tools/txt-test-generator/index.html",
     icon: FileQuestion,
     original: "https://eagarcia77.github.io/CTEL-SG/index_generator.html",

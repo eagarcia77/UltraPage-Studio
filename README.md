@@ -26,7 +26,7 @@ Editor visual para crear contenido accesible y portátil entre Blackboard Ultra,
 - Guardado de HTML, Word y PDF directamente en Blackboard Content Collection mediante WebDAV.
 - Revisión previa de título, encabezados, texto alternativo, enlaces descriptivos y tablas.
 - Copia de HTML adaptada al LMS seleccionado y perfil universal conservador para otras plataformas.
-- Herramientas de evaluación identificadas por alcance: TXT y QTI incluidos están verificados específicamente para Blackboard Ultra.
+- Herramientas de evaluación identificadas por alcance: TXT Test Generator exporta Blackboard Ultra TXT y Moodle GIFT; QTI 2.1 conserva su perfil específico para Blackboard Ultra.
 
 ## Desarrollo local
 

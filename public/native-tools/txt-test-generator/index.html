@@ -8,7 +8,7 @@
     <!-- <p>Developing Postbacc and Postgrad Curriculum Program</p> -->
     <!-- <p>University Center for Advancing and Nurturing Postbacc Quality (UCAN)</p> -->
     <!-- <p>Title V PPOHA #P031M230038</p> -->
-    <title>Convertidor a Blackboard Ultra TXT</title>
+    <title>Assessment Converter | UltraPage Studio</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
 
       rel="stylesheet">
@@ -120,16 +120,15 @@
 </nav>
     <header class="hero">
       <div class="container">
-        <h1><img style="width: 114px; height: 114px;" alt="Logo UCAN" src="img/ucan-logo.png">Convertir
-          exámenes a formato de Blackboard Ultra</h1>
-        <p class="mb-0">Convierte preguntas escritas en formato legible a líneas
-          TXT compatibles con Blackboard Ultra.</p>
+        <h1><img style="width: 114px; height: 114px;" alt="Logo UCAN" src="img/ucan-logo.png">Assessment
+          Converter</h1>
+        <p class="mb-0">Converts readable question banks to Blackboard Ultra TXT or Moodle GIFT.</p>
         <p class="mb-0"><br>
         </p>
         <p class="mb-0"><span><a target="_blank" title="Guide Blackboard Test Generator"
 
-              href="Guía_Generador_Exámenes_Blackboard_Ultra_Simplificada.pdf">Descargar
-              Guía del Convertidor</a></span></p>
+              href="Guía_Generador_Exámenes_Blackboard_Ultra_Simplificada.pdf">Download
+              converter guide</a></span></p>
       </div>
     </header>
     <main class="container py-4">
@@ -137,25 +136,29 @@
         <div class="col-12">
           <div class="card overflow-hidden">
             <div class="section-title d-flex justify-content-between align-items-center flex-wrap gap-2">
-              <span>Formato que acepta</span><button class="btn btn-light btn-sm"
+              <span>Accepted input</span><button class="btn btn-light btn-sm"
 
-                data-bs-toggle="modal" data-bs-target="#helpModal">Ver ejemplos</button>
+                data-bs-toggle="modal" data-bs-target="#helpModal">View examples</button>
             </div>
             <div class="card-body">
               <div class="row g-3">
                 <div class="col-lg-6">
-                  <div class="panel">Ejemplo Multiple Choice: 1. Which of the
-                    following is a prime number? a) 4 *b) 5 c) 6 Salida: MC
+                  <div class="panel">Multiple choice example: 1. Which of the
+                    following is a prime number? a) 4 *b) 5 c) 6 Output: MC
                     Which of the following is a prime number? 5 correct 4
                     incorrect 6 incorrect</div>
                 </div>
                 <div class="col-lg-6">
-                  <div class="panel"><strong>Tipos documentados para la carga TXT de Ultra:</strong>
+                  <div class="panel"><strong>Blackboard Ultra TXT:</strong>
                     <code class="inline-sample">MC</code>, <code class="inline-sample">MA</code>,
                     <code class="inline-sample">TF</code>, <code class="inline-sample">ESS</code>,
                     <code class="inline-sample">MAT</code>, <code class="inline-sample">FIB</code>,
-                    <code class="inline-sample">FIB_PLUS</code> y <code class="inline-sample">NUM</code>.
-                    La herramienta bloquea tipos heredados que podrían fallar en Ultra.</div>
+                    <code class="inline-sample">FIB_PLUS</code> and <code class="inline-sample">NUM</code>.
+                    <br><strong>Moodle GIFT:</strong> <code class="inline-sample">MC</code>,
+                    <code class="inline-sample">MA</code>, <code class="inline-sample">TF</code>,
+                    <code class="inline-sample">ESS</code>, <code class="inline-sample">MAT</code>,
+                    <code class="inline-sample">FIB</code>, <code class="inline-sample">NUM</code>,
+                    and <code class="inline-sample">SR</code>. Unsupported legacy types are blocked before download.</div>
                 </div>
               </div>
             </div>
@@ -163,76 +166,83 @@
         </div>
         <div class="col-md-4">
           <div class="stat">
-            <div class="text-muted small">Preguntas detectadas</div>
+            <div class="text-muted small">Questions detected</div>
             <div class="n" id="questionCount">0</div>
           </div>
         </div>
         <div class="col-md-4">
           <div class="stat">
-            <div class="text-muted small">Errores</div>
+            <div class="text-muted small">Errors</div>
             <div class="n text-danger" id="errorCount">0</div>
           </div>
         </div>
         <div class="col-md-4">
           <div class="stat">
-            <div class="text-muted small">Estado</div>
-            <div class="n text-primary" id="statusLabel">Listo</div>
+            <div class="text-muted small">Status</div>
+            <div class="n text-primary" id="statusLabel">Ready</div>
           </div>
         </div>
         <div class="col-lg-7">
           <div class="card overflow-hidden">
-            <div class="section-title">Entrada</div>
+            <div class="section-title">Input</div>
             <div class="card-body">
               <div class="row g-3 mb-3">
-                <div class="col-md-7"> <label class="form-label fw-semibold" for="quizName">Nombre
-                    del archivo</label> <input class="form-control" id="quizName"
+                <div class="col-md-4"> <label class="form-label fw-semibold" for="quizName">File
+                    name</label> <input class="form-control" id="quizName"
 
                     placeholder="Banco_Preguntas_Ultra" type="text"> </div>
-                <div class="col-md-5"> <label class="form-label fw-semibold" for="templateType">Insertar
-                    plantilla</label>
+                <div class="col-md-4"> <label class="form-label fw-semibold" for="targetFormat">Target LMS</label>
+                  <select class="form-select" id="targetFormat">
+                    <option value="blackboard">Blackboard Ultra TXT</option>
+                    <option value="moodle">Moodle GIFT</option>
+                  </select>
+                </div>
+                <div class="col-md-4"> <label class="form-label fw-semibold" for="templateType">Insert
+                    template</label>
                   <select class="form-select" id="templateType">
-                    <option value="MC">Opción múltiple</option>
-                    <option value="MA">Varias respuestas</option>
-                    <option value="TF">Cierto / Falso</option>
-                    <option value="ESS">Ensayo</option>
-                    <option value="FIB">Llenar blanco</option>
-                    <option value="MAT">Pareo</option>
-                    <option value="FIB_PLUS">Llenar blancos con opciones</option>
-                    <option value="NUM">Respuesta numérica</option>
+                    <option value="MC">Multiple choice</option>
+                    <option value="MA">Multiple answer</option>
+                    <option value="TF">True / False</option>
+                    <option value="ESS">Essay</option>
+                    <option value="FIB">Fill in the blank</option>
+                    <option value="MAT">Matching</option>
+                    <option value="FIB_PLUS">Fill in multiple blanks</option>
+                    <option value="NUM">Numeric answer</option>
+                    <option value="SR">Short answer (Moodle GIFT)</option>
                   </select>
                 </div>
               </div>
-              <textarea id="quizContent" class="form-control" placeholder="Pegue aquí sus preguntas, separando cada una con una línea en blanco."></textarea>
+              <textarea id="quizContent" class="form-control" placeholder="Paste questions here, separating each one with a blank line."></textarea>
               <div class="d-flex flex-wrap gap-2 mt-3"> <button class="btn btn-primary"
 
-                  id="sampleBtn">Insertar plantilla</button> <button class="btn btn-outline-primary"
+                  id="sampleBtn">Insert template</button> <button class="btn btn-outline-primary"
 
-                  id="verifyBtn">Verificar</button> <button class="btn btn-success"
+                  id="verifyBtn">Verify</button> <button class="btn btn-success"
 
-                  id="convertBtn">Convertir</button> <button class="btn btn-success"
+                  id="convertBtn">Convert</button> <button class="btn btn-success"
 
-                  id="downloadBtn">Descargar TXT</button> <button class="btn btn-outline-secondary"
+                  id="downloadBtn">Download TXT</button> <button class="btn btn-outline-secondary"
 
-                  id="copyBtn">Copiar TXT</button> <button class="btn btn-outline-danger"
+                  id="copyBtn">Copy output</button> <button class="btn btn-outline-danger"
 
-                  id="clearBtn">Limpiar</button> </div>
-              <div class="form-text mt-2">Cada pregunta debe ir en un bloque separado por una línea en blanco. Blackboard recomienda un máximo de 250 registros por archivo. La salida elimina esas líneas en blanco y conserva una pregunta por fila. <a href="https://help.anthology.com/blackboard/instructor/en/assessments/questions/reuse-questions/upload-or-import-questions.html" target="_blank" rel="noopener noreferrer">Ver especificación oficial</a>.</div>
+                  id="clearBtn">Clear</button> </div>
+              <div class="form-text mt-2" id="formatHelp">Each question must be a separate block. Blackboard recommends no more than 250 records per file. <a href="https://help.anthology.com/blackboard/instructor/en/assessments/questions/reuse-questions/upload-or-import-questions.html" target="_blank" rel="noopener noreferrer">Official Blackboard specification</a>.</div>
             </div>
           </div>
         </div>
         <div class="col-lg-5">
           <div class="card overflow-hidden h-100">
-            <div class="section-title">Resultado de validación</div>
+            <div class="section-title">Validation result</div>
             <div class="card-body">
-              <div class="preview" id="resultBox">Todavía no se ha procesado contenido.</div>
+              <div class="preview" id="resultBox">No content has been processed yet.</div>
             </div>
           </div>
         </div>
         <div class="col-12">
           <div class="card overflow-hidden">
-            <div class="section-title">Vista previa del TXT de Blackboard Ultra</div>
+            <div class="section-title" id="previewTitle">Blackboard Ultra TXT preview</div>
             <div class="card-body">
-              <div class="preview" id="previewBox">Aquí aparecerá el contenido convertido.</div>
+              <div class="preview" id="previewBox">Converted content will appear here.</div>
             </div>
           </div>
         </div>
@@ -299,14 +309,19 @@ numeric 1. What is 2 + 2?
     <script>
     const quizContentEl = document.getElementById('quizContent');
     const templateTypeEl = document.getElementById('templateType');
+    const targetFormatEl = document.getElementById('targetFormat');
     const quizNameEl = document.getElementById('quizName');
     const resultBoxEl = document.getElementById('resultBox');
     const previewBoxEl = document.getElementById('previewBox');
     const questionCountEl = document.getElementById('questionCount');
     const errorCountEl = document.getElementById('errorCount');
     const statusLabelEl = document.getElementById('statusLabel');
+    const formatHelpEl = document.getElementById('formatHelp');
+    const previewTitleEl = document.getElementById('previewTitle');
+    const downloadBtnEl = document.getElementById('downloadBtn');
     const MAX_RECORDS = 250;
-    const LEGACY_TYPES = ['ORD', 'FIL', 'SR', 'OP', 'JUMBLED_SENTENCE', 'QUIZ_BOWL'];
+    const BLACKBOARD_UNSUPPORTED_TYPES = ['ORD', 'FIL', 'SR', 'OP', 'JUMBLED_SENTENCE', 'QUIZ_BOWL'];
+    const MOODLE_GIFT_TYPES = ['MC', 'MA', 'TF', 'ESS', 'FIB', 'MAT', 'NUM', 'SR'];
 
     const templates = {
       MC: `1. Which of the following is a prime number?\na) 4\n*b) 5\nc) 6`,
@@ -316,7 +331,8 @@ numeric 1. What is 2 + 2?
       FIB: `blank 1. Two plus two equals _____.\na. four\nb. 4`,
       MAT: `match 6. Match the chapters with their topics.\na) Chapter 13/Exception Handling\nb) Chapter 16/File Processing\nc) Chapter 10/OOP & Classes`,
       FIB_PLUS: `fib_plus 1. Complete the sentence.\nblank1 = Paris | París\nblank2 = France | Francia`,
-      NUM: `numeric 1. What is 2 + 2?\n4 | 0`
+      NUM: `numeric 1. What is 2 + 2?\n4 | 0`,
+      SR: `short 1. Name the capital of Puerto Rico.\nSan Juan`
     };
 
     const optionLineRegex = /^\*?[a-zA-Z][.)]\s*(.+)$/;
@@ -423,88 +439,92 @@ numeric 1. What is 2 + 2?
       const type = detectType(lines);
 
       if (!type) {
-        return { errors: [`Bloque ${index + 1}: no se pudo identificar el tipo de pregunta.`] };
-      }
-
-      if (LEGACY_TYPES.includes(type)) {
-        return { errors: [`Bloque ${index + 1}: ${type} no aparece entre los tipos admitidos actualmente para carga TXT en Blackboard Ultra. Convierta la pregunta a MC, MA, TF, ESS, MAT, FIB, FIB_PLUS o NUM.`] };
+        return { errors: [`Block ${index + 1}: The question type could not be identified.`] };
       }
 
       const firstLine = lines[0];
       const question = stripQuestionText(firstLine);
       const rest = lines.slice(1);
       let output = [];
+      let data = {};
 
       if (!question) {
-        errors.push(`Bloque ${index + 1}: no se encontró el texto de la pregunta.`);
+        errors.push(`Block ${index + 1}: The question text is missing.`);
       }
 
       if (type === 'MC' || type === 'MA') {
         const options = rest.filter(Boolean).map(parseOptionText).filter(opt => opt.text);
         const labelledCount = rest.filter(line => optionLineRegex.test(line)).length;
-        if (labelledCount < 2) errors.push(`Bloque ${index + 1}: faltan alternativas válidas.`);
+        if (labelledCount < 2) errors.push(`Block ${index + 1}: At least two labeled choices are required.`);
         const correct = options.filter(opt => opt.correct);
         const incorrect = options.filter(opt => !opt.correct);
-        if (!correct.length) errors.push(`Bloque ${index + 1}: debe marcar al menos una respuesta con *.`);
-        if (type === 'MC' && correct.length !== 1) errors.push(`Bloque ${index + 1}: Opción múltiple requiere exactamente una respuesta correcta.`);
-        if (type === 'MA' && correct.length < 2) errors.push(`Bloque ${index + 1}: Varias respuestas requiere dos o más respuestas correctas.`);
+        if (!correct.length) errors.push(`Block ${index + 1}: Mark at least one correct answer with *.`);
+        if (type === 'MC' && correct.length !== 1) errors.push(`Block ${index + 1}: Multiple choice requires exactly one correct answer.`);
+        if (type === 'MA' && correct.length < 2) errors.push(`Block ${index + 1}: Multiple answer requires two or more correct answers.`);
         const ordered = [...correct, ...incorrect];
+        data = { options };
         output = [type, question];
         ordered.forEach(item => output.push(item.text, item.correct ? 'correct' : 'incorrect'));
       }
 
       if (type === 'TF') {
-        if (!rest.length) errors.push(`Bloque ${index + 1}: True/False requiere una línea con True o False.`);
+        if (!rest.length) errors.push(`Block ${index + 1}: True/False requires a line containing True or False.`);
         let value = (rest[0] || '').replace(/^\*/, '').trim().toLowerCase();
         if (value === 'verdadero') value = 'true';
         if (value === 'falso') value = 'false';
-        if (!['true', 'false'].includes(value)) errors.push(`Bloque ${index + 1}: use True o False.`);
+        if (!['true', 'false'].includes(value)) errors.push(`Block ${index + 1}: Use True or False.`);
+        data = { value };
         output = ['TF', question, value];
       }
 
       if (type === 'ESS') {
+        data = {};
         output = ['ESS', question, '[ejemplo]'];
       }
 
       if (type === 'FIB') {
         const answers = rest.map(parseOptionText).map(item => item.text).filter(Boolean);
-        if (!answers.length) errors.push(`Bloque ${index + 1}: blank requiere al menos una respuesta.`);
+        if (!answers.length) errors.push(`Block ${index + 1}: Fill in the blank requires at least one answer.`);
+        data = { answers };
         output = ['FIB', question, ...answers];
       }
 
       if (type === 'MAT') {
         const fields = ['MAT', question];
-        if (!rest.length) errors.push(`Bloque ${index + 1}: match requiere pares.`);
+        const pairs = [];
+        if (!rest.length) errors.push(`Block ${index + 1}: Matching requires answer pairs.`);
         rest.forEach((line, i) => {
           const pair = parseMatchPair(line);
           if (!pair || !pair[0] || !pair[1]) {
-            errors.push(`Bloque ${index + 1}, línea ${i + 1}: use formato término/correspondencia.`);
+            errors.push(`Block ${index + 1}, line ${i + 1}: Use term/match format.`);
           } else {
             fields.push(pair[0], pair[1]);
+            pairs.push(pair);
           }
         });
+        data = { pairs };
         output = fields;
       }
 
       if (type === 'ORD') {
         const items = rest.map(parseOptionText).map(item => item.text).filter(Boolean);
-        if (items.length < 2) errors.push(`Bloque ${index + 1}: order requiere dos o más elementos.`);
+        if (items.length < 2) errors.push(`Block ${index + 1}: Ordering requires two or more items.`);
         output = ['ORD', question, ...items];
       }
 
       if (type === 'FIB_PLUS') {
         const fields = ['FIB_PLUS', question];
-        if (!rest.length) errors.push(`Bloque ${index + 1}: fib_plus requiere variables y respuestas.`);
+        if (!rest.length) errors.push(`Block ${index + 1}: Fill in multiple blanks requires variables and answers.`);
         rest.forEach((line, i) => {
           const raw = parseOptionText(line).text;
           const [variablePart, answersPart] = raw.split(/\s*=\s*/);
           if (!variablePart || !answersPart) {
-            errors.push(`Bloque ${index + 1}, línea ${i + 1}: use variable = respuesta1 | respuesta2.`);
+            errors.push(`Block ${index + 1}, line ${i + 1}: Use variable = answer1 | answer2.`);
             return;
           }
           const answers = answersPart.split('|').map(x => x.trim()).filter(Boolean);
           if (!answers.length) {
-            errors.push(`Bloque ${index + 1}, línea ${i + 1}: faltan respuestas.`);
+            errors.push(`Block ${index + 1}, line ${i + 1}: Answers are missing.`);
             return;
           }
           fields.push(variablePart.trim(), ...answers);
@@ -518,16 +538,18 @@ numeric 1. What is 2 + 2?
       }
 
       if (type === 'NUM') {
-        if (!rest.length) errors.push(`Bloque ${index + 1}: numeric requiere respuesta y tolerancia opcional.`);
+        if (!rest.length) errors.push(`Block ${index + 1}: Numeric requires an answer and optional tolerance.`);
         const raw = parseOptionText(rest[0] || '').text;
         const parts = raw.split('|').map(x => x.trim()).filter(Boolean);
-        if (!parts.length) errors.push(`Bloque ${index + 1}: falta la respuesta numérica.`);
+        if (!parts.length) errors.push(`Block ${index + 1}: The numeric answer is missing.`);
+        data = { answer: parts[0] || '', tolerance: parts[1] || '' };
         output = ['NUM', question, ...parts];
       }
 
       if (type === 'SR') {
         const answer = parseOptionText(rest[0] || '').text;
-        if (!answer) errors.push(`Bloque ${index + 1}: short requiere una respuesta ejemplo.`);
+        if (!answer) errors.push(`Block ${index + 1}: Short answer requires at least one accepted answer.`);
+        data = { answers: answer ? [answer] : [] };
         output = ['SR', question, answer];
       }
 
@@ -537,7 +559,7 @@ numeric 1. What is 2 + 2?
 
       if (type === 'JUMBLED_SENTENCE') {
         const fields = ['JUMBLED_SENTENCE', question];
-        if (!rest.length) errors.push(`Bloque ${index + 1}: jumbled sentence requiere opciones.`);
+        if (!rest.length) errors.push(`Block ${index + 1}: Jumbled sentence requires choices.`);
         rest.forEach(line => {
           const raw = parseOptionText(line).text;
           if (raw.includes('=')) {
@@ -552,23 +574,74 @@ numeric 1. What is 2 + 2?
 
       if (type === 'QUIZ_BOWL') {
         const items = rest.map(parseOptionText).map(item => item.text).filter(Boolean);
-        if (!items.length) errors.push(`Bloque ${index + 1}: quiz bowl requiere palabras o frases.`);
+        if (!items.length) errors.push(`Block ${index + 1}: Quiz bowl requires words or phrases.`);
         output = ['QUIZ_BOWL', question, ...items];
       }
 
       return {
         type,
         question,
+        data,
         errors,
         line: output.join('\t')
       };
     }
 
+    function escapeGift(value) {
+      return String(value || '').replace(/\\/g, '\\\\').replace(/([~=#{}:])/g, '\\$1');
+    }
+
+    function buildGiftQuestion(item, index) {
+      const title = `::Question ${index + 1}::`;
+      const question = escapeGift(item.question);
+      const data = item.data || {};
+      if (item.type === 'TF') return `${title}${question}{${data.value === 'true' ? 'TRUE' : 'FALSE'}}`;
+      if (item.type === 'ESS') return `${title}${question}{}`;
+      if (item.type === 'MC') {
+        const answers = (data.options || []).map(option => `${option.correct ? '=' : '~'}${escapeGift(option.text)}`).join('\n');
+        return `${title}${question}{\n${answers}\n}`;
+      }
+      if (item.type === 'MA') {
+        const options = data.options || [];
+        const correctCount = options.filter(option => option.correct).length;
+        const incorrectCount = options.length - correctCount;
+        const positiveWeight = correctCount ? Number((100 / correctCount).toFixed(5)) : 0;
+        const negativeWeight = incorrectCount ? Number((-100 / incorrectCount).toFixed(5)) : 0;
+        const answers = options.map(option => `~%${option.correct ? positiveWeight : negativeWeight}%${escapeGift(option.text)}`).join('\n');
+        return `${title}${question}{\n${answers}\n}`;
+      }
+      if (item.type === 'FIB' || item.type === 'SR') {
+        const answers = (data.answers || []).map(answer => `=${escapeGift(answer)}`).join('\n');
+        return `${title}${question}{\n${answers}\n}`;
+      }
+      if (item.type === 'MAT') {
+        const pairs = (data.pairs || []).map(pair => `=${escapeGift(pair[0])} -> ${escapeGift(pair[1])}`).join('\n');
+        return `${title}${question}{\n${pairs}\n}`;
+      }
+      if (item.type === 'NUM') {
+        const tolerance = data.tolerance ? `:${escapeGift(data.tolerance)}` : '';
+        return `${title}${question}{#${escapeGift(data.answer)}${tolerance}}`;
+      }
+      return '';
+    }
+
     function processContent() {
+      const target = targetFormatEl.value;
       const blocks = splitBlocks(quizContentEl.value);
       const parsed = blocks.map((block, index) => parseBlock(block, index));
       const errors = parsed.flatMap(item => item.errors || []);
-      if (blocks.length > MAX_RECORDS) errors.unshift(`El archivo contiene ${blocks.length} preguntas. Blackboard recomienda no superar ${MAX_RECORDS} registros por archivo; divida el banco antes de descargar.`);
+      if (target === 'blackboard') {
+        parsed.forEach((item, index) => {
+          if (BLACKBOARD_UNSUPPORTED_TYPES.includes(item.type)) errors.push(`Block ${index + 1}: ${item.type} is not supported by the current Blackboard Ultra TXT specification. Use MC, MA, TF, ESS, MAT, FIB, FIB_PLUS, or NUM.`);
+        });
+        if (blocks.length > MAX_RECORDS) errors.unshift(`This file contains ${blocks.length} questions. Blackboard recommends no more than ${MAX_RECORDS} records per file; split the bank before downloading.`);
+      } else {
+        parsed.forEach((item, index) => {
+          if (item.type && !MOODLE_GIFT_TYPES.includes(item.type)) errors.push(`Block ${index + 1}: ${item.type} cannot be exported safely as Moodle GIFT. Use MC, MA, TF, ESS, FIB, MAT, NUM, or SR.`);
+          if (item.type === 'NUM' && !/^-?\d+(?:\.\d+)?$/.test(String(item.data?.answer || ''))) errors.push(`Block ${index + 1}: Moodle GIFT requires a numeric answer for NUM.`);
+          if (item.type === 'NUM' && item.data?.tolerance && !/^\d+(?:\.\d+)?$/.test(String(item.data.tolerance))) errors.push(`Block ${index + 1}: Moodle GIFT requires a non-negative numeric tolerance for NUM.`);
+        });
+      }
       const questionPositions = new Map();
       parsed.forEach((item, index) => {
         const key = String(item.question || '').toLocaleLowerCase().replace(/\s+/g, ' ').trim();
@@ -579,9 +652,11 @@ numeric 1. What is 2 + 2?
       });
       const warnings = [...questionPositions.values()]
         .filter(positions => positions.length > 1)
-        .map(positions => `Posible pregunta duplicada en los bloques ${positions.join(', ')}. Blackboard no detecta duplicados automáticamente.`);
-      const lines = parsed.filter(item => item.line).map(item => item.line);
-      return { blocks, parsed, errors, warnings, lines };
+        .map(positions => `Possible duplicate question in blocks ${positions.join(', ')}. Review duplicates before importing.`);
+      const lines = target === 'blackboard'
+        ? parsed.filter(item => item.line).map(item => item.line)
+        : parsed.filter(item => MOODLE_GIFT_TYPES.includes(item.type)).map(buildGiftQuestion);
+      return { target, blocks, parsed, errors, warnings, lines };
     }
 
     function showResult(messages, ok) {
@@ -593,10 +668,10 @@ numeric 1. What is 2 + 2?
       const { blocks, errors, warnings } = processContent();
       questionCountEl.textContent = blocks.length;
       errorCountEl.textContent = errors.length;
-      statusLabelEl.textContent = errors.length ? 'Errores' : 'Validado';
+      statusLabelEl.textContent = errors.length ? 'Errors' : 'Verified';
 
       if (!blocks.length) {
-        showResult(['No hay contenido para validar.'], false);
+        showResult(['There is no content to verify.'], false);
         return false;
       }
 
@@ -605,34 +680,34 @@ numeric 1. What is 2 + 2?
         return false;
       }
 
-      showResult([`Se detectaron ${blocks.length} pregunta(s) válidas.`, ...warnings], true);
+      showResult([`${blocks.length} valid question(s) detected.`, ...warnings], true);
       return true;
     }
 
     function convertContent() {
-      const { blocks, errors, warnings, lines } = processContent();
+      const { target, blocks, errors, warnings, lines } = processContent();
       questionCountEl.textContent = blocks.length;
       errorCountEl.textContent = errors.length;
-      statusLabelEl.textContent = errors.length ? 'Errores' : 'Convertido';
+      statusLabelEl.textContent = errors.length ? 'Errors' : 'Converted';
 
       if (!blocks.length) {
         previewBoxEl.className = 'preview err';
-        previewBoxEl.textContent = 'No hay contenido para convertir.';
-        showResult(['No hay contenido para convertir.'], false);
+        previewBoxEl.textContent = 'There is no content to convert.';
+        showResult(['There is no content to convert.'], false);
         return null;
       }
 
       if (errors.length) {
         previewBoxEl.className = 'preview err';
-        previewBoxEl.textContent = 'Corrija los errores antes de convertir.';
+        previewBoxEl.textContent = 'Correct the errors before converting.';
         showResult(errors, false);
         return null;
       }
 
-      const output = lines.join('\r\n');
+      const output = lines.join(target === 'moodle' ? '\r\n\r\n' : '\r\n');
       previewBoxEl.className = 'preview ok';
       previewBoxEl.textContent = output;
-      showResult([`Conversión completada correctamente para ${blocks.length} pregunta(s).`, ...warnings], true);
+      showResult([`Conversion completed for ${blocks.length} question(s) using ${target === 'moodle' ? 'Moodle GIFT' : 'Blackboard Ultra TXT'}.`, ...warnings], true);
       return output;
     }
 
@@ -642,7 +717,9 @@ numeric 1. What is 2 + 2?
       const blob = new Blob([output], { type: 'text/plain;charset=utf-8' });
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
-      link.download = `${sanitizeFileName(quizNameEl.value)}.txt`;
+      const defaultName = targetFormatEl.value === 'moodle' ? 'moodle_gift_questions' : 'blackboard_ultra_questions';
+      const suffix = targetFormatEl.value === 'moodle' ? '_moodle_gift' : '_blackboard_ultra';
+      link.download = `${sanitizeFileName(quizNameEl.value || defaultName)}${suffix}.txt`;
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -654,9 +731,9 @@ numeric 1. What is 2 + 2?
       if (!output) return;
       try {
         await navigator.clipboard.writeText(output);
-        showResult(['El contenido TXT fue copiado al portapapeles.'], true);
+        showResult([`${targetFormatEl.value === 'moodle' ? 'Moodle GIFT' : 'Blackboard Ultra TXT'} content was copied to the clipboard.`], true);
       } catch (error) {
-        showResult(['No se pudo copiar automáticamente. Revise los permisos del navegador.'], false);
+        showResult(['The content could not be copied automatically. Check the browser permissions.'], false);
       }
     }
 
@@ -671,11 +748,32 @@ numeric 1. What is 2 + 2?
       quizContentEl.value = '';
       resultBoxEl.className = 'preview';
       previewBoxEl.className = 'preview';
-      resultBoxEl.textContent = 'Todavía no se ha procesado contenido.';
-      previewBoxEl.textContent = 'Aquí aparecerá el contenido convertido.';
+      resultBoxEl.textContent = 'No content has been processed yet.';
+      previewBoxEl.textContent = 'Converted content will appear here.';
       questionCountEl.textContent = '0';
       errorCountEl.textContent = '0';
-      statusLabelEl.textContent = 'Listo';
+      statusLabelEl.textContent = 'Ready';
+    }
+
+    function updateTargetUi() {
+      const isMoodle = targetFormatEl.value === 'moodle';
+      previewTitleEl.textContent = isMoodle ? 'Moodle GIFT preview' : 'Blackboard Ultra TXT preview';
+      downloadBtnEl.textContent = isMoodle ? 'Download GIFT' : 'Download TXT';
+      formatHelpEl.innerHTML = isMoodle
+        ? 'Questions are exported in UTF-8 GIFT format and separated by a blank line. Review the <a href="https://docs.moodle.org/en/GIFT_format" target="_blank" rel="noopener noreferrer">official Moodle GIFT specification</a> before importing.'
+        : 'Each question must be a separate block. Blackboard recommends no more than 250 records per file. Review the <a href="https://help.anthology.com/blackboard/instructor/en/assessments/questions/reuse-questions/upload-or-import-questions.html" target="_blank" rel="noopener noreferrer">official Blackboard specification</a> before importing.';
+
+      const fibPlusOption = templateTypeEl.querySelector('option[value="FIB_PLUS"]');
+      if (fibPlusOption) fibPlusOption.disabled = isMoodle;
+      if (isMoodle && templateTypeEl.value === 'FIB_PLUS') templateTypeEl.value = 'MC';
+
+      resultBoxEl.className = 'preview';
+      previewBoxEl.className = 'preview';
+      resultBoxEl.textContent = 'No content has been processed yet.';
+      previewBoxEl.textContent = 'Converted content will appear here.';
+      questionCountEl.textContent = '0';
+      errorCountEl.textContent = '0';
+      statusLabelEl.textContent = 'Ready';
     }
 
     document.getElementById('sampleBtn').addEventListener('click', insertTemplate);
@@ -684,6 +782,8 @@ numeric 1. What is 2 + 2?
     document.getElementById('downloadBtn').addEventListener('click', downloadTxt);
     document.getElementById('copyBtn').addEventListener('click', copyTxt);
     document.getElementById('clearBtn').addEventListener('click', clearAll);
+    targetFormatEl.addEventListener('change', updateTargetUi);
+    updateTargetUi();
   </script>
   </body>
 </html>

@@ -1,4 +1,4 @@
-const VERSION = "ultrapage-v4";
+const VERSION = "ultrapage-v5";
 const SHELL_CACHE = `${VERSION}-shell`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
 const APP_SHELL = [
