@@ -114,7 +114,7 @@ export default function NativeToolsPage() {
     <div className="native-tools-health" aria-live="polite">
       <span className={online ? "native-health-pill ready" : "native-health-pill offline"}>
         {online ? <CheckCircle2 size={15}/> : <WifiOff size={15}/>}
-        {online ? "Studio online" : "Offline cache"}
+        {online ? "Studio online" : "Limited offline mode"}
       </span>
       <span className="native-health-pill secured"><ShieldCheck size={15}/> Isolated native copy</span>
       <span className="native-health-sync"><Clock3 size={14}/> Last synchronized: {syncedLabel}</span>
@@ -162,7 +162,7 @@ export default function NativeToolsPage() {
           {(frameState === "loading" || frameState === "slow" || frameState === "error") && <div className={`native-tool-loading ${frameState}`}>
             {frameState === "error" ? <AlertTriangle size={28}/> : <RefreshCw className={frameState === "loading" ? "spin" : ""} size={28}/>}
             <strong>{frameState === "error" ? "The tool could not be loaded" : frameState === "slow" ? "This tool is taking longer than expected" : `Loading ${active.name}`}</strong>
-            <span>{online ? "UltraPage is preparing the native workspace." : "UltraPage is checking the locally cached version."}</span>
+            <span>{online ? "UltraPage is preparing the native workspace." : "UltraPage is checking locally cached files. Export libraries that require the internet may be unavailable."}</span>
             {(frameState === "slow" || frameState === "error") && <button type="button" onClick={reloadTool}><RefreshCw size={15}/> Try again</button>}
           </div>}
           <iframe

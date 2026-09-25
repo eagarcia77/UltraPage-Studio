@@ -30,13 +30,37 @@ function escapeHtml(value: string) {
   return value.replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character] || character);
 }
 
-function blobToDataUrl(blob: Blob) {
+function readBlobAsDataUrl(blob: Blob) {
   return new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => typeof reader.result === "string" ? resolve(reader.result) : reject(new Error("The image could not be read."));
     reader.onerror = () => reject(new Error("The image could not be read."));
     reader.readAsDataURL(blob);
   });
+}
+
+async function blobToDataUrl(blob: Blob) {
+  if (/^image\/(png|jpeg)$/i.test(blob.type)) return readBlobAsDataUrl(blob);
+  const objectUrl = URL.createObjectURL(blob);
+  try {
+    const image = new Image();
+    image.src = objectUrl;
+    await image.decode();
+    if (!image.naturalWidth || !image.naturalHeight || image.naturalWidth * image.naturalHeight > 40_000_000) {
+      throw new Error("The image dimensions are too large to process safely.");
+    }
+    const scale = Math.min(1, 4096 / Math.max(image.naturalWidth, image.naturalHeight));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+    canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("The browser could not prepare the image.");
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+    const normalized = await new Promise<Blob>((resolve, reject) => canvas.toBlob((result) => result ? resolve(result) : reject(new Error("The image could not be converted.")), "image/png"));
+    return readBlobAsDataUrl(normalized);
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
 }
 
 function normalizeMediaEmbed(source: string) {
@@ -246,6 +270,7 @@ export default function Home() {
   const [device, setDevice] = useState<"desktop" | "tablet" | "mobile">("desktop");
   const [rulerUnit, setRulerUnit] = useState<"in" | "cm">("in");
   const [rightPanel, setRightPanel] = useState(true);
+  const [sidePanelTab, setSidePanelTab] = useState<"blocks" | "review" | "outline">("blocks");
   const [title, setTitle] = useState("Untitled document");
   const [saved, setSaved] = useState(true);
   const [draftLoaded, setDraftLoaded] = useState(false);
@@ -259,6 +284,27 @@ export default function Home() {
   useEffect(() => {
     const compactLayout = window.matchMedia("(max-width: 1040px)");
     if (compactLayout.matches) setRightPanel(false);
+  }, []);
+  useEffect(() => {
+    if (!rightPanel) return;
+    const tabIndex = sidePanelTab === "blocks" ? 0 : sidePanelTab === "review" ? 1 : 2;
+    window.requestAnimationFrame(() => {
+      const tab = document.querySelectorAll<HTMLButtonElement>('#editor-side-panel [role="tab"]')[tabIndex];
+      if (tab && tab.getAttribute("data-state") !== "active") tab.click();
+    });
+  }, [rightPanel, sidePanelTab]);
+  useEffect(() => {
+    const syncSideTab = (event: MouseEvent) => {
+      const trigger = (event.target as Element | null)?.closest<HTMLButtonElement>('#editor-side-panel [role="tab"]');
+      if (!trigger) return;
+      const triggers = Array.from(document.querySelectorAll<HTMLButtonElement>('#editor-side-panel [role="tab"]'));
+      const index = triggers.indexOf(trigger);
+      if (index === 0) setSidePanelTab("blocks");
+      if (index === 1) setSidePanelTab("review");
+      if (index === 2) setSidePanelTab("outline");
+    };
+    document.addEventListener("click", syncSideTab);
+    return () => document.removeEventListener("click", syncSideTab);
   }, []);
   useEffect(() => {
     try {
@@ -905,7 +951,7 @@ export default function Home() {
       <div className="header-actions"><ApaDialog insertMarkup={insertMarkup} language={documentLanguage}/><span className={saved ? "save-state" : "save-state pending"}>{saved ? <Check size={14}/> : <Cloud size={14}/>} {saved ? "Saved" : "Unsaved changes"}</span><HistoryDialog restoreSnapshot={restoreSnapshot}/><KeyboardShortcutsDialog/><DocumentPropertiesDialog author={documentAuthor} description={documentDescription} setAuthor={setDocumentAuthor} setDescription={setDocumentDescription}/><Button variant="outline" className="publish-button" title="Open HTML, TXT, Word, or UltraPage project" onClick={() => localFileInput.current?.click()}><Upload size={16}/> Open</Button><ExportDialog html={html} title={title} language={documentLanguage} author={documentAuthor} description={documentDescription} downloadHtml={downloadDocument}/><Button variant="outline" className="publish-button" onClick={copyHtml} title="Copiar para el editor visual o HTML de Blackboard Ultra"><Copy size={16}/> Copy for Ultra</Button><Button className="save-button" onClick={save}><Save size={16}/> Save</Button></div>
     </header>
     <div className="workspace">
-      <aside className="leftbar" aria-label="Tools"><button className="rail-button active" aria-label="Editor"><FileText /></button><button className="rail-button" aria-label="Resources"><Folder /></button><button className="rail-button" aria-label="Accessibility"><Accessibility /></button><button className="rail-button" aria-label="Code"><Code2 /></button><div className="rail-spacer" /><button className="avatar" aria-label="Eduardo profile">EG</button></aside>
+      <aside className="leftbar" aria-label="Workspace navigation"><button className={`rail-button ${mode === "visual" ? "active" : ""}`} aria-label="Open Design editor" title="Design editor" aria-pressed={mode === "visual"} onClick={() => setMode("visual")}><FileText /></button><button className={`rail-button ${rightPanel && sidePanelTab === "blocks" ? "active" : ""}`} aria-label="Open resources and content tools" title="Resources and content" aria-pressed={rightPanel && sidePanelTab === "blocks"} onClick={() => { setSidePanelTab("blocks"); setRightPanel(true); }}><Folder /></button><button className={`rail-button ${rightPanel && sidePanelTab === "review" ? "active" : ""}`} aria-label="Open accessibility review" title="Accessibility review" aria-pressed={rightPanel && sidePanelTab === "review"} onClick={() => { setSidePanelTab("review"); setRightPanel(true); }}><Accessibility /></button><button className={`rail-button ${mode === "html" ? "active" : ""}`} aria-label="Open HTML editor" title="HTML editor" aria-pressed={mode === "html"} onClick={() => setMode("html")}><Code2 /></button><div className="rail-spacer" /><button className="avatar" aria-label="User profile">EG</button></aside>
       <section className="editor-shell">
         <div className="document-head"><div><div className="breadcrumbs"><span>Standalone editor</span><span>/</span><span>Document</span></div><input className="title-input" value={title} onChange={(e) => { setTitle(e.target.value); setSaved(false); }} aria-label="Page title" /><div className="document-metrics" aria-live="polite"><span>{wordCount} words</span><span>{characterCount} characters</span><span>Autosave active</span></div><label className="document-language"><span>Document language</span><select value={documentLanguage} onChange={(event) => { setDocumentLanguage(event.target.value as DocumentLanguage); setSaved(false); }} aria-label="Primary document language"><option value="es-PR">Español (Puerto Rico)</option><option value="en-US">English (United States)</option></select></label></div><div className="view-controls" aria-label="Device preview"><button onClick={() => setDevice("desktop")} className={device === "desktop" ? "active" : ""} aria-label="Desktop"><Monitor size={17}/></button><button onClick={() => setDevice("tablet")} className={device === "tablet" ? "active" : ""} aria-label="Tablet"><Tablet size={17}/></button><button onClick={() => setDevice("mobile")} className={device === "mobile" ? "active" : ""} aria-label="Mobile"><Smartphone size={17}/></button><button onClick={() => setRightPanel(!rightPanel)} className={rightPanel ? "active panel-toggle" : "panel-toggle"} aria-label="Show or hide panel" aria-expanded={rightPanel} aria-controls="editor-side-panel"><PanelRight size={17}/></button></div><button type="button" className="mobile-panel-toggle" onClick={() => setRightPanel(true)} aria-expanded={rightPanel} aria-controls="editor-side-panel"><PanelRight size={16}/> Tools</button></div>
         <Tabs value={mode} onValueChange={changeMode} className="editor-tabs">
@@ -993,6 +1039,7 @@ function accessibilityReport(html: string, title: string, language: DocumentLang
     if (!altMatch[1]) return /\brole=["']presentation["']/i.test(image) || /\baria-hidden=["']true["']/i.test(image);
     return !/^(imagen|foto|gráfico|grafico|describa|image|photo)$/i.test(altMatch[1].trim());
   });
+  const imagesPortable = images.every((image) => /\bsrc=["']data:image\/(?:png|jpe?g);base64,/i.test(image));
   const links = Array.from(html.matchAll(/<a\b([^>]*)href=["']([^"']+)["']([^>]*)>([\s\S]*?)<\/a>/gi), (match) => ({ attributes: `${match[1]}${match[3]}`, href: match[2], text: match[4].replace(/<[^>]+>/g, "").trim() }));
   const vagueLink = /^(aquí|clic aquí|click here|más|ver más|enlace)$/i;
   const tables = Array.from(html.matchAll(/<table\b[^>]*>[\s\S]*?<\/table>/gi), (match) => match[0]);
@@ -1007,6 +1054,7 @@ function accessibilityReport(html: string, title: string, language: DocumentLang
     { ok: hierarchyOk, text: "The heading hierarchy does not skip levels" },
     { ok: headings.every(Boolean), text: "Headings contain descriptive text" },
     { ok: imagesAccessible, text: images.length ? "Informative images have alternative text and decorative images are identified correctly" : "No images require alternative text" },
+    { ok: imagesPortable, text: images.length ? "Images are embedded as PNG or JPEG for reliable Word and PDF export" : "No images require portable embedding" },
     { ok: links.every((link) => !vagueLink.test(link.text) && Boolean(link.text) && /^(https?:|mailto:|tel:|\/|#)/i.test(link.href)), text: "Links have descriptive text and valid destinations" },
     { ok: links.every((link) => !/target=["']_blank["']/i.test(link.attributes) || /rel=["'][^"']*noopener/i.test(link.attributes)), text: "Links opened in new tabs include security protection" },
     { ok: tables.every((table) => /<th\b/i.test(table)), text: tables.length ? "Tables include header cells" : "No tables require headers" },

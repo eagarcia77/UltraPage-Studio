@@ -1,4 +1,4 @@
-const VERSION = "ultrapage-v1";
+const VERSION = "ultrapage-v2";
 const SHELL_CACHE = `${VERSION}-shell`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
 const APP_SHELL = [
@@ -8,9 +8,33 @@ const APP_SHELL = [
   "/favicon.svg",
   "/native-tools/ultrapage-native-theme.css",
   "/native-tools/estiloapa/index.html",
+  "/native-tools/estiloapa/styles.css",
+  "/native-tools/estiloapa/scrollbar-v31.css",
   "/native-tools/estiloapa/ultrapage-theme.css",
+  "/native-tools/estiloapa/app.js",
+  "/native-tools/estiloapa/edit-stability-v348.js",
+  "/native-tools/estiloapa/enhancements.js",
+  "/native-tools/estiloapa/pdf-smart.js",
+  "/native-tools/estiloapa/apa-table-v29.js",
+  "/native-tools/estiloapa/module-profile.js",
+  "/native-tools/estiloapa/thesis-profile.js",
+  "/native-tools/estiloapa/thesis-alignment.js",
+  "/native-tools/estiloapa/apa-editor-v30.js",
+  "/native-tools/estiloapa/list-normalizer-v31.js",
+  "/native-tools/estiloapa/table-figure-v32.js",
+  "/native-tools/estiloapa/pdf-original-media-v33.js",
+  "/native-tools/estiloapa/reference-audit-v30.js",
+  "/native-tools/estiloapa/apa-editor-export-v30.js",
+  "/native-tools/estiloapa/thesis-html.js",
+  "/native-tools/estiloapa/thesis-docx.js",
+  "/native-tools/estiloapa/html-enhance.js",
+  "/native-tools/estiloapa/docx-enhance.js",
   "/native-tools/txt-test-generator/index.html",
-  "/native-tools/qti-blackboard/index.html"
+  "/native-tools/txt-test-generator/img/LOGO-INTER-SG-HORIZONTAL_sticker.png",
+  "/native-tools/txt-test-generator/img/ucan-logo.png",
+  "/native-tools/txt-test-generator/Guía_Generador_Exámenes_Blackboard_Ultra_Simplificada.pdf",
+  "/native-tools/qti-blackboard/index.html",
+  "/native-tools/qti-blackboard/img/LOGO-INTER-SG-HORIZONTAL_sticker.png"
 ];
 
 self.addEventListener("install", (event) => {
