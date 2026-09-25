@@ -1,4 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { lookup } from "node:dns/promises";
+import { isIP } from "node:net";
+import { isUnsafeWebDavAddress } from "./security";
 
 type WebDavRequest = {
   action?: "list" | "read" | "download" | "write" | "writeBinary";
@@ -10,11 +13,26 @@ type WebDavRequest = {
   fileName?: string;
 };
 
-function safeWebDavUrl(raw: string) {
+const WEBDAV_TIMEOUT_MS = 20_000;
+const MAX_LIST_BYTES = 2 * 1024 * 1024;
+
+async function safeWebDavUrl(raw: string) {
+  if (raw.length > 2048) throw new Error("The WebDAV address is too long.");
   const url = new URL(raw);
-  const allowedHost = url.hostname === "blackboard.com" || url.hostname.endsWith(".blackboard.com");
-  if (url.protocol !== "https:" || !allowedHost || !url.pathname.startsWith("/bbcswebdav/")) {
-    throw new Error("La dirección debe ser una ruta HTTPS válida de Blackboard Content Collection.");
+  const hostname = url.hostname.toLowerCase().replace(/^\[|\]$/g, "").replace(/\.$/, "");
+  const forbiddenName = hostname === "localhost" || hostname.endsWith(".localhost") || hostname.endsWith(".local") || hostname.endsWith(".internal");
+  if (url.protocol !== "https:" || (url.port && url.port !== "443") || url.username || url.password || forbiddenName || !url.pathname.startsWith("/bbcswebdav/")) {
+    throw new Error("Use a valid HTTPS Blackboard Content Collection address whose path begins with /bbcswebdav/.");
+  }
+  const literalVersion = isIP(hostname);
+  let addresses: Array<{ address: string }>;
+  try {
+    addresses = literalVersion ? [{ address: hostname }] : await lookup(hostname, { all: true, verbatim: true });
+  } catch {
+    throw new Error("The WebDAV host could not be resolved.");
+  }
+  if (!addresses.length || addresses.some(({ address }) => isUnsafeWebDavAddress(address))) {
+    throw new Error("The WebDAV host must resolve only to public internet addresses.");
   }
   return url;
 }
@@ -48,39 +66,39 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json() as WebDavRequest;
     if (!body.url || !body.username || !body.password) {
-      return NextResponse.json({ error: "Complete la dirección, el usuario y la contraseña." }, { status: 400 });
+      return NextResponse.json({ error: "Enter the WebDAV address, username, and password." }, { status: 400 });
     }
-    const url = safeWebDavUrl(body.url);
+    const url = await safeWebDavUrl(body.url);
     const authorization = `Basic ${btoa(`${body.username}:${body.password}`)}`;
     const action = body.action || "list";
 
     if (action === "download") {
-      const response = await fetch(url, { method: "GET", headers: { Authorization: authorization }, redirect: "manual" });
+      const response = await fetch(url, { method: "GET", headers: { Authorization: authorization }, redirect: "manual", signal: AbortSignal.timeout(WEBDAV_TIMEOUT_MS) });
       if (response.status === 401 || response.status === 403) {
-        return NextResponse.json({ error: "Blackboard rechazó las credenciales o el permiso para descargar este archivo." }, { status: 401 });
+        return NextResponse.json({ error: "Blackboard rejected the credentials or the permission to download this file." }, { status: 401 });
       }
-      if (!response.ok) return NextResponse.json({ error: `No se pudo descargar el archivo. Blackboard respondió con ${response.status}.` }, { status: 502 });
+      if (!response.ok) return NextResponse.json({ error: `The file could not be downloaded. Blackboard returned ${response.status}.` }, { status: 502 });
       const declaredSize = Number(response.headers.get("content-length") || 0);
-      if (declaredSize > 25 * 1024 * 1024) return NextResponse.json({ error: "El archivo supera el límite de descarga de 25 MB." }, { status: 413 });
+      if (declaredSize > 25 * 1024 * 1024) return NextResponse.json({ error: "The file exceeds the 25 MB download limit." }, { status: 413 });
       const data = await response.arrayBuffer();
-      if (data.byteLength > 25 * 1024 * 1024) return NextResponse.json({ error: "El archivo supera el límite de descarga de 25 MB." }, { status: 413 });
+      if (data.byteLength > 25 * 1024 * 1024) return NextResponse.json({ error: "The file exceeds the 25 MB download limit." }, { status: 413 });
       const fileName = decodeURIComponent(url.pathname.split("/").pop() || "archivo");
       return new NextResponse(data, { headers: { "Content-Type": response.headers.get("content-type") || "application/octet-stream", "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(fileName)}`, "Content-Length": String(data.byteLength) } });
     }
 
     if (action === "read") {
       if (!/\.(html?|txt)$/i.test(url.pathname)) {
-        return NextResponse.json({ error: "Solo se pueden editar archivos HTML, HTM o TXT." }, { status: 400 });
+        return NextResponse.json({ error: "Only HTML, HTM, or TXT files can be edited directly." }, { status: 400 });
       }
-      const response = await fetch(url, { method: "GET", headers: { Authorization: authorization }, redirect: "manual" });
+      const response = await fetch(url, { method: "GET", headers: { Authorization: authorization }, redirect: "manual", signal: AbortSignal.timeout(WEBDAV_TIMEOUT_MS) });
       if (response.status === 401 || response.status === 403) {
-        return NextResponse.json({ error: "Blackboard rechazó las credenciales o el permiso para abrir este archivo." }, { status: 401 });
+        return NextResponse.json({ error: "Blackboard rejected the credentials or the permission to open this file." }, { status: 401 });
       }
-      if (!response.ok) return NextResponse.json({ error: `No se pudo abrir el archivo. Blackboard respondió con ${response.status}.` }, { status: 502 });
+      if (!response.ok) return NextResponse.json({ error: `The file could not be opened. Blackboard returned ${response.status}.` }, { status: 502 });
       const declaredSize = Number(response.headers.get("content-length") || 0);
-      if (declaredSize > 5 * 1024 * 1024) return NextResponse.json({ error: "El archivo supera el límite de edición de 5 MB." }, { status: 413 });
+      if (declaredSize > 5 * 1024 * 1024) return NextResponse.json({ error: "The file exceeds the 5 MB editing limit." }, { status: 413 });
       const content = await response.text();
-      if (content.length > 5 * 1024 * 1024) return NextResponse.json({ error: "El archivo supera el límite de edición de 5 MB." }, { status: 413 });
+      if (content.length > 5 * 1024 * 1024) return NextResponse.json({ error: "The file exceeds the 5 MB editing limit." }, { status: 413 });
       return NextResponse.json({ opened: true, content, name: decodeURIComponent(url.pathname.split("/").pop() || "documento.html"), href: url.toString() });
     }
 
@@ -88,16 +106,16 @@ export async function POST(request: NextRequest) {
       const fileName = (body.fileName || "").trim();
       const allowedName = action === "writeBinary" ? /^[^/\\]+\.(docx|pdf|pptx|xlsx|png|jpe?g|gif|webp|svg)$/i : /^[^/\\]+\.(html?|txt)$/i;
       if (!allowedName.test(fileName) || fileName.includes("..")) {
-        return NextResponse.json({ error: action === "writeBinary" ? "Use un archivo Word, PDF, PowerPoint, Excel o una imagen compatible." : "Use un nombre válido que termine en .html, .htm o .txt." }, { status: 400 });
+        return NextResponse.json({ error: action === "writeBinary" ? "Use a supported Word, PDF, PowerPoint, Excel, or image file." : "Use a valid file name ending in .html, .htm, or .txt." }, { status: 400 });
       }
       if (action === "write" && (typeof body.content !== "string" || body.content.length > 5 * 1024 * 1024)) {
-        return NextResponse.json({ error: "El contenido debe ser texto y no superar 5 MB." }, { status: 400 });
+        return NextResponse.json({ error: "The content must be text and cannot exceed 5 MB." }, { status: 400 });
       }
       if (action === "writeBinary" && (typeof body.dataBase64 !== "string" || body.dataBase64.length > 34 * 1024 * 1024 || !/^[A-Za-z0-9+/]*={0,2}$/.test(body.dataBase64))) {
-        return NextResponse.json({ error: "El archivo binario no es válido o supera el límite de 25 MB." }, { status: 400 });
+        return NextResponse.json({ error: "The binary file is invalid or exceeds the 25 MB limit." }, { status: 400 });
       }
       const folderUrl = url.pathname.endsWith("/") ? url : new URL(`${url.toString()}/`);
-      const target = safeWebDavUrl(new URL(encodeURIComponent(fileName), folderUrl).toString());
+      const target = await safeWebDavUrl(new URL(encodeURIComponent(fileName), folderUrl).toString());
       const lowerName = fileName.toLowerCase();
       const contentType = lowerName.endsWith(".docx") ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document" : lowerName.endsWith(".pdf") ? "application/pdf" : lowerName.endsWith(".pptx") ? "application/vnd.openxmlformats-officedocument.presentationml.presentation" : lowerName.endsWith(".xlsx") ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" : lowerName.endsWith(".svg") ? "image/svg+xml" : lowerName.endsWith(".png") ? "image/png" : /\.jpe?g$/.test(lowerName) ? "image/jpeg" : lowerName.endsWith(".gif") ? "image/gif" : lowerName.endsWith(".webp") ? "image/webp" : lowerName.endsWith(".txt") ? "text/plain; charset=utf-8" : "text/html; charset=utf-8";
       const uploadBody = action === "writeBinary" ? Buffer.from(body.dataBase64 || "", "base64") : body.content;
@@ -106,11 +124,12 @@ export async function POST(request: NextRequest) {
         headers: { Authorization: authorization, "Content-Type": contentType },
         body: uploadBody,
         redirect: "manual",
+        signal: AbortSignal.timeout(WEBDAV_TIMEOUT_MS),
       });
       if (response.status === 401 || response.status === 403) {
-        return NextResponse.json({ error: "Blackboard rechazó las credenciales o no permite guardar en esta carpeta." }, { status: 401 });
+        return NextResponse.json({ error: "Blackboard rejected the credentials or does not allow saving in this folder." }, { status: 401 });
       }
-      if (!response.ok) return NextResponse.json({ error: `No se pudo guardar. Blackboard respondió con ${response.status}.` }, { status: 502 });
+      if (!response.ok) return NextResponse.json({ error: `The file could not be saved. Blackboard returned ${response.status}.` }, { status: 502 });
       return NextResponse.json({ saved: true, name: fileName, href: target.toString() });
     }
 
@@ -119,17 +138,24 @@ export async function POST(request: NextRequest) {
       headers: { Authorization: authorization, Depth: "1", "Content-Type": "application/xml; charset=utf-8" },
       body: `<?xml version="1.0" encoding="utf-8"?><propfind xmlns="DAV:"><prop><displayname/><resourcetype/><getcontentlength/><getlastmodified/></prop></propfind>`,
       redirect: "manual",
+      signal: AbortSignal.timeout(WEBDAV_TIMEOUT_MS),
     });
     if (response.status === 401 || response.status === 403) {
-      return NextResponse.json({ error: "Blackboard rechazó las credenciales o la cuenta no tiene permiso para esta carpeta." }, { status: 401 });
+      return NextResponse.json({ error: "Blackboard rejected the credentials or this account cannot access the folder." }, { status: 401 });
     }
     if (!response.ok && response.status !== 207) {
-      return NextResponse.json({ error: `Blackboard respondió con el código ${response.status}.` }, { status: 502 });
+      return NextResponse.json({ error: `Blackboard returned status ${response.status}.` }, { status: 502 });
     }
+    const declaredSize = Number(response.headers.get("content-length") || 0);
+    if (declaredSize > MAX_LIST_BYTES) return NextResponse.json({ error: "The WebDAV folder listing is too large." }, { status: 413 });
     const xml = await response.text();
+    if (xml.length > MAX_LIST_BYTES) return NextResponse.json({ error: "The WebDAV folder listing is too large." }, { status: 413 });
     return NextResponse.json({ connected: true, files: parseWebDav(xml, url) });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "No se pudo conectar con Content Collection.";
+    if (error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError")) {
+      return NextResponse.json({ error: "Blackboard did not respond within 20 seconds." }, { status: 504 });
+    }
+    const message = error instanceof Error ? error.message : "Content Collection could not be reached.";
     return NextResponse.json({ error: message }, { status: 400 });
   }
 }
