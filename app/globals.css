@@ -116,6 +116,12 @@
   border-color: #d8c8f2;
 }
 
+.native-health-pill.compatible {
+  color: #075e68;
+  background: #eaf8fa;
+  border-color: #b8dfe4;
+}
+
 .native-health-sync {
   display: inline-flex;
   align-items: center;

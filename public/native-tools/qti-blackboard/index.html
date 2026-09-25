@@ -272,12 +272,12 @@
         <span class="chip green">MC: Selección múltiple</span>
         <span class="chip green">TF: Cierto/Falso</span>
         <span class="chip green">FIB: Llenar blanco</span>
-        <span class="chip green">SA: Respuesta corta</span>
         <span class="chip green">ESSAY: Ensayo</span>
         <span class="chip red">MA: Desactivado</span>
         <span class="chip red">MATCH: Desactivado</span>
+        <span class="chip red">SA: No admitido en QTI de Ultra</span>
       </div>
-      <p class="note"><strong>Formato recomendado:</strong> escribe el tipo al inicio de cada pregunta. Usa <code>*</code> para marcar la respuesta correcta o las respuestas aceptadas. Deja una línea en blanco entre preguntas. Esta versión estable excluye <code>MA</code> y <code>MATCH</code> porque Blackboard Ultra puede rechazarlas durante la conversión del paquete.</p>
+      <p class="note"><strong>Formato recomendado:</strong> escribe el tipo al inicio de cada pregunta. Usa <code>*</code> para marcar la respuesta correcta o las respuestas aceptadas. Deja una línea en blanco entre preguntas. Esta versión admite únicamente los tipos que Blackboard documenta para paquetes QTI: <code>MC</code>, <code>TF</code>, <code>FIB</code> y <code>ESSAY</code>.</p>
       <pre><b><u>Puede copiar estos ejemplos a Microsoft Word y adaptarlos a sus preguntas de examen que necesite.</u></b>
         
 MC 1. ¿Cuál es la mejor definición de inteligencia artificial en educación?
@@ -294,9 +294,7 @@ FIB 3. La inteligencia artificial permite ______ el aprendizaje.
 *personalizar
 *adaptar
 
-SA 4. Defina brevemente qué es un algoritmo.
-
-ESSAY 5. Explique dos implicaciones éticas del uso de la IA en la educación.</pre>
+ESSAY 4. Explique dos implicaciones éticas del uso de la IA en la educación.</pre>
       <div class="security-note" role="note">
         <strong>Nota de seguridad:</strong> esta herramienta procesa el contenido localmente en el navegador. No escriba contraseñas, información personal sensible ni datos confidenciales de estudiantes. Revise siempre el paquete generado antes de importarlo a Blackboard.
       </div>
@@ -351,7 +349,6 @@ ESSAY 5. Explique dos implicaciones éticas del uso de la IA en la educación.</
         <div class="stat"><strong id="countMC">0</strong>MC</div>
         <div class="stat"><strong id="countTF">0</strong>TF</div>
         <div class="stat"><strong id="countFIB">0</strong>FIB</div>
-        <div class="stat"><strong id="countSA">0</strong>SA</div>
         <div class="stat"><strong id="countESSAY">0</strong>Ensayo</div>
       </div>
     </section>
@@ -360,7 +357,8 @@ ESSAY 5. Explique dos implicaciones éticas del uso de la IA en la educación.</
       <h2>Notas de compatibilidad</h2>
       <p>Esta versión genera un paquete <strong>QTI 2.1</strong> con la estructura que Blackboard Ultra aceptó en las pruebas realizadas: <code>imsmanifest.xml</code> en la raíz del ZIP y los ítems dentro de la carpeta <code>items/</code>.</p>
       <p>Para importar: descarga el archivo <code>.zip</code> generado por esta página y súbelo en Blackboard Ultra desde <strong>Manage Banks</strong> usando la opción de importar paquete QTI. No cambies manualmente la extensión del archivo y no comprimas el XML por separado.</p>
-      <p><strong>Importante:</strong> <code>MA</code> y <code>MATCH</code> se desactivaron en esta versión estable porque el paquete básico sin esos tipos fue el que importó correctamente. Se pueden trabajar luego como versión experimental separada.</p>
+      <p><strong>Importante:</strong> <code>MA</code>, <code>MATCH</code> y <code>SA</code> se bloquean porque no figuran entre los tipos admitidos actualmente por Blackboard para importación QTI. Las preguntas <code>TF</code> se importan como Multiple Choice conservando Verdadero/Falso.</p>
+      <p><a href="https://help.anthology.com/blackboard/instructor/en/assessments/questions/reuse-questions/qti-packages.html" target="_blank" rel="noopener noreferrer">Consultar la documentación oficial de QTI en Blackboard</a>.</p>
     </section>
   </main>
 
@@ -368,8 +366,8 @@ ESSAY 5. Explique dos implicaciones éticas del uso de la IA en la educación.</
 
   <script>
     const POINTS_PER_QUESTION = 1;
-    const SUPPORTED_TYPES = ['MC', 'TF', 'FIB', 'SA', 'ESSAY'];
-    const BLOCKED_TYPES = ['MA', 'MATCH'];
+    const SUPPORTED_TYPES = ['MC', 'TF', 'FIB', 'ESSAY'];
+    const BLOCKED_TYPES = ['MA', 'MATCH', 'SA'];
     const MAX_CHARS = 50000;
     let currentPackage = null;
 
@@ -418,10 +416,10 @@ ESSAY 5. Explique dos implicaciones éticas del uso de la IA en la educación.</
         question = typeMatch[2].trim();
       }
       if (BLOCKED_TYPES.includes(type)) {
-        throw new Error(`Pregunta ${index + 1}: el tipo ${type} está desactivado en esta versión estable. Use MC, TF, FIB, SA o ESSAY.`);
+        throw new Error(`Pregunta ${index + 1}: el tipo ${type} no está admitido para importación QTI en Blackboard Ultra. Use MC, TF, FIB o ESSAY.`);
       }
       if (!SUPPORTED_TYPES.includes(type)) {
-        throw new Error(`Pregunta ${index + 1}: tipo no compatible (${type}). Use MC, TF, FIB, SA o ESSAY.`);
+        throw new Error(`Pregunta ${index + 1}: tipo no compatible (${type}). Use MC, TF, FIB o ESSAY.`);
       }
       question = question.replace(/^\d+\.\s*/, '').trim();
       if (!question) throw new Error(`Pregunta ${index + 1}: el enunciado está vacío.`);
@@ -474,7 +472,7 @@ ESSAY 5. Explique dos implicaciones éticas del uso de la IA en la educación.</
       if (type === 'FIB') {
         return { number: index + 1, type, question, answers: parseTextAnswers(body, type, index) };
       }
-      if (type === 'SA' || type === 'ESSAY') {
+      if (type === 'ESSAY') {
         return { number: index + 1, type, question, answers: [] };
       }
       throw new Error(`Pregunta ${index + 1}: tipo no procesable.`);
@@ -550,7 +548,7 @@ ${correctValues}
 
     function buildEssayItem(item) {
       const itemId = `item${item.number}`;
-      const expectedLines = item.type === 'SA' ? 5 : 12;
+      const expectedLines = 12;
       return `<?xml version="1.0" encoding="UTF-8"?>
 <assessmentItem xmlns="http://www.imsglobal.org/xsd/imsqti_v2p1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.imsglobal.org/xsd/imsqti_v2p1 http://www.imsglobal.org/xsd/qti/qtiv2p1/imsqti_v2p1.xsd" identifier="${itemId}" title="Pregunta ${item.number} - ${item.type}" adaptive="false" timeDependent="false">
   <responseDeclaration identifier="RESPONSE" cardinality="single" baseType="string" />
@@ -567,7 +565,7 @@ ${correctValues}
     function buildQTIItem(item) {
       if (item.type === 'MC' || item.type === 'TF') return buildChoiceItem(item);
       if (item.type === 'FIB') return buildFibItem(item);
-      if (item.type === 'SA' || item.type === 'ESSAY') return buildEssayItem(item);
+      if (item.type === 'ESSAY') return buildEssayItem(item);
       throw new Error(`Tipo no soportado: ${item.type}`);
     }
 
@@ -634,10 +632,10 @@ ${resources}
 
       if (!explicitType) {
         if (weakType && !SUPPORTED_TYPES.includes(weakType[1].toUpperCase()) && !BLOCKED_TYPES.includes(weakType[1].toUpperCase())) {
-          addReportMessage(report, 'errors', `Pregunta ${blockNumber}: tipo desconocido`, `El tipo “${weakType[1].toUpperCase()}” no es compatible. Use MC, TF, FIB, SA o ESSAY.`, blockNumber);
+          addReportMessage(report, 'errors', `Pregunta ${blockNumber}: tipo desconocido`, `El tipo “${weakType[1].toUpperCase()}” no es compatible. Use MC, TF, FIB o ESSAY.`, blockNumber);
           return;
         }
-        addReportMessage(report, 'warnings', `Pregunta ${blockNumber}: no tiene tipo explícito`, 'La herramienta la interpretará como MC. Se recomienda comenzar con MC, TF, FIB, SA o ESSAY.', blockNumber);
+        addReportMessage(report, 'warnings', `Pregunta ${blockNumber}: no tiene tipo explícito`, 'La herramienta la interpretará como MC. Se recomienda comenzar con MC, TF, FIB o ESSAY.', blockNumber);
       }
 
       const type = explicitType ? explicitType[1].toUpperCase() : 'MC';
@@ -648,7 +646,7 @@ ${resources}
       }
 
       if (!SUPPORTED_TYPES.includes(type)) {
-        addReportMessage(report, 'errors', `Pregunta ${blockNumber}: tipo no compatible`, 'Use MC, TF, FIB, SA o ESSAY.', blockNumber);
+        addReportMessage(report, 'errors', `Pregunta ${blockNumber}: tipo no compatible`, 'Use MC, TF, FIB o ESSAY.', blockNumber);
         return;
       }
 
@@ -660,14 +658,15 @@ ${resources}
           if (duplicated.length) {
             addReportMessage(report, 'warnings', `Pregunta ${blockNumber}: letras repetidas`, `Revise opciones repetidas: ${[...new Set(duplicated)].join(', ')}.`, blockNumber);
           }
+          if (parsed.type === 'TF') {
+            addReportMessage(report, 'warnings', `Pregunta ${blockNumber}: conversión de TF`, 'Blackboard importará esta pregunta como Multiple Choice con opciones Verdadero/Falso.', blockNumber);
+          }
           addReportMessage(report, 'oks', `Pregunta ${blockNumber}: ${parsed.type} válida`, 'Tiene opciones suficientes y una sola respuesta correcta marcada con *.', blockNumber);
         } else if (parsed.type === 'FIB') {
           if (!parsed.question.includes('_____')) {
             addReportMessage(report, 'warnings', `Pregunta ${blockNumber}: FIB sin línea visible`, 'Se recomienda usar _____ en el enunciado para indicar dónde va la respuesta.', blockNumber);
           }
           addReportMessage(report, 'oks', `Pregunta ${blockNumber}: FIB válida`, 'Tiene al menos una respuesta aceptada.', blockNumber);
-        } else if (parsed.type === 'SA') {
-          addReportMessage(report, 'oks', `Pregunta ${blockNumber}: SA válida`, 'Se generará como respuesta corta o texto extendido en QTI 2.1.', blockNumber);
         } else if (parsed.type === 'ESSAY') {
           addReportMessage(report, 'oks', `Pregunta ${blockNumber}: ESSAY válida`, 'Se generará como pregunta de ensayo en QTI 2.1.', blockNumber);
         }
@@ -703,6 +702,18 @@ ${resources}
       }
 
       blocks.forEach((block, index) => analyzeBlock(block, index, report));
+      const duplicateQuestions = new Map();
+      blocks.forEach((block, index) => {
+        const header = normalizeLine(block.split('\n')[0] || '');
+        const question = header.replace(/^(MC|TF|MA|FIB|SA|ESSAY|MATCH)\s+/i, '').replace(/^\d+\.\s*/, '').toLocaleLowerCase().replace(/\s+/g, ' ').trim();
+        if (!question) return;
+        const positions = duplicateQuestions.get(question) || [];
+        positions.push(index + 1);
+        duplicateQuestions.set(question, positions);
+      });
+      [...duplicateQuestions.values()].filter(positions => positions.length > 1).forEach(positions => {
+        addReportMessage(report, 'warnings', 'Posible pregunta duplicada', `Revise las preguntas ${positions.join(', ')} antes de importar el banco.`);
+      });
       return report;
     }
 
@@ -846,7 +857,6 @@ ${resources}
       document.getElementById('countMC').textContent = byType.MC || 0;
       document.getElementById('countTF').textContent = byType.TF || 0;
       document.getElementById('countFIB').textContent = byType.FIB || 0;
-      document.getElementById('countSA').textContent = byType.SA || 0;
       document.getElementById('countESSAY').textContent = byType.ESSAY || 0;
     }
 
@@ -899,9 +909,7 @@ FIB 3. La inteligencia artificial permite ______ el aprendizaje.
 *personalizar
 *adaptar
 
-SA 4. Defina brevemente qué es un algoritmo.
-
-ESSAY 5. Explique dos implicaciones éticas del uso de IA en educación.`;
+ESSAY 4. Explique dos implicaciones éticas del uso de IA en educación.`;
       generatePackage();
     }
 

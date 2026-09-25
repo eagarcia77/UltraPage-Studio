@@ -150,16 +150,12 @@
                     incorrect 6 incorrect</div>
                 </div>
                 <div class="col-lg-6">
-                  <div class="panel">También acepta formatos como: true/false
-                    sin etiqueta pregunta de ensayo sin respuestas <code class="inline-sample">blank</code>
-                    para llenar blancos <code class="inline-sample">match</code>
-                    para pareo <code class="inline-sample">order</code>, <code
-
-                      class="inline-sample">numeric</code>, <code class="inline-sample">short</code>,
-                    <code class="inline-sample">file</code>, <code class="inline-sample">opinion</code>,
-                    <code class="inline-sample">jumbled sentence</code> y <code
-
-                      class="inline-sample">quiz bowl</code>.</div>
+                  <div class="panel"><strong>Tipos documentados para la carga TXT de Ultra:</strong>
+                    <code class="inline-sample">MC</code>, <code class="inline-sample">MA</code>,
+                    <code class="inline-sample">TF</code>, <code class="inline-sample">ESS</code>,
+                    <code class="inline-sample">MAT</code>, <code class="inline-sample">FIB</code>,
+                    <code class="inline-sample">FIB_PLUS</code> y <code class="inline-sample">NUM</code>.
+                    La herramienta bloquea tipos heredados que podrían fallar en Ultra.</div>
                 </div>
               </div>
             </div>
@@ -201,14 +197,8 @@
                     <option value="ESS">Ensayo</option>
                     <option value="FIB">Llenar blanco</option>
                     <option value="MAT">Pareo</option>
-                    <option value="ORD">Ordenar</option>
                     <option value="FIB_PLUS">Llenar blancos con opciones</option>
-                    <option value="FIL">Respuesta de archivo</option>
                     <option value="NUM">Respuesta numérica</option>
-                    <option value="SR">Respuesta corta</option>
-                    <option value="OP">Opinión / Likert</option>
-                    <option value="JUMBLED_SENTENCE">Oración confusa</option>
-                    <option value="QUIZ_BOWL">Quiz Bowl</option>
                   </select>
                 </div>
               </div>
@@ -226,8 +216,7 @@
                   id="copyBtn">Copiar TXT</button> <button class="btn btn-outline-danger"
 
                   id="clearBtn">Limpiar</button> </div>
-              <div class="form-text mt-2">Cada pregunta debe ir en un bloque
-                separado por una línea en blanco.</div>
+              <div class="form-text mt-2">Cada pregunta debe ir en un bloque separado por una línea en blanco. Blackboard recomienda un máximo de 250 registros por archivo. La salida elimina esas líneas en blanco y conserva una pregunta por fila. <a href="https://help.anthology.com/blackboard/instructor/en/assessments/questions/reuse-questions/upload-or-import-questions.html" target="_blank" rel="noopener noreferrer">Ver especificación oficial</a>.</div>
             </div>
           </div>
         </div>
@@ -296,34 +285,12 @@ c) Chapter 10/OOP &amp; Classes
 d) Chapter 15/Chars, C-Strings, &amp; the String Class
 e) Chapter 12/Not covered in this class
 
-order 1. Order the steps.
-Step 1
-Step 2
-Step 3
-
 fib_plus 1. Complete the sentence.
 blank1 = Paris | París
 blank2 = France | Francia
 
 numeric 1. What is 2 + 2?
-4 | 0
-
-short 1. Name a color of the sky.
-blue
-
-file 1. Upload your assignment.
-
-opinion 1. I am satisfied with this course.
-
-jumbled sentence 1. Build the sentence.
-The = subject
-sky
-is blue = predicate
-
-quiz bowl 1. Identify the topic.
-science
-experiment
-method</div>
+4 | 0</div>
           </div>
         </div>
       </div>
@@ -338,6 +305,8 @@ method</div>
     const questionCountEl = document.getElementById('questionCount');
     const errorCountEl = document.getElementById('errorCount');
     const statusLabelEl = document.getElementById('statusLabel');
+    const MAX_RECORDS = 250;
+    const LEGACY_TYPES = ['ORD', 'FIL', 'SR', 'OP', 'JUMBLED_SENTENCE', 'QUIZ_BOWL'];
 
     const templates = {
       MC: `1. Which of the following is a prime number?\na) 4\n*b) 5\nc) 6`,
@@ -346,14 +315,8 @@ method</div>
       ESS: `1. Tell me your life story.`,
       FIB: `blank 1. Two plus two equals _____.\na. four\nb. 4`,
       MAT: `match 6. Match the chapters with their topics.\na) Chapter 13/Exception Handling\nb) Chapter 16/File Processing\nc) Chapter 10/OOP & Classes`,
-      ORD: `order 1. Order the steps.\nStep 1\nStep 2\nStep 3`,
       FIB_PLUS: `fib_plus 1. Complete the sentence.\nblank1 = Paris | París\nblank2 = France | Francia`,
-      FIL: `file 1. Upload your assignment.`,
-      NUM: `numeric 1. What is 2 + 2?\n4 | 0`,
-      SR: `short 1. Name a color of the sky.\nblue`,
-      OP: `opinion 1. I am satisfied with this course.`,
-      JUMBLED_SENTENCE: `jumbled sentence 1. Build the sentence.\nThe = subject\nsky\nis blue = predicate`,
-      QUIZ_BOWL: `quiz bowl 1. Identify the topic.\nscience\nexperiment\nmethod`
+      NUM: `numeric 1. What is 2 + 2?\n4 | 0`
     };
 
     const optionLineRegex = /^\*?[a-zA-Z][.)]\s*(.+)$/;
@@ -461,6 +424,10 @@ method</div>
 
       if (!type) {
         return { errors: [`Bloque ${index + 1}: no se pudo identificar el tipo de pregunta.`] };
+      }
+
+      if (LEGACY_TYPES.includes(type)) {
+        return { errors: [`Bloque ${index + 1}: ${type} no aparece entre los tipos admitidos actualmente para carga TXT en Blackboard Ultra. Convierta la pregunta a MC, MA, TF, ESS, MAT, FIB, FIB_PLUS o NUM.`] };
       }
 
       const firstLine = lines[0];
@@ -601,8 +568,20 @@ method</div>
       const blocks = splitBlocks(quizContentEl.value);
       const parsed = blocks.map((block, index) => parseBlock(block, index));
       const errors = parsed.flatMap(item => item.errors || []);
+      if (blocks.length > MAX_RECORDS) errors.unshift(`El archivo contiene ${blocks.length} preguntas. Blackboard recomienda no superar ${MAX_RECORDS} registros por archivo; divida el banco antes de descargar.`);
+      const questionPositions = new Map();
+      parsed.forEach((item, index) => {
+        const key = String(item.question || '').toLocaleLowerCase().replace(/\s+/g, ' ').trim();
+        if (!key) return;
+        const positions = questionPositions.get(key) || [];
+        positions.push(index + 1);
+        questionPositions.set(key, positions);
+      });
+      const warnings = [...questionPositions.values()]
+        .filter(positions => positions.length > 1)
+        .map(positions => `Posible pregunta duplicada en los bloques ${positions.join(', ')}. Blackboard no detecta duplicados automáticamente.`);
       const lines = parsed.filter(item => item.line).map(item => item.line);
-      return { blocks, parsed, errors, lines };
+      return { blocks, parsed, errors, warnings, lines };
     }
 
     function showResult(messages, ok) {
@@ -611,7 +590,7 @@ method</div>
     }
 
     function verifyContent() {
-      const { blocks, errors } = processContent();
+      const { blocks, errors, warnings } = processContent();
       questionCountEl.textContent = blocks.length;
       errorCountEl.textContent = errors.length;
       statusLabelEl.textContent = errors.length ? 'Errores' : 'Validado';
@@ -626,12 +605,12 @@ method</div>
         return false;
       }
 
-      showResult([`Se detectaron ${blocks.length} pregunta(s) válidas.`], true);
+      showResult([`Se detectaron ${blocks.length} pregunta(s) válidas.`, ...warnings], true);
       return true;
     }
 
     function convertContent() {
-      const { blocks, errors, lines } = processContent();
+      const { blocks, errors, warnings, lines } = processContent();
       questionCountEl.textContent = blocks.length;
       errorCountEl.textContent = errors.length;
       statusLabelEl.textContent = errors.length ? 'Errores' : 'Convertido';
@@ -653,7 +632,7 @@ method</div>
       const output = lines.join('\r\n');
       previewBoxEl.className = 'preview ok';
       previewBoxEl.textContent = output;
-      showResult([`Conversión completada correctamente para ${blocks.length} pregunta(s).`], true);
+      showResult([`Conversión completada correctamente para ${blocks.length} pregunta(s).`, ...warnings], true);
       return output;
     }
 

@@ -17,7 +17,13 @@ import {
 
 type ToolId = "apa" | "txt" | "qti";
 type FrameState = "loading" | "ready" | "slow" | "error";
-type NativeManifest = { syncedAt?: string; importedAt?: string; lastSync?: { checkedFiles?: number; updatedFiles?: string[] } };
+type NativeManifest = {
+  syncedAt?: string;
+  importedAt?: string;
+  compatibilityProfile?: string;
+  compatibilityReviewedAt?: string;
+  lastSync?: { checkedFiles?: number; updatedFiles?: string[] };
+};
 
 const tools: Array<{ id: ToolId; name: string; description: string; source: string; icon: typeof BookOpen; original: string }> = [
   {
@@ -117,6 +123,9 @@ export default function NativeToolsPage() {
         {online ? "Studio online" : "Limited offline mode"}
       </span>
       <span className="native-health-pill secured"><ShieldCheck size={15}/> Isolated native copy</span>
+      {manifest?.compatibilityProfile && <span className="native-health-pill compatible">
+        <PackageCheck size={15}/> {manifest.compatibilityProfile} profile reviewed
+      </span>}
       <span className="native-health-sync"><Clock3 size={14}/> Last synchronized: {syncedLabel}</span>
     </div>
 
