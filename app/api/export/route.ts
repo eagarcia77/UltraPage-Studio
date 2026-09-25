@@ -92,7 +92,62 @@ function safeFileName(value: string) {
   return clean || "documento-accesible";
 }
 
-function inlineRuns($: CheerioAPI, element: Element, style: { bold?: boolean; italics?: boolean; underline?: boolean } = {}, language = "es-PR"): ParagraphChild[] {
+function cssProperties(raw = "") {
+  return Object.fromEntries(raw.split(";").map((declaration) => declaration.split(":", 2).map((part) => part.trim())).filter((parts): parts is [string, string] => parts.length === 2 && Boolean(parts[0]) && Boolean(parts[1])).map(([property, value]) => [property.toLowerCase(), value]));
+}
+
+function cssColor(value?: string) {
+  if (!value) return undefined;
+  const short = value.match(/^#([0-9a-f]{3})$/i)?.[1];
+  if (short) return short.split("").map((character) => character + character).join("").toUpperCase();
+  return value.match(/^#([0-9a-f]{6})$/i)?.[1]?.toUpperCase();
+}
+
+function cssPixels(value?: string) {
+  if (!value) return undefined;
+  const numeric = Number.parseFloat(value);
+  if (!Number.isFinite(numeric)) return undefined;
+  if (/px$/i.test(value) || /^-?[\d.]+$/.test(value)) return numeric;
+  if (/pt$/i.test(value)) return numeric * (96 / 72);
+  if (/in$/i.test(value)) return numeric * 96;
+  if (/cm$/i.test(value)) return numeric * (96 / 2.54);
+  return undefined;
+}
+
+function paragraphFormatting(element: Element): IParagraphOptions {
+  const css = cssProperties(element.attribs?.style);
+  const alignmentValue = (css["text-align"] || element.attribs?.align || "").toLowerCase();
+  const alignment = alignmentValue === "center" ? AlignmentType.CENTER : alignmentValue === "right" ? AlignmentType.RIGHT : alignmentValue === "justify" ? AlignmentType.JUSTIFIED : alignmentValue === "left" ? AlignmentType.LEFT : undefined;
+  const lineHeight = Number.parseFloat(css["line-height"] || "");
+  const marginLeft = cssPixels(css["margin-left"]);
+  const paddingLeft = cssPixels(css["padding-left"]);
+  const textIndent = cssPixels(css["text-indent"]);
+  const left = marginLeft ?? paddingLeft;
+  const indent = left !== undefined || textIndent !== undefined ? {
+    left: left !== undefined ? Math.max(0, Math.round(left * 15)) : undefined,
+    firstLine: textIndent !== undefined && textIndent > 0 ? Math.round(textIndent * 15) : undefined,
+    hanging: textIndent !== undefined && textIndent < 0 ? Math.round(Math.abs(textIndent) * 15) : undefined,
+  } : undefined;
+  return {
+    alignment,
+    indent,
+    spacing: Number.isFinite(lineHeight) && lineHeight >= 1 && lineHeight <= 3 ? { line: Math.round(lineHeight * 240) } : undefined,
+  };
+}
+
+type InlineStyle = {
+  bold?: boolean;
+  italics?: boolean;
+  underline?: boolean;
+  strike?: boolean;
+  subScript?: boolean;
+  superScript?: boolean;
+  font?: string;
+  size?: number;
+  color?: string;
+};
+
+function inlineRuns($: CheerioAPI, element: Element, style: InlineStyle = {}, language = "es-PR"): ParagraphChild[] {
   const runs: ParagraphChild[] = [];
   for (const node of element.children as AnyNode[]) {
     if (node.type === "text") {
@@ -105,16 +160,26 @@ function inlineRuns($: CheerioAPI, element: Element, style: { bold?: boolean; it
       runs.push(new TextRun({ break: 1 }));
       continue;
     }
-    const nextStyle = {
-      bold: style.bold || tag === "strong" || tag === "b",
-      italics: style.italics || tag === "em" || tag === "i",
-      underline: style.underline || tag === "u",
+    const css = cssProperties(node.attribs?.style);
+    const fontSize = cssPixels(css["font-size"] || node.attribs?.["data-ultrapage-size"]);
+    const legacyFontSize = Number(node.attribs?.size || 0);
+    const nextStyle: InlineStyle = {
+      ...style,
+      bold: style.bold || tag === "strong" || tag === "b" || /^(bold|[6-9]00)$/i.test(css["font-weight"] || ""),
+      italics: style.italics || tag === "em" || tag === "i" || css["font-style"] === "italic",
+      underline: style.underline || tag === "u" || (css["text-decoration"] || "").includes("underline"),
+      strike: style.strike || tag === "s" || tag === "strike" || (css["text-decoration"] || "").includes("line-through"),
+      subScript: style.subScript || tag === "sub",
+      superScript: style.superScript || tag === "sup",
+      font: (css["font-family"] || node.attribs?.face || style.font || "").split(",")[0].replace(/["']/g, "").trim() || undefined,
+      size: fontSize ? Math.max(12, Math.min(144, Math.round(fontSize * 1.5))) : legacyFontSize ? ({ 1: 15, 2: 20, 3: 24, 4: 28, 5: 36, 6: 48, 7: 72 }[legacyFontSize] || style.size) : style.size,
+      color: cssColor(css.color || node.attribs?.color) || style.color,
     };
     if (tag === "a" && node.attribs?.href) {
       const label = cleanText($(node).text()) || node.attribs.href;
       runs.push(new ExternalHyperlink({
         link: node.attribs.href,
-        children: [new TextRun({ text: label, color: "2457A6", underline: { type: UnderlineType.SINGLE }, language: { value: language } })],
+        children: [new TextRun({ text: label, ...nextStyle, color: nextStyle.color || "2457A6", underline: { type: UnderlineType.SINGLE }, language: { value: language } })],
       }));
     } else {
       runs.push(...inlineRuns($, node, nextStyle, language));
@@ -127,8 +192,17 @@ function docxBlocks(html: string, language: string) {
   const $ = load(`<body>${html}</body>`);
   $("section,nav.ultrapage-toc").each((_, container) => { const element = $(container); element.replaceWith(element.contents()); });
   const blocks: Array<Paragraph | Table> = [];
+  const mergeFormatting = (element: Element, options: IParagraphOptions = {}): IParagraphOptions => {
+    const formatting = paragraphFormatting(element);
+    return {
+      ...formatting,
+      ...options,
+      indent: { ...(formatting.indent || {}), ...(options.indent || {}) },
+      spacing: { after: 160, ...(formatting.spacing || {}), ...(options.spacing || {}) },
+    };
+  };
   const addParagraph = (element: Element, options: IParagraphOptions = {}) => {
-    blocks.push(new Paragraph({ ...options, children: inlineRuns($, element, {}, language), spacing: { after: 160, ...(options.spacing || {}) } }));
+    blocks.push(new Paragraph({ ...mergeFormatting(element, options), children: inlineRuns($, element, {}, language) }));
   };
 
   $("body").children().each((_, raw) => {
@@ -156,7 +230,7 @@ function docxBlocks(html: string, language: string) {
       const titleText = cleanText($(element).children("strong,b").first().text());
       const calloutParagraphs: Paragraph[] = [];
       if (titleText) calloutParagraphs.push(new Paragraph({ children: [new TextRun({ text: titleText, bold: true, color: "5124A9", size: 24, language: { value: language } })], spacing: { after: 80 } }));
-      $(element).children("p").each((__, paragraph) => { calloutParagraphs.push(new Paragraph({ children: inlineRuns($, paragraph as Element, {}, language), spacing: { after: 80, line: 360 } })); });
+      $(element).children("p").each((__, paragraph) => { calloutParagraphs.push(new Paragraph({ ...mergeFormatting(paragraph as Element, { spacing: { after: 80, line: 360 } }), children: inlineRuns($, paragraph as Element, {}, language) })); });
       if (!calloutParagraphs.length) calloutParagraphs.push(new Paragraph({ children: [new TextRun({ text: cleanText($(element).text()), language: { value: language } })] }));
       const noBorder = { style: BorderStyle.NIL, size: 0, color: "FFFFFF" };
       blocks.push(new Table({
@@ -170,7 +244,8 @@ function docxBlocks(html: string, language: string) {
     if (tag === "ul" || tag === "ol") {
       $(element).children("li").each((__, li) => {
         const children = inlineRuns($, li as Element, {}, language);
-        blocks.push(new Paragraph(tag === "ul" ? { children, bullet: { level: 0 }, spacing: { after: 100 } } : { children, numbering: { reference: "ordered-list", level: 0 }, spacing: { after: 100 } }));
+        const listOptions = tag === "ul" ? { bullet: { level: 0 }, spacing: { after: 100 } } : { numbering: { reference: "ordered-list", level: 0 }, spacing: { after: 100 } };
+        blocks.push(new Paragraph({ ...mergeFormatting(li as Element, listOptions), children }));
       });
       return;
     }
@@ -184,7 +259,7 @@ function docxBlocks(html: string, language: string) {
       sourceRows.forEach((row, rowIndex) => {
         const isLastRow = rowIndex === sourceRows.length - 1;
         const cells = $(row).children("th,td").toArray().map((cell) => new TableCell({
-          children: [new Paragraph({ children: inlineRuns($, cell as Element, {}, language), spacing: { after: 0 } })],
+          children: [new Paragraph({ ...mergeFormatting(cell as Element, { spacing: { after: 0 } }), children: inlineRuns($, cell as Element, {}, language) })],
           shading: cell.name.toLowerCase() === "th" ? { fill: "E9E2F8" } : undefined,
           borders: tableStyle === "apa7" ? {
             top: rowIndex === 0 ? strongBorder : noBorder,
@@ -287,6 +362,27 @@ function createPdf(html: string, title: string, author: string, language: string
     const $ = load(`<body>${html}</body>`);
   $("section,nav.ultrapage-toc").each((_, container) => { const element = $(container); element.replaceWith(element.contents()); });
     const bodyWidth = 468;
+    const pdfFormatting = (element: Element, defaultSize: number, defaultColor: string) => {
+      const blockCss = cssProperties(element.attribs?.style);
+      const inline = $(element).find("font,span[style]").first();
+      const inlineCss = cssProperties(inline.attr("style") || "");
+      const fontPixels = cssPixels(inlineCss["font-size"] || inline.attr("data-ultrapage-size") || blockCss["font-size"]);
+      const fontSize = Math.max(8, Math.min(42, fontPixels ? fontPixels * 0.75 : defaultSize));
+      const color = `#${cssColor(inlineCss.color || inline.attr("color") || blockCss.color) || defaultColor.replace("#", "")}`;
+      const alignmentValue = (blockCss["text-align"] || element.attribs?.align || "left").toLowerCase();
+      const align = (["left", "center", "right", "justify"].includes(alignmentValue) ? alignmentValue : "left") as "left" | "center" | "right" | "justify";
+      const lineHeight = Number.parseFloat(blockCss["line-height"] || "");
+      const leftPixels = cssPixels(blockCss["margin-left"]) ?? cssPixels(blockCss["padding-left"]) ?? 0;
+      const textIndentPixels = cssPixels(blockCss["text-indent"]) ?? 0;
+      return {
+        fontSize,
+        color,
+        align,
+        lineGap: Number.isFinite(lineHeight) && lineHeight >= 1 && lineHeight <= 3 ? Math.max(0, fontSize * (lineHeight - 1)) : 3,
+        left: Math.max(0, leftPixels * 0.75),
+        indent: textIndentPixels * 0.75,
+      };
+    };
     const watermark = $(".ultrapage-watermark").first();
     const watermarkText = cleanText(watermark.text());
     const watermarkStyle = watermark.attr("style") || "";
@@ -318,7 +414,8 @@ function createPdf(html: string, title: string, author: string, language: string
       ensureSpace(tag === "table" ? 140 : 70);
       if (/^h[1-6]$/.test(tag)) {
         const level = Number(tag[1]);
-        pdf.font("AccessibleSansBold").fontSize(level === 1 ? 22 : Math.max(12, 19 - level)).fillColor("#242439").text(text, { width: bodyWidth, paragraphGap: 8, structParent: root, structType: `H${level}` });
+        const format = pdfFormatting(element, level === 1 ? 22 : Math.max(12, 19 - level), "#242439");
+        pdf.font("AccessibleSansBold").fontSize(format.fontSize).fillColor(format.color).text(text, pdf.page.margins.left + format.left, pdf.y, { width: bodyWidth - format.left, align: format.align, lineGap: format.lineGap, indent: format.indent, paragraphGap: 8, structParent: root, structType: `H${level}` });
       } else if (tag === "p" && classes.has("eyebrow")) {
         pdf.font("AccessibleSansBold").fontSize(9).fillColor("#6B38D1").text(text.toUpperCase(), { width: bodyWidth, characterSpacing: 1.1, paragraphGap: 5, structParent: root, structType: "P" });
       } else if (tag === "p" && classes.has("lead")) {
@@ -384,7 +481,11 @@ function createPdf(html: string, title: string, author: string, language: string
         }
       } else {
         const apaReference = classes.has("apa-reference");
-        pdf.font("AccessibleSans").fontSize(11).fillColor(tag === "blockquote" ? "#555E70" : "#222222").text(text, { width: bodyWidth - (apaReference ? 24 : 0), align: "left", lineGap: 3, paragraphGap: 8, indent: tag === "blockquote" || apaReference ? 24 : 0, structParent: root, structType: "P" });
+        const format = pdfFormatting(element, 11, tag === "blockquote" ? "#555E70" : "#222222");
+        const semanticLeft = tag === "blockquote" || apaReference ? 24 : 0;
+        const left = Math.max(semanticLeft, format.left);
+        const indent = apaReference ? -Math.max(24, Math.abs(format.indent)) : format.indent || (tag === "blockquote" ? 24 : 0);
+        pdf.font("AccessibleSans").fontSize(format.fontSize).fillColor(format.color).text(text, pdf.page.margins.left + left, pdf.y, { width: bodyWidth - left, align: format.align, lineGap: format.lineGap, paragraphGap: 8, indent, structParent: root, structType: "P" });
       }
     });
     pdf.end();
