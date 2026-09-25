@@ -1,4 +1,4 @@
-const VERSION = "ultrapage-v2";
+const VERSION = "ultrapage-v3";
 const SHELL_CACHE = `${VERSION}-shell`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
 const APP_SHELL = [
@@ -6,6 +6,10 @@ const APP_SHELL = [
   "/tools",
   "/manifest.webmanifest",
   "/favicon.svg",
+  "/brand/ultrapage-mark.svg",
+  "/brand/ultrapage-icon-192.png",
+  "/brand/ultrapage-icon-512.png",
+  "/brand/apple-touch-icon.png",
   "/native-tools/ultrapage-native-theme.css",
   "/native-tools/estiloapa/index.html",
   "/native-tools/estiloapa/styles.css",

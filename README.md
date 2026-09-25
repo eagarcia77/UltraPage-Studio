@@ -1,5 +1,7 @@
 # UltraPage Studio
 
+![UltraPage Studio logo](public/brand/ultrapage-mark.svg)
+
 ## Abrir el programa
 
 ### [▶ Abrir UltraPage Studio](https://ultrapage-studio.onrender.com)

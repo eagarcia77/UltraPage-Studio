@@ -1,6 +1,6 @@
 {
   "name": "UltraPage Studio",
-  "short_name": "UltraPage",
+  "short_name": "UP Studio",
   "description": "Accessible content authoring and native tools for Blackboard Ultra.",
   "id": "/",
   "start_url": "/",
@@ -17,16 +17,22 @@
   ],
   "icons": [
     {
-      "src": "/favicon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
+      "src": "/brand/ultrapage-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
       "purpose": "any"
+    },
+    {
+      "src": "/brand/ultrapage-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
       "src": "/favicon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
-      "purpose": "maskable"
+      "purpose": "any"
     }
   ],
   "shortcuts": [
@@ -36,9 +42,9 @@
       "url": "/",
       "icons": [
         {
-          "src": "/favicon.svg",
-          "sizes": "any",
-          "type": "image/svg+xml"
+          "src": "/brand/ultrapage-icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
         }
       ]
     },
@@ -48,9 +54,9 @@
       "url": "/tools",
       "icons": [
         {
-          "src": "/favicon.svg",
-          "sizes": "any",
-          "type": "image/svg+xml"
+          "src": "/brand/ultrapage-icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
         }
       ]
     }

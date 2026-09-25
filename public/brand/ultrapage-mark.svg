@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title description">
+  <title id="title">UltraPage Studio</title>
+  <desc id="description">A white document with a folded corner and a violet letter U.</desc>
+  <defs>
+    <linearGradient id="background" x1="10" y1="8" x2="55" y2="58" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#8659E6"/>
+      <stop offset="1" stop-color="#4A1B92"/>
+    </linearGradient>
+  </defs>
+  <rect x="2" y="2" width="60" height="60" rx="16" fill="url(#background)"/>
+  <path d="M18 12h20l9 9v27a4 4 0 0 1-4 4H18a4 4 0 0 1-4-4V16a4 4 0 0 1 4-4Z" fill="#fff"/>
+  <path d="M38 12v7a3 3 0 0 0 3 3h6Z" fill="#DCCDF8"/>
+  <path d="M21 27v10.25C21 44.7 25.2 48 31.5 48S42 44.7 42 37.25V27h-6v10.1c0 3.85-1.35 5.3-4.5 5.3S27 40.95 27 37.1V27Z" fill="#5B2ABC"/>
+</svg>

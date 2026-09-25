@@ -107,7 +107,7 @@ export default function NativeToolsPage() {
   return <main className="native-tools-page">
     <header className="native-tools-header">
       <a href="/" className="native-tools-back"><ArrowLeft size={17}/> Back to Studio</a>
-      <div className="native-tools-brand"><span className="brandmark"><span>U</span></span><span><strong>UltraPage Studio</strong><small>Native Tools</small></span></div>
+      <div className="native-tools-brand"><span className="brandmark" aria-hidden="true"><img src="/brand/ultrapage-mark.svg" alt="" /></span><span><strong>UltraPage Studio</strong><small>Native Tools</small></span></div>
       <a href={active.original} target="_blank" rel="noopener noreferrer" className="native-tools-original">Original repository version <ExternalLink size={15}/></a>
     </header>
 

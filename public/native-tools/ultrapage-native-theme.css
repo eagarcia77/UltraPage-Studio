@@ -64,15 +64,18 @@ body {
 }
 
 body::before {
-  content: "U   UltraPage Studio · Native Tool";
+  content: "UltraPage Studio · Native Tool";
   position: sticky;
   top: 0;
   z-index: 10000;
   display: block;
   min-height: 48px;
-  padding: 14px clamp(16px, 4vw, 32px);
+  padding: 14px clamp(16px, 4vw, 32px) 14px clamp(58px, 7vw, 74px);
   color: #fff;
-  background: linear-gradient(105deg, var(--ups-purple-deep), var(--ups-purple-dark) 55%, var(--ups-purple));
+  background-image: url("/brand/ultrapage-mark.svg"), linear-gradient(105deg, var(--ups-purple-deep), var(--ups-purple-dark) 55%, var(--ups-purple));
+  background-position: clamp(16px, 4vw, 32px) center, center;
+  background-repeat: no-repeat;
+  background-size: 30px 30px, cover;
   border-bottom: 1px solid rgba(255, 255, 255, .16);
   box-shadow: 0 5px 18px rgba(25, 12, 44, .17);
   font-size: 12px;

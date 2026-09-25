@@ -41,15 +41,18 @@ body {
 }
 
 body::before {
-  content: "U   UltraPage Studio · EstiloAPA";
+  content: "UltraPage Studio · EstiloAPA";
   position: sticky;
   top: 0;
   z-index: 10000;
   display: block;
   min-height: 48px;
-  padding: 14px clamp(16px, 4vw, 32px);
+  padding: 14px clamp(16px, 4vw, 32px) 14px clamp(58px, 7vw, 74px);
   color: #fff;
-  background: linear-gradient(105deg, var(--up-purple-deep), var(--up-purple-dark) 55%, var(--up-purple));
+  background-image: url("/brand/ultrapage-mark.svg"), linear-gradient(105deg, var(--up-purple-deep), var(--up-purple-dark) 55%, var(--up-purple));
+  background-position: clamp(16px, 4vw, 32px) center, center;
+  background-repeat: no-repeat;
+  background-size: 30px 30px, cover;
   box-shadow: 0 5px 18px rgba(25, 12, 44, .17);
   font-size: 12px;
   font-weight: 850;
