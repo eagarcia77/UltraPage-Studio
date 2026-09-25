@@ -5,8 +5,8 @@ import "./globals.css";
 export const metadata: Metadata = {
   metadataBase: new URL("https://ultrapage-studio.onrender.com"),
   applicationName: "UltraPage Studio",
-  title: "UltraPage Studio | Blackboard Ultra Content Editor",
-  description: "Create accessible, responsive content and assessment packages for Blackboard Ultra.",
+  title: "UltraPage Studio | Accessible Multi-LMS Content Editor",
+  description: "Create accessible, responsive content for Blackboard Ultra, Canvas, Moodle, Brightspace, and standards-based LMS platforms.",
   manifest: "/manifest.webmanifest",
   icons: {
     icon: "/favicon.svg",
@@ -15,7 +15,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: "UltraPage Studio",
-    description: "Accessible content authoring and native tools for Blackboard Ultra.",
+    description: "Accessible multi-LMS content authoring with native Blackboard assessment tools.",
     images: [{ url: "/brand/ultrapage-icon-512.png", width: 512, height: 512, alt: "UltraPage Studio logo" }],
   },
   appleWebApp: {

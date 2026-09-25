@@ -8,11 +8,13 @@
 
 > GitHub muestra el código fuente del proyecto. Para utilizar el editor, seleccione el enlace **Abrir UltraPage Studio**.
 
-Editor visual en español para crear contenido accesible y compatible con Blackboard Ultra.
+Editor visual para crear contenido accesible y portátil entre Blackboard Ultra, Canvas, Moodle, D2L Brightspace y otros LMS basados en HTML estándar.
 
 ## Funciones
 
 - Edición visual y edición directa de HTML.
+- Perfiles de salida para Universal LMS, Blackboard Ultra, Canvas, Moodle y D2L Brightspace.
+- Fragmentos HTML semánticos con estilos en línea para pegar en editores LMS que eliminan CSS externo.
 - Vista previa para computadora, tableta y celular.
 - Plantillas de objetivos, instrucciones y avisos.
 - Conexión segura con Blackboard Content Collection mediante WebDAV.
@@ -23,7 +25,8 @@ Editor visual en español para crear contenido accesible y compatible con Blackb
 - Descarga de HTML, Word y PDF en la computadora.
 - Guardado de HTML, Word y PDF directamente en Blackboard Content Collection mediante WebDAV.
 - Revisión previa de título, encabezados, texto alternativo, enlaces descriptivos y tablas.
-- Copia de HTML para utilizarlo en Blackboard Ultra.
+- Copia de HTML adaptada al LMS seleccionado y perfil universal conservador para otras plataformas.
+- Herramientas de evaluación identificadas por alcance: TXT y QTI incluidos están verificados específicamente para Blackboard Ultra.
 
 ## Desarrollo local
 

@@ -23,8 +23,20 @@ const demoFiles = [
 const DRAFT_KEY = "ultrapage-studio-draft-v1";
 const HISTORY_KEY = "ultrapage-studio-history-v1";
 type DocumentLanguage = "es-PR" | "en-US";
-type DraftSnapshot = { id: string; html: string; title: string; fileName: string; language?: DocumentLanguage; author?: string; description?: string; savedAt: string };
+type LmsProfile = "universal" | "blackboard" | "canvas" | "moodle" | "brightspace";
+type DraftSnapshot = { id: string; html: string; title: string; fileName: string; language?: DocumentLanguage; lmsProfile?: LmsProfile; author?: string; description?: string; savedAt: string };
 const languageLabels: Record<DocumentLanguage, string> = { "es-PR": "Español (Puerto Rico)", "en-US": "English (United States)" };
+const lmsProfiles: Record<LmsProfile, { label: string; shortLabel: string; guidance: string }> = {
+  universal: { label: "Universal LMS", shortLabel: "Universal", guidance: "Conservative semantic HTML for standards-based LMS editors." },
+  blackboard: { label: "Blackboard Ultra", shortLabel: "Blackboard", guidance: "Includes legacy visual fallbacks used by Blackboard Ultra." },
+  canvas: { label: "Canvas", shortLabel: "Canvas", guidance: "Uses semantic HTML and inline styles compatible with the Canvas allowlist." },
+  moodle: { label: "Moodle", shortLabel: "Moodle", guidance: "Uses portable semantic HTML for Moodle text editors and pages." },
+  brightspace: { label: "D2L Brightspace", shortLabel: "Brightspace", guidance: "Uses body content and inline styles because the editor removes style blocks." },
+};
+
+function isLmsProfile(value: unknown): value is LmsProfile {
+  return typeof value === "string" && value in lmsProfiles;
+}
 
 function escapeHtml(value: string) {
   return value.replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character] || character);
@@ -125,7 +137,7 @@ function sanitizePastedHtml(source: string) {
   return parsed.body.innerHTML;
 }
 
-function buildBlackboardHtml(sourceHtml: string, language: DocumentLanguage = "es-PR") {
+function buildLmsHtml(sourceHtml: string, language: DocumentLanguage = "es-PR", profile: LmsProfile = "universal") {
   const parsed = new DOMParser().parseFromString(`<div id="ultrapage-export">${sourceHtml}</div>`, "text/html");
   const root = parsed.querySelector<HTMLElement>("#ultrapage-export");
   if (!root) return sourceHtml;
@@ -133,7 +145,7 @@ function buildBlackboardHtml(sourceHtml: string, language: DocumentLanguage = "e
   root.querySelectorAll("script,style,object,embed,form,input,button").forEach((element) => element.remove());
   root.querySelectorAll<HTMLImageElement>("img[data-ultrapage-webdav-src]").forEach((image) => {
     const remoteSource = image.getAttribute("data-ultrapage-webdav-src") || "";
-    if (/^https:\/\//i.test(remoteSource)) image.src = remoteSource;
+    if (profile === "blackboard" && /^https:\/\//i.test(remoteSource)) image.src = remoteSource;
     image.removeAttribute("data-ultrapage-webdav-src");
   });
   root.querySelectorAll<HTMLIFrameElement>("iframe").forEach((frame) => { const safeSource = normalizeMediaEmbed(frame.src); if (!safeSource) frame.remove(); else frame.src = safeSource; });
@@ -218,21 +230,23 @@ function buildBlackboardHtml(sourceHtml: string, language: DocumentLanguage = "e
       element.appendChild(strong);
     } else element.appendChild(font);
   };
-  root.querySelectorAll("h1").forEach((element) => fontify(element, "#242439", "6"));
-  root.querySelectorAll("h2").forEach((element) => fontify(element, "#302254", "5"));
-  root.querySelectorAll("h3").forEach((element) => fontify(element, "#302254", "4"));
-  root.querySelectorAll("h4").forEach((element) => fontify(element, "#302254", "4"));
-  root.querySelectorAll("p").forEach((element) => {
-    if (element.classList.contains("eyebrow")) fontify(element, "#6b38d1", "2", true);
-    else if (element.classList.contains("lead")) fontify(element, "#555e70", "4");
-    else fontify(element, "#242a36", "3");
-  });
-  root.querySelectorAll("li").forEach((element) => fontify(element, "#242a36", "3"));
-  root.querySelectorAll("figcaption").forEach((element) => fontify(element, "#6f788a", "2"));
-  root.querySelectorAll("caption").forEach((element) => fontify(element, "#242a36", "3", true));
-  root.querySelectorAll("th").forEach((element) => fontify(element, "#242a36", "3", true));
-  root.querySelectorAll("td").forEach((element) => fontify(element, "#242a36", "3"));
-  root.querySelectorAll(".callout > strong,.callout > b").forEach((element) => fontify(element, "#5124a9", "3"));
+  if (profile === "blackboard") {
+    root.querySelectorAll("h1").forEach((element) => fontify(element, "#242439", "6"));
+    root.querySelectorAll("h2").forEach((element) => fontify(element, "#302254", "5"));
+    root.querySelectorAll("h3").forEach((element) => fontify(element, "#302254", "4"));
+    root.querySelectorAll("h4").forEach((element) => fontify(element, "#302254", "4"));
+    root.querySelectorAll("p").forEach((element) => {
+      if (element.classList.contains("eyebrow")) fontify(element, "#6b38d1", "2", true);
+      else if (element.classList.contains("lead")) fontify(element, "#555e70", "4");
+      else fontify(element, "#242a36", "3");
+    });
+    root.querySelectorAll("li").forEach((element) => fontify(element, "#242a36", "3"));
+    root.querySelectorAll("figcaption").forEach((element) => fontify(element, "#6f788a", "2"));
+    root.querySelectorAll("caption").forEach((element) => fontify(element, "#242a36", "3", true));
+    root.querySelectorAll("th").forEach((element) => fontify(element, "#242a36", "3", true));
+    root.querySelectorAll("td").forEach((element) => fontify(element, "#242a36", "3"));
+    root.querySelectorAll(".callout > strong,.callout > b").forEach((element) => fontify(element, "#5124a9", "3"));
+  }
   root.querySelectorAll("ul").forEach((element) => element.setAttribute("type", "disc"));
   root.querySelectorAll("ol").forEach((element) => element.setAttribute("type", "1"));
   root.querySelectorAll("table").forEach((element) => {
@@ -240,7 +254,7 @@ function buildBlackboardHtml(sourceHtml: string, language: DocumentLanguage = "e
   });
   root.querySelectorAll('table[data-table-style="grid"]').forEach((element) => element.setAttribute("border", "1"));
   root.querySelectorAll("th").forEach((element) => element.setAttribute("bgcolor", "#f3effc"));
-  root.querySelectorAll<HTMLElement>(".callout").forEach((callout) => {
+  if (profile === "blackboard") root.querySelectorAll<HTMLElement>(".callout").forEach((callout) => {
     const table = parsed.createElement("table");
     table.setAttribute("role", "presentation"); table.setAttribute("width", "100%"); table.setAttribute("border", "0"); table.setAttribute("cellspacing", "0"); table.setAttribute("cellpadding", "0"); table.setAttribute("bgcolor", "#f3effc");
     style(table, "width:100%;border-collapse:collapse;background:#f3effc;margin:28px 0");
@@ -265,8 +279,8 @@ export default function Home() {
   const [html, setHtml] = useState(starterHtml);
   const htmlRef = useRef(starterHtml);
   const [mode, setMode] = useState<"visual" | "ultra" | "html">("visual");
-  const [codeView, setCodeView] = useState<"blackboard" | "source">("blackboard");
-  const [blackboardHtml, setBlackboardHtml] = useState("");
+  const [codeView, setCodeView] = useState<"lms" | "source">("lms");
+  const [lmsHtml, setLmsHtml] = useState("");
   const [device, setDevice] = useState<"desktop" | "tablet" | "mobile">("desktop");
   const [rulerUnit, setRulerUnit] = useState<"in" | "cm">("in");
   const [rightPanel, setRightPanel] = useState(true);
@@ -277,6 +291,7 @@ export default function Home() {
   const [search, setSearch] = useState("");
   const [documentFileName, setDocumentFileName] = useState("documento-sin-titulo.html");
   const [documentLanguage, setDocumentLanguage] = useState<DocumentLanguage>("es-PR");
+  const [lmsProfile, setLmsProfile] = useState<LmsProfile>("universal");
   const [documentAuthor, setDocumentAuthor] = useState("");
   const [documentDescription, setDocumentDescription] = useState("");
   const [imageDragActive, setImageDragActive] = useState(false);
@@ -310,7 +325,7 @@ export default function Home() {
     try {
       const stored = localStorage.getItem(DRAFT_KEY);
       if (stored) {
-        const draft = JSON.parse(stored) as { html?: string; title?: string; fileName?: string; language?: DocumentLanguage; author?: string; description?: string };
+        const draft = JSON.parse(stored) as { html?: string; title?: string; fileName?: string; language?: DocumentLanguage; lmsProfile?: LmsProfile; author?: string; description?: string };
         const restoredHtml = typeof draft.html === "string" ? draft.html : "";
         htmlRef.current = restoredHtml;
         setHtml(restoredHtml);
@@ -318,6 +333,7 @@ export default function Home() {
         if (draft.title) setTitle(draft.title);
         if (draft.fileName) setDocumentFileName(draft.fileName);
         if (draft.language === "es-PR" || draft.language === "en-US") setDocumentLanguage(draft.language);
+        if (isLmsProfile(draft.lmsProfile)) setLmsProfile(draft.lmsProfile);
         setDocumentAuthor(draft.author || "");
         setDocumentDescription(draft.description || "");
         toast.success("Draft recovered", { description: "Your autosaved work was restored." });
@@ -328,11 +344,11 @@ export default function Home() {
   useEffect(() => {
     if (!draftLoaded) return;
     const timer = window.setTimeout(() => {
-      localStorage.setItem(DRAFT_KEY, JSON.stringify({ html, title, fileName: documentFileName, language: documentLanguage, author: documentAuthor, description: documentDescription, updatedAt: new Date().toISOString() }));
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({ html, title, fileName: documentFileName, language: documentLanguage, lmsProfile, author: documentAuthor, description: documentDescription, updatedAt: new Date().toISOString() }));
       setSaved(true);
     }, 700);
     return () => window.clearTimeout(timer);
-  }, [draftLoaded, html, title, documentFileName, documentLanguage, documentAuthor, documentDescription]);
+  }, [draftLoaded, html, title, documentFileName, documentLanguage, lmsProfile, documentAuthor, documentDescription]);
 
   htmlRef.current = html;
   const attachEditor = useCallback((node: HTMLDivElement | null) => {
@@ -348,7 +364,7 @@ export default function Home() {
     }
     setMode(nextMode);
   };
-  useEffect(() => { if (mode !== "visual") setBlackboardHtml(buildBlackboardHtml(html, documentLanguage)); }, [html, mode, documentLanguage]);
+  useEffect(() => { if (mode !== "visual") setLmsHtml(buildLmsHtml(html, documentLanguage, lmsProfile)); }, [html, mode, documentLanguage, lmsProfile]);
   useEffect(() => {
     const rememberSelection = () => {
       const selection = window.getSelection();
@@ -556,7 +572,7 @@ export default function Home() {
     const clipboardText = event.clipboardData.getData("text/plain");
     const cleaned = clipboardHtml ? sanitizePastedHtml(clipboardHtml) : escapeHtml(clipboardText).replace(/\r?\n/g, "<br>");
     command("insertHTML", cleaned);
-    toast.success("Pasted content cleaned", { description: "Incompatible Blackboard styles and code were removed." });
+    toast.success("Pasted content cleaned", { description: "Unsafe and non-portable LMS code was removed." });
   };
   const insertAccessibleImage = ({ src, alt, caption, decorative, width }: { src: string; alt: string; caption: string; decorative: boolean; width: number }) => {
     const cleanSrc = src.trim();
@@ -658,8 +674,8 @@ export default function Home() {
   const save = () => {
     const currentHtml = mode === "visual" ? editor.current?.innerHTML || html : html;
     htmlRef.current = currentHtml; setHtml(currentHtml);
-    localStorage.setItem(DRAFT_KEY, JSON.stringify({ html: currentHtml, title, fileName: documentFileName, language: documentLanguage, author: documentAuthor, description: documentDescription, updatedAt: new Date().toISOString() }));
-    const snapshot: DraftSnapshot = { id: crypto.randomUUID?.() || String(Date.now()), html: currentHtml, title, fileName: documentFileName, language: documentLanguage, author: documentAuthor, description: documentDescription, savedAt: new Date().toISOString() };
+    localStorage.setItem(DRAFT_KEY, JSON.stringify({ html: currentHtml, title, fileName: documentFileName, language: documentLanguage, lmsProfile, author: documentAuthor, description: documentDescription, updatedAt: new Date().toISOString() }));
+    const snapshot: DraftSnapshot = { id: crypto.randomUUID?.() || String(Date.now()), html: currentHtml, title, fileName: documentFileName, language: documentLanguage, lmsProfile, author: documentAuthor, description: documentDescription, savedAt: new Date().toISOString() };
     try {
       const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]") as DraftSnapshot[];
       if (history[0]?.html !== currentHtml || history[0]?.title !== title) localStorage.setItem(HISTORY_KEY, JSON.stringify([snapshot, ...history].slice(0, 10)));
@@ -667,30 +683,31 @@ export default function Home() {
     setSaved(true); toast.success("Page saved", { description: "The draft will remain available after closing or refreshing the browser." });
   };
   const restoreSnapshot = (snapshot: DraftSnapshot) => {
-    htmlRef.current = snapshot.html; setHtml(snapshot.html); setTitle(snapshot.title); setDocumentFileName(snapshot.fileName); if (snapshot.language) setDocumentLanguage(snapshot.language); setDocumentAuthor(snapshot.author || ""); setDocumentDescription(snapshot.description || ""); setMode("visual"); setSaved(true);
+    htmlRef.current = snapshot.html; setHtml(snapshot.html); setTitle(snapshot.title); setDocumentFileName(snapshot.fileName); if (snapshot.language) setDocumentLanguage(snapshot.language); if (isLmsProfile(snapshot.lmsProfile)) setLmsProfile(snapshot.lmsProfile); setDocumentAuthor(snapshot.author || ""); setDocumentDescription(snapshot.description || ""); setMode("visual"); setSaved(true);
     if (editor.current) editor.current.innerHTML = snapshot.html;
-    localStorage.setItem(DRAFT_KEY, JSON.stringify({ html: snapshot.html, title: snapshot.title, fileName: snapshot.fileName, language: snapshot.language || documentLanguage, author: snapshot.author || "", description: snapshot.description || "", updatedAt: new Date().toISOString() }));
+    localStorage.setItem(DRAFT_KEY, JSON.stringify({ html: snapshot.html, title: snapshot.title, fileName: snapshot.fileName, language: snapshot.language || documentLanguage, lmsProfile: snapshot.lmsProfile || lmsProfile, author: snapshot.author || "", description: snapshot.description || "", updatedAt: new Date().toISOString() }));
     toast.success("Version restored", { description: snapshot.title });
   };
   const copyHtml = async () => {
     const currentHtml = mode === "visual" ? editor.current?.innerHTML || html : html;
-    const blackboardMarkup = buildBlackboardHtml(currentHtml, documentLanguage);
+    const compatibleMarkup = buildLmsHtml(currentHtml, documentLanguage, lmsProfile);
+    const target = lmsProfiles[lmsProfile];
     try {
       if (navigator.clipboard.write && typeof ClipboardItem !== "undefined") {
         const clipboardItem = new ClipboardItem({
-          "text/html": new Blob([blackboardMarkup], { type: "text/html" }),
-          "text/plain": new Blob([blackboardMarkup], { type: "text/plain" }),
+          "text/html": new Blob([compatibleMarkup], { type: "text/html" }),
+          "text/plain": new Blob([compatibleMarkup], { type: "text/plain" }),
         });
         await navigator.clipboard.write([clipboardItem]);
-        toast.success("Content ready for Blackboard Ultra", { description: "Paste it into the visual editor or HTML <> editor; Blackboard will use the appropriate format." });
+        toast.success(`Content ready for ${target.label}`, { description: "Paste it into the LMS visual editor or HTML source editor." });
       } else {
-        await navigator.clipboard.writeText(blackboardMarkup);
-        toast.success("Compatible HTML code copied", { description: "Paste it into Blackboard Ultra’s HTML <> editor." });
+        await navigator.clipboard.writeText(compatibleMarkup);
+        toast.success("Compatible HTML code copied", { description: `Paste it into ${target.label}’s HTML source editor.` });
       }
     } catch {
       try {
-        await navigator.clipboard.writeText(blackboardMarkup);
-        toast.success("Compatible HTML code copied", { description: "The browser used compatibility mode. Paste it into Blackboard Ultra’s HTML <> editor." });
+        await navigator.clipboard.writeText(compatibleMarkup);
+        toast.success("Compatible HTML code copied", { description: `The browser used compatibility mode. Paste it into ${target.label}’s HTML source editor.` });
       } catch {
         toast.error("Clipboard access was denied", { description: "Open the HTML tab and copy the code manually." });
       }
@@ -710,13 +727,14 @@ export default function Home() {
     const plainTextFile = /\.txt$/i.test(name);
     const parsedFile = plainTextFile ? null : new DOMParser().parseFromString(content, "text/html");
     const importedLanguage = parsedFile?.documentElement.lang;
+    const importedLmsProfile = parsedFile?.querySelector('meta[name="ultrapage-lms-profile"]')?.getAttribute("content");
     const importedAuthor = parsedFile?.querySelector('meta[name="author"]')?.getAttribute("content") || "";
     const importedDescription = parsedFile?.querySelector('meta[name="description"]')?.getAttribute("content") || "";
     const extracted = content.match(/<main[^>]*class=["'][^"']*ultra-page[^"']*["'][^>]*>([\s\S]*?)<\/main>/i)?.[1] || content.match(/<body[^>]*>([\s\S]*?)<\/body>/i)?.[1] || content;
     const body = plainTextFile
       ? extracted.split(/\n{2,}/).map((paragraph) => `<p>${escapeHtml(paragraph).replace(/\n/g, "<br>")}</p>`).join("")
       : sanitizePastedHtml(extracted);
-    setHtml(body); setDocumentFileName(name); setTitle(name.replace(/\.(html?|txt)$/i, "")); if (importedLanguage === "en-US" || importedLanguage === "es-PR") setDocumentLanguage(importedLanguage); setDocumentAuthor(importedAuthor); setDocumentDescription(importedDescription); setMode("visual"); setSaved(true);
+    setHtml(body); setDocumentFileName(name); setTitle(name.replace(/\.(html?|txt)$/i, "")); if (importedLanguage === "en-US" || importedLanguage === "es-PR") setDocumentLanguage(importedLanguage); if (isLmsProfile(importedLmsProfile)) setLmsProfile(importedLmsProfile); setDocumentAuthor(importedAuthor); setDocumentDescription(importedDescription); setMode("visual"); setSaved(true);
     if (editor.current) editor.current.innerHTML = body;
     toast.success("File opened safely", { description: `${name} is ready to edit.` });
   };
@@ -749,7 +767,7 @@ export default function Home() {
       }
       const content = await file.text();
       if (/\.json$/i.test(file.name)) {
-        const project = JSON.parse(content) as { format?: string; version?: number; html?: string; title?: string; fileName?: string; language?: string; author?: string; description?: string };
+        const project = JSON.parse(content) as { format?: string; version?: number; html?: string; title?: string; fileName?: string; language?: string; lmsProfile?: string; author?: string; description?: string };
         if (project.format !== "ultrapage-project" || project.version !== 1 || typeof project.html !== "string") throw new Error("Invalid UltraPage project");
         const body = sanitizePastedHtml(project.html);
         const projectLanguage: DocumentLanguage = project.language === "en-US" ? "en-US" : "es-PR";
@@ -760,6 +778,7 @@ export default function Home() {
         setTitle(projectTitle);
         setDocumentFileName(projectFileName);
         setDocumentLanguage(projectLanguage);
+        if (isLmsProfile(project.lmsProfile)) setLmsProfile(project.lmsProfile);
         setDocumentAuthor(typeof project.author === "string" ? project.author : "");
         setDocumentDescription(typeof project.description === "string" ? project.description : "");
         setMode("visual");
@@ -785,7 +804,7 @@ export default function Home() {
     const safeTitle = escapeHtml(title);
     const safeAuthor = escapeHtml(documentAuthor.trim());
     const safeDescription = escapeHtml(documentDescription.trim());
-    const fileContent = documentFileName.toLowerCase().endsWith(".txt") ? currentHtml.replace(/<[^>]+>/g, "") : `<!doctype html><html lang="${documentLanguage}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="color-scheme" content="light"><title>${safeTitle}</title>${safeAuthor ? `<meta name="author" content="${safeAuthor}">` : ""}${safeDescription ? `<meta name="description" content="${safeDescription}">` : ""}<style>${exportedPageStyles}</style></head><body><main class="ultra-page">${currentHtml}</main></body></html>`;
+    const fileContent = documentFileName.toLowerCase().endsWith(".txt") ? currentHtml.replace(/<[^>]+>/g, "") : `<!doctype html><html lang="${documentLanguage}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="color-scheme" content="light"><meta name="generator" content="UltraPage Studio"><meta name="ultrapage-lms-profile" content="${lmsProfile}"><title>${safeTitle}</title>${safeAuthor ? `<meta name="author" content="${safeAuthor}">` : ""}${safeDescription ? `<meta name="description" content="${safeDescription}">` : ""}<style>${exportedPageStyles}</style></head><body><main class="ultra-page">${currentHtml}</main></body></html>`;
     const blob = new Blob([fileContent], { type: documentFileName.toLowerCase().endsWith(".txt") ? "text/plain;charset=utf-8" : "text/html;charset=utf-8" });
     const downloadUrl = URL.createObjectURL(blob); const link = document.createElement("a"); link.href = downloadUrl; link.download = documentFileName; link.click(); URL.revokeObjectURL(downloadUrl);
     toast.success("File downloaded to your computer");
@@ -811,7 +830,7 @@ export default function Home() {
     };
     window.addEventListener("keydown", shortcuts);
     return () => window.removeEventListener("keydown", shortcuts);
-  }, [mode, html, title, documentFileName, rightPanel]);
+  }, [mode, html, title, documentFileName, documentLanguage, lmsProfile, documentAuthor, documentDescription, rightPanel]);
 
   const repairAccessibility = () => {
     const parsed = new DOMParser().parseFromString(`<div id="accessibility-repair-root">${html}</div>`, "text/html");
@@ -939,16 +958,17 @@ export default function Home() {
     });
   };
 
-  const finalPreviewMarkup = blackboardHtml;
+  const activeLms = lmsProfiles[lmsProfile];
+  const finalPreviewMarkup = lmsHtml;
   const finalPreviewDocument = `<!doctype html><html lang="${documentLanguage}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)}</title><style>*{box-sizing:border-box}html{background:#f3f4f7}body{margin:0;padding:32px;background:#fff;color:#242a36;font-family:Arial,'Segoe UI',sans-serif;min-height:100vh}@media(max-width:600px){body{padding:20px 16px}}</style></head><body>${finalPreviewMarkup}</body></html>`;
 
   return <main className="min-h-screen bg-[#f4f6f9] text-[#172033]">
     <Toaster position="bottom-right" richColors />
     <input ref={localFileInput} className="sr-only" type="file" accept=".html,.htm,.txt,.docx,.ultrapage.json,.json,text/html,text/plain,application/json,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onChange={(event) => importLocalDocument(event.target.files?.[0])} aria-label="Open an HTML, TXT, Word, or UltraPage project file"/>
     <header className="topbar">
-      <div className="brandmark" aria-hidden="true"><img src="/brand/ultrapage-mark.svg" alt="" /></div><div className="brandcopy"><strong>UltraPage Studio</strong><span>Editor for Blackboard Ultra</span></div>
-      <div className="course-pill disconnected" aria-label="Connection status"><span className="status-dot disconnected" />No course connected</div>
-      <div className="header-actions"><ApaDialog insertMarkup={insertMarkup} language={documentLanguage}/><span className={saved ? "save-state" : "save-state pending"}>{saved ? <Check size={14}/> : <Cloud size={14}/>} {saved ? "Saved" : "Unsaved changes"}</span><HistoryDialog restoreSnapshot={restoreSnapshot}/><KeyboardShortcutsDialog/><DocumentPropertiesDialog author={documentAuthor} description={documentDescription} setAuthor={setDocumentAuthor} setDescription={setDocumentDescription}/><Button variant="outline" className="publish-button" title="Open HTML, TXT, Word, or UltraPage project" onClick={() => localFileInput.current?.click()}><Upload size={16}/> Open</Button><ExportDialog html={html} title={title} language={documentLanguage} author={documentAuthor} description={documentDescription} downloadHtml={downloadDocument}/><Button variant="outline" className="publish-button" onClick={copyHtml} title="Copiar para el editor visual o HTML de Blackboard Ultra"><Copy size={16}/> Copy for Ultra</Button><Button className="save-button" onClick={save}><Save size={16}/> Save</Button></div>
+      <div className="brandmark" aria-hidden="true"><img src="/brand/ultrapage-mark.svg" alt="" /></div><div className="brandcopy"><strong>UltraPage Studio</strong><span>Accessible editor for every LMS</span></div>
+      <label className="lms-profile-picker"><span>Target LMS</span><select value={lmsProfile} onChange={(event) => { setLmsProfile(event.target.value as LmsProfile); setSaved(false); }} aria-label="Target learning management system">{Object.entries(lmsProfiles).map(([value, profile]) => <option key={value} value={value}>{profile.label}</option>)}</select></label>
+      <div className="header-actions"><ApaDialog insertMarkup={insertMarkup} language={documentLanguage}/><span className={saved ? "save-state" : "save-state pending"}>{saved ? <Check size={14}/> : <Cloud size={14}/>} {saved ? "Saved" : "Unsaved changes"}</span><HistoryDialog restoreSnapshot={restoreSnapshot}/><KeyboardShortcutsDialog/><DocumentPropertiesDialog author={documentAuthor} description={documentDescription} setAuthor={setDocumentAuthor} setDescription={setDocumentDescription}/><Button variant="outline" className="publish-button" title="Open HTML, TXT, Word, or UltraPage project" onClick={() => localFileInput.current?.click()}><Upload size={16}/> Open</Button><ExportDialog html={html} title={title} language={documentLanguage} lmsProfile={lmsProfile} author={documentAuthor} description={documentDescription} downloadHtml={downloadDocument}/><Button variant="outline" className="publish-button" onClick={copyHtml} title={`Copy compatible HTML for ${activeLms.label}`}><Copy size={16}/> Copy for {activeLms.shortLabel}</Button><Button className="save-button" onClick={save}><Save size={16}/> Save</Button></div>
     </header>
     <div className="workspace">
       <aside className="leftbar" aria-label="Workspace navigation"><button className={`rail-button ${mode === "visual" ? "active" : ""}`} aria-label="Open Design editor" title="Design editor" aria-pressed={mode === "visual"} onClick={() => setMode("visual")}><FileText /></button><button className={`rail-button ${rightPanel && sidePanelTab === "blocks" ? "active" : ""}`} aria-label="Open resources and content tools" title="Resources and content" aria-pressed={rightPanel && sidePanelTab === "blocks"} onClick={() => { setSidePanelTab("blocks"); setRightPanel(true); }}><Folder /></button><button className={`rail-button ${rightPanel && sidePanelTab === "review" ? "active" : ""}`} aria-label="Open accessibility review" title="Accessibility review" aria-pressed={rightPanel && sidePanelTab === "review"} onClick={() => { setSidePanelTab("review"); setRightPanel(true); }}><Accessibility /></button><button className={`rail-button ${mode === "html" ? "active" : ""}`} aria-label="Open HTML editor" title="HTML editor" aria-pressed={mode === "html"} onClick={() => setMode("html")}><Code2 /></button><div className="rail-spacer" /><button className="avatar" aria-label="User profile">EG</button></aside>
@@ -974,12 +994,12 @@ export default function Home() {
             </div>}
           </div>
           {mode === "visual" && <div className="secondary-toolbar" role="toolbar" aria-label="Alignment, indentation, tables, and watermark"><button className="clear-format-button" onClick={clearFormatting} aria-label="Clear formatting" title="Clear all formatting from selected text"><Eraser /><span>Clear formatting</span></button><span className="secondary-divider"/><TableDialog insertMarkup={insertMarkup} language={documentLanguage}/><TableEditDialog editTable={editSelectedTable}/><WatermarkDialog applyWatermark={applyWatermark} removeWatermark={removeWatermark}/><span className="secondary-divider"/><label className="toolbar-select-label indentation-select"><span className="sr-only">Paragraph indentation</span><select defaultValue="" onChange={(event) => applyIndentation(event.target.value)} aria-label="Paragraph indentation"><option value="" disabled>Paragraph indentation</option><option value="first-line">First line (0.5″)</option><option value="left">Entire paragraph (0.5″)</option><option value="hanging">Hanging indent (0.5″)</option><option value="none">Remove indentation</option></select></label><span className="secondary-divider"/><button onClick={() => command("justifyLeft")} aria-label="Align left" title="Align left"><AlignLeft /></button><button onClick={() => command("justifyCenter")} aria-label="Center" title="Center"><AlignCenter /></button><button onClick={() => command("justifyRight")} aria-label="Align right" title="Align right"><AlignRight /></button><button onClick={() => command("justifyFull")} aria-label="Justify" title="Justify"><AlignJustify /></button></div>}
-          <TabsContent value="visual" className="canvas-wrap"><div className={`device-frame ${device}`}><div className="ultra-label"><span className="mini-logo" aria-hidden="true"><img src="/brand/ultrapage-mark.svg" alt="" /></span><span>Ultra Preview</span><span className="ruler-status">Rulers: {rulerUnit === "in" ? "inches" : "centimeters"}</span></div><EditorRulers unit={rulerUnit} device={device} onToggle={() => setRulerUnit((current) => current === "in" ? "cm" : "in")}><div ref={attachEditor} className={`page-canvas ${imageDragActive ? "image-drag-active" : ""}`} contentEditable suppressContentEditableWarning onPaste={handlePaste} onDragEnter={handleImageDragOver} onDragOver={handleImageDragOver} onDragLeave={() => setImageDragActive(false)} onDrop={handleImageDrop} onInput={(e) => { htmlRef.current = e.currentTarget.innerHTML; setHtml(e.currentTarget.innerHTML); setSaved(false); }} aria-label="Editable page content" /></EditorRulers></div></TabsContent>
-          <TabsContent value="ultra" className="blackboard-preview-wrap"><div className={`device-frame ${device}`}><div className="ultra-label"><span className="mini-logo" aria-hidden="true"><img src="/brand/ultrapage-mark.svg" alt="" /></span><span>Exact Blackboard Ultra output</span><span className="final-preview-badge">Read only</span></div><iframe className="blackboard-preview-frame" title="Final preview of content prepared for Blackboard Ultra" srcDoc={finalPreviewDocument} sandbox="allow-scripts allow-same-origin allow-presentation"/><p className="final-preview-help">This preview uses the exact HTML generated by <strong>Copy for Ultra</strong>. Desktop, tablet, and mobile controls adjust the test width.</p></div></TabsContent>
-          <TabsContent value="html" className="code-wrap"><div className="code-header"><div className="code-heading"><span>{codeView === "blackboard" ? "HTML ready to paste into Blackboard Ultra" : "Editable source HTML"}</span><div className="code-view-switch" role="group" aria-label="HTML code type"><button type="button" className={codeView === "blackboard" ? "active" : ""} aria-pressed={codeView === "blackboard"} onClick={() => setCodeView("blackboard")}>For Blackboard</button><button type="button" className={codeView === "source" ? "active" : ""} aria-pressed={codeView === "source"} onClick={() => setCodeView("source")}>Edit Source</button></div></div><button className="copy-code-button" onClick={copyHtml}><Copy size={14}/> Copy Code</button></div><Textarea value={codeView === "blackboard" ? blackboardHtml : html} readOnly={codeView === "blackboard"} onChange={(e) => { if (codeView === "source") { setHtml(e.target.value); setSaved(false); } }} className={`code-editor ${codeView === "blackboard" ? "compatible" : ""}`} spellCheck={false} aria-label={codeView === "blackboard" ? "Blackboard Ultra-compatible HTML" : "Editable source HTML"} /><p className="code-help">{codeView === "blackboard" ? "This code is also included with Copy for Ultra. Paste it into Blackboard’s HTML <> editor or paste the visual formatting directly." : "Changes made here appear in Design view. Switch to For Blackboard before copying."}</p></TabsContent>
+          <TabsContent value="visual" className="canvas-wrap"><div className={`device-frame ${device}`}><div className="ultra-label"><span className="mini-logo" aria-hidden="true"><img src="/brand/ultrapage-mark.svg" alt="" /></span><span>Design Preview</span><span className="ruler-status">Rulers: {rulerUnit === "in" ? "inches" : "centimeters"}</span></div><EditorRulers unit={rulerUnit} device={device} onToggle={() => setRulerUnit((current) => current === "in" ? "cm" : "in")}><div ref={attachEditor} className={`page-canvas ${imageDragActive ? "image-drag-active" : ""}`} contentEditable suppressContentEditableWarning onPaste={handlePaste} onDragEnter={handleImageDragOver} onDragOver={handleImageDragOver} onDragLeave={() => setImageDragActive(false)} onDrop={handleImageDrop} onInput={(e) => { htmlRef.current = e.currentTarget.innerHTML; setHtml(e.currentTarget.innerHTML); setSaved(false); }} aria-label="Editable page content" /></EditorRulers></div></TabsContent>
+          <TabsContent value="ultra" className="blackboard-preview-wrap"><div className={`device-frame ${device}`}><div className="ultra-label"><span className="mini-logo" aria-hidden="true"><img src="/brand/ultrapage-mark.svg" alt="" /></span><span>Exact {activeLms.label} output</span><span className="final-preview-badge">Read only</span></div><iframe className="blackboard-preview-frame" title={`Final preview of content prepared for ${activeLms.label}`} srcDoc={finalPreviewDocument} sandbox="allow-scripts allow-same-origin allow-presentation"/><p className="final-preview-help">This preview uses the exact fragment generated by <strong>Copy for {activeLms.shortLabel}</strong>. {activeLms.guidance} Desktop, tablet, and mobile controls adjust the test width.</p></div></TabsContent>
+          <TabsContent value="html" className="code-wrap"><div className="code-header"><div className="code-heading"><span>{codeView === "lms" ? `HTML ready to paste into ${activeLms.label}` : "Editable source HTML"}</span><div className="code-view-switch" role="group" aria-label="HTML code type"><button type="button" className={codeView === "lms" ? "active" : ""} aria-pressed={codeView === "lms"} onClick={() => setCodeView("lms")}>For {activeLms.shortLabel}</button><button type="button" className={codeView === "source" ? "active" : ""} aria-pressed={codeView === "source"} onClick={() => setCodeView("source")}>Edit Source</button></div></div><button className="copy-code-button" onClick={copyHtml}><Copy size={14}/> Copy Code</button></div><Textarea value={codeView === "lms" ? lmsHtml : html} readOnly={codeView === "lms"} onChange={(e) => { if (codeView === "source") { setHtml(e.target.value); setSaved(false); } }} className={`code-editor ${codeView === "lms" ? "compatible" : ""}`} spellCheck={false} aria-label={codeView === "lms" ? `${activeLms.label}-compatible HTML` : "Editable source HTML"} /><p className="code-help">{codeView === "lms" ? `This is the same fragment used by Copy for ${activeLms.shortLabel}. Paste it into the LMS HTML source editor.` : `Changes made here appear in Design view. Switch to For ${activeLms.shortLabel} before copying.`}</p></TabsContent>
         </Tabs>
       </section>
-      {rightPanel && <><button type="button" className="panel-backdrop" onClick={() => setRightPanel(false)} aria-label="Close tools panel"/><aside id="editor-side-panel" className="right-panel" aria-label="Tools panel"><div className="mobile-panel-heading"><strong>Editor tools</strong><button type="button" onClick={() => setRightPanel(false)} aria-label="Close panel"><X size={18}/></button></div><Tabs defaultValue="blocks"><TabsList className="side-tabs"><TabsTrigger value="blocks">Blocks</TabsTrigger><TabsTrigger value="review">Review</TabsTrigger><TabsTrigger value="outline">Outline</TabsTrigger></TabsList><TabsContent value="blocks"><p className="panel-label">CONTENT</p><div className="block-grid"><Block icon={Heading2} label="Heading" onClick={() => command("formatBlock", "h2")}/><Block icon={FileText} label="Text" onClick={() => command("insertParagraph")}/><ImageDialog insertImage={insertAccessibleImage} block/><TableDialog insertMarkup={insertMarkup} language={documentLanguage} block/><LinkDialog insertLink={insertAccessibleLink} block/><Block icon={List} label="List" onClick={() => command("insertUnorderedList")}/><Block icon={BookOpen} label="Table of Contents" onClick={generateTableOfContents}/><Block icon={Plus} label="Callout" onClick={() => command("insertHTML", documentLanguage === "es-PR" ? '<div class="callout"><strong>Importante</strong><p>Escriba aquí la información destacada.</p></div>' : '<div class="callout"><strong>Important</strong><p>Enter the highlighted information here.</p></div>')}/></div><p className="panel-label section-label">ACADEMIC FORMAT</p><ApaDialog insertMarkup={insertMarkup} language={documentLanguage} fullWidth/><RubricDialog insertMarkup={insertMarkup} language={documentLanguage}/><p className="panel-label section-label">QUICK TEMPLATES</p><button className="template-card" onClick={() => command("insertHTML", documentLanguage === "es-PR" ? '<h2>Objetivos de aprendizaje</h2><ul><li>Objetivo 1</li><li>Objetivo 2</li></ul>' : '<h2>Learning Objectives</h2><ul><li>Objective 1</li><li>Objective 2</li></ul>')}><span className="template-icon blue"><List /></span><span><strong>Objectives</strong><small>Accessible list</small></span><Plus size={16}/></button><button className="template-card" onClick={() => command("insertHTML", documentLanguage === "es-PR" ? '<div class="callout"><strong>Instrucciones</strong><p>Complete los siguientes pasos.</p></div>' : '<div class="callout"><strong>Instructions</strong><p>Complete the following steps.</p></div>')}><span className="template-icon gold"><FileText /></span><span><strong>Instructions</strong><small>Highlighted block</small></span><Plus size={16}/></button><ModuleTemplateDialog insertMarkup={insertMarkup} hasH1={/<h1\b/i.test(html)} language={documentLanguage}/><p className="panel-label section-label">DEVELOPED TOOLS</p><div className="connected-tools"><a href="/tools#apa"><strong>EstiloAPA</strong><span>APA 7 references and formatting</span></a><a href="/tools#txt"><strong>TXT Test Generator</strong><span>Converts questions for Blackboard Ultra import</span></a><a href="/tools#qti"><strong>QTI 2.1 Blackboard</strong><span>Assessment packages</span></a></div><ContentDialog documentLanguage={documentLanguage} documentAuthor={documentAuthor} documentDescription={documentDescription} trigger={<Button variant="outline" className="collection-button"><Folder size={17}/> Open Content Collection</Button>} search={search} setSearch={setSearch} files={filteredFiles} insertFile={insertFile} documentHtml={html} documentFileName={documentFileName} openDocument={openDocument} newDocument={newDocument}/></TabsContent><TabsContent value="review"><div className="score-card"><div className="score-ring">{accessibilityScore}</div><div><strong>{accessibilityScore === 100 ? "Accessibility ready" : "Review required"}</strong><span>{pageChecks.filter((check) => !check.ok).length} recommendations pending</span></div></div><button type="button" className="accessibility-repair" onClick={repairAccessibility}><Accessibility size={18}/><span><strong>Safe Fix</strong><small>Repairs structure, tables, links, and HTML without inventing descriptions.</small></span></button>{pageChecks.map((check) => <ReviewItem key={check.text} ok={check.ok} text={check.text}/>)}</TabsContent><TabsContent value="outline"><DocumentOutline items={documentOutline} onSelect={focusHeading}/></TabsContent></Tabs></aside></>}
+      {rightPanel && <><button type="button" className="panel-backdrop" onClick={() => setRightPanel(false)} aria-label="Close tools panel"/><aside id="editor-side-panel" className="right-panel" aria-label="Tools panel"><div className="mobile-panel-heading"><strong>Editor tools</strong><button type="button" onClick={() => setRightPanel(false)} aria-label="Close panel"><X size={18}/></button></div><Tabs defaultValue="blocks"><TabsList className="side-tabs"><TabsTrigger value="blocks">Blocks</TabsTrigger><TabsTrigger value="review">Review</TabsTrigger><TabsTrigger value="outline">Outline</TabsTrigger></TabsList><TabsContent value="blocks"><p className="panel-label">CONTENT</p><div className="block-grid"><Block icon={Heading2} label="Heading" onClick={() => command("formatBlock", "h2")}/><Block icon={FileText} label="Text" onClick={() => command("insertParagraph")}/><ImageDialog insertImage={insertAccessibleImage} block/><TableDialog insertMarkup={insertMarkup} language={documentLanguage} block/><LinkDialog insertLink={insertAccessibleLink} block/><Block icon={List} label="List" onClick={() => command("insertUnorderedList")}/><Block icon={BookOpen} label="Table of Contents" onClick={generateTableOfContents}/><Block icon={Plus} label="Callout" onClick={() => command("insertHTML", documentLanguage === "es-PR" ? '<div class="callout"><strong>Importante</strong><p>Escriba aquí la información destacada.</p></div>' : '<div class="callout"><strong>Important</strong><p>Enter the highlighted information here.</p></div>')}/></div><p className="panel-label section-label">ACADEMIC FORMAT</p><ApaDialog insertMarkup={insertMarkup} language={documentLanguage} fullWidth/><RubricDialog insertMarkup={insertMarkup} language={documentLanguage}/><p className="panel-label section-label">QUICK TEMPLATES</p><button className="template-card" onClick={() => command("insertHTML", documentLanguage === "es-PR" ? '<h2>Objetivos de aprendizaje</h2><ul><li>Objetivo 1</li><li>Objetivo 2</li></ul>' : '<h2>Learning Objectives</h2><ul><li>Objective 1</li><li>Objective 2</li></ul>')}><span className="template-icon blue"><List /></span><span><strong>Objectives</strong><small>Accessible list</small></span><Plus size={16}/></button><button className="template-card" onClick={() => command("insertHTML", documentLanguage === "es-PR" ? '<div class="callout"><strong>Instrucciones</strong><p>Complete los siguientes pasos.</p></div>' : '<div class="callout"><strong>Instructions</strong><p>Complete the following steps.</p></div>')}><span className="template-icon gold"><FileText /></span><span><strong>Instructions</strong><small>Highlighted block</small></span><Plus size={16}/></button><ModuleTemplateDialog insertMarkup={insertMarkup} hasH1={/<h1\b/i.test(html)} language={documentLanguage}/><p className="panel-label section-label">DEVELOPED TOOLS</p><div className="connected-tools"><a href="/tools#apa"><strong>EstiloAPA</strong><span>Portable APA 7 documents for any LMS</span></a><a href="/tools#txt"><strong>TXT Test Generator</strong><span>Blackboard Ultra TXT format</span></a><a href="/tools#qti"><strong>QTI 2.1 Blackboard</strong><span>Blackboard assessment package profile</span></a></div><ContentDialog documentLanguage={documentLanguage} documentAuthor={documentAuthor} documentDescription={documentDescription} trigger={<Button variant="outline" className="collection-button"><Folder size={17}/> Open Blackboard Content Collection</Button>} search={search} setSearch={setSearch} files={filteredFiles} insertFile={insertFile} documentHtml={html} documentFileName={documentFileName} openDocument={openDocument} newDocument={newDocument}/></TabsContent><TabsContent value="review"><div className="score-card"><div className="score-ring">{accessibilityScore}</div><div><strong>{accessibilityScore === 100 ? "Accessibility ready" : "Review required"}</strong><span>{pageChecks.filter((check) => !check.ok).length} recommendations pending</span></div></div><button type="button" className="accessibility-repair" onClick={repairAccessibility}><Accessibility size={18}/><span><strong>Safe Fix</strong><small>Repairs structure, tables, links, and HTML without inventing descriptions.</small></span></button>{pageChecks.map((check) => <ReviewItem key={check.text} ok={check.ok} text={check.text}/>)}</TabsContent><TabsContent value="outline"><DocumentOutline items={documentOutline} onSelect={focusHeading}/></TabsContent></Tabs></aside></>}
     </div>
   </main>;
 }
@@ -999,7 +1019,7 @@ function ModuleTemplateDialog({ insertMarkup, hasH1, language }: { insertMarkup:
       : `<section class="module-template"><p class="eyebrow">${label}</p><${titleTag}>${escapeHtml(moduleTitle.trim())}</${titleTag}><p class="lead">Enter a brief introduction explaining the module’s purpose and relevance.</p><${sectionTag}>Learning Objectives</${sectionTag}><ul><li>Measurable objective 1</li><li>Measurable objective 2</li></ul><${sectionTag}>Materials and Resources</${sectionTag}><ul><li>Primary reading or resource</li><li>Supplementary resource</li></ul><${sectionTag}>Activities</${sectionTag}><ol><li>Review the module materials.</li><li>Complete the learning activity.</li><li>Participate in the related discussion.</li></ol><div class="callout"><strong>Assessment</strong><p>Describe the evidence that will demonstrate achievement of the objectives.</p></div><${sectionTag}>Support and Next Steps</${sectionTag}><p>Include instructions for requesting assistance and continuing to the next module.</p></section>`;
     insertMarkup(markup); setOpen(false); setModuleNumber(""); setModuleTitle("");
   };
-  return <Dialog open={open} onOpenChange={setOpen}><DialogTrigger asChild><button className="template-card"><span className="template-icon blue"><BookOpen/></span><span><strong>Complete Module</strong><small>Accessible Ultra structure</small></span><Plus size={16}/></button></DialogTrigger><DialogContent className="module-template-dialog"><DialogHeader><DialogTitle>Create Module Structure</DialogTitle><DialogDescription>Generates an organized template and automatically adjusts heading levels.</DialogDescription></DialogHeader><div className="module-template-fields"><label>Number or identifier<Input value={moduleNumber} onChange={(event) => setModuleNumber(event.target.value)} placeholder="4"/></label><label>Module title<Input value={moduleTitle} onChange={(event) => setModuleTitle(event.target.value)} placeholder="Technology, People, and Processes"/></label></div>{hasH1 && <p className="field-help">The document already has an H1; the module will begin with H2 to preserve hierarchy.</p>}<div className="apa-actions"><Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button><Button onClick={insert}><BookOpen size={16}/> Create Module</Button></div></DialogContent></Dialog>;
+  return <Dialog open={open} onOpenChange={setOpen}><DialogTrigger asChild><button className="template-card"><span className="template-icon blue"><BookOpen/></span><span><strong>Complete Module</strong><small>Accessible LMS structure</small></span><Plus size={16}/></button></DialogTrigger><DialogContent className="module-template-dialog"><DialogHeader><DialogTitle>Create Module Structure</DialogTitle><DialogDescription>Generates an organized template and automatically adjusts heading levels.</DialogDescription></DialogHeader><div className="module-template-fields"><label>Number or identifier<Input value={moduleNumber} onChange={(event) => setModuleNumber(event.target.value)} placeholder="4"/></label><label>Module title<Input value={moduleTitle} onChange={(event) => setModuleTitle(event.target.value)} placeholder="Technology, People, and Processes"/></label></div>{hasH1 && <p className="field-help">The document already has an H1; the module will begin with H2 to preserve hierarchy.</p>}<div className="apa-actions"><Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button><Button onClick={insert}><BookOpen size={16}/> Create Module</Button></div></DialogContent></Dialog>;
 }
 
 function EditorRulers({ unit, device, onToggle, children }: { unit: "in" | "cm"; device: "desktop" | "tablet" | "mobile"; onToggle: () => void; children: React.ReactNode }) {
@@ -1099,7 +1119,7 @@ function arrayBufferToBase64(buffer: ArrayBuffer) {
   return btoa(binary);
 }
 
-function ExportDialog({ html, title, language, author, description, downloadHtml }: { html: string; title: string; language: DocumentLanguage; author: string; description: string; downloadHtml: () => void }) {
+function ExportDialog({ html, title, language, lmsProfile, author, description, downloadHtml }: { html: string; title: string; language: DocumentLanguage; lmsProfile: LmsProfile; author: string; description: string; downloadHtml: () => void }) {
   const [open, setOpen] = useState(false);
   const [exporting, setExporting] = useState<"docx" | "pdf" | "">("");
   const checks = accessibilityReport(html, title, language);
@@ -1112,6 +1132,7 @@ function ExportDialog({ html, title, language, author, description, downloadHtml
       title,
       fileName: exportFileName(title, "html"),
       language,
+      lmsProfile,
       author,
       description,
       html,
@@ -1132,7 +1153,7 @@ function ExportDialog({ html, title, language, author, description, downloadHtml
       toast.error("Export failed", { description: problem instanceof Error ? problem.message : "Try again." });
     } finally { setExporting(""); }
   };
-  return <Dialog open={open} onOpenChange={setOpen}><DialogTrigger asChild><Button variant="outline" className="publish-button"><Download size={16}/> Export</Button></DialogTrigger><DialogContent className="export-dialog"><DialogHeader><DialogTitle>Export Accessible Document</DialogTitle><DialogDescription>Download as Word, PDF, HTML, or an editable UltraPage project. The review identifies issues to correct before exporting.</DialogDescription></DialogHeader><div className={`export-summary ${warnings ? "has-warnings" : "ready"}`}><span>{warnings ? <AlertTriangle size={20}/> : <Check size={20}/>}</span><div><strong>{warnings ? `${warnings} accessibility recommendation${warnings === 1 ? "" : "s"}` : "Ready to export"}</strong><small>{warnings ? "You may export now, but correcting them first is recommended." : "The content passed the automated checks."}</small></div></div><div className="export-checks" aria-label="Accessibility results">{checks.map((check) => <ReviewItem key={check.text} ok={check.ok} text={check.text}/>)}</div><div className="export-options"><button onClick={() => exportDocument("docx")} disabled={Boolean(exporting)}><FileText/><span><strong>Microsoft Word</strong><small>.docx structured and editable</small></span>{exporting === "docx" ? <Loader2 className="spin"/> : <Download/>}</button><button onClick={() => exportDocument("pdf")} disabled={Boolean(exporting)}><FileText/><span><strong>Accessible PDF</strong><small>Tagged PDF/UA with language and metadata</small></span>{exporting === "pdf" ? <Loader2 className="spin"/> : <Download/>}</button><button onClick={() => { downloadHtml(); setOpen(false); }} disabled={Boolean(exporting)}><Code2/><span><strong>HTML Page</strong><small>Responsive and Blackboard Ultra compatible</small></span><Download/></button><button onClick={exportProject} disabled={Boolean(exporting)}><Save/><span><strong>UltraPage Project</strong><small>Editable backup with content and metadata</small></span><Download/></button></div><p className="export-note"><Accessibility size={15}/> Automated review helps, but institutional documents should also be validated with Microsoft Accessibility Checker or Adobe Acrobat.</p></DialogContent></Dialog>;
+  return <Dialog open={open} onOpenChange={setOpen}><DialogTrigger asChild><Button variant="outline" className="publish-button"><Download size={16}/> Export</Button></DialogTrigger><DialogContent className="export-dialog"><DialogHeader><DialogTitle>Export Accessible Document</DialogTitle><DialogDescription>Download as Word, PDF, HTML, or an editable UltraPage project. Target profile: {lmsProfiles[lmsProfile].label}.</DialogDescription></DialogHeader><div className={`export-summary ${warnings ? "has-warnings" : "ready"}`}><span>{warnings ? <AlertTriangle size={20}/> : <Check size={20}/>}</span><div><strong>{warnings ? `${warnings} accessibility recommendation${warnings === 1 ? "" : "s"}` : "Ready to export"}</strong><small>{warnings ? "You may export now, but correcting them first is recommended." : "The content passed the automated checks."}</small></div></div><div className="export-checks" aria-label="Accessibility results">{checks.map((check) => <ReviewItem key={check.text} ok={check.ok} text={check.text}/>)}</div><div className="export-options"><button onClick={() => exportDocument("docx")} disabled={Boolean(exporting)}><FileText/><span><strong>Microsoft Word</strong><small>.docx structured and editable</small></span>{exporting === "docx" ? <Loader2 className="spin"/> : <Download/>}</button><button onClick={() => exportDocument("pdf")} disabled={Boolean(exporting)}><FileText/><span><strong>Accessible PDF</strong><small>Tagged PDF/UA with language and metadata</small></span>{exporting === "pdf" ? <Loader2 className="spin"/> : <Download/>}</button><button onClick={() => { downloadHtml(); setOpen(false); }} disabled={Boolean(exporting)}><Code2/><span><strong>Responsive HTML Page</strong><small>Standalone HTML for any modern LMS or web server</small></span><Download/></button><button onClick={exportProject} disabled={Boolean(exporting)}><Save/><span><strong>UltraPage Project</strong><small>Editable backup with content, metadata, and LMS profile</small></span><Download/></button></div><p className="export-note"><Accessibility size={15}/> Use Copy for {lmsProfiles[lmsProfile].shortLabel} when pasting into an LMS editor. Automated review helps, but institutional content should also be checked in the destination LMS.</p></DialogContent></Dialog>;
 }
 
 function DocumentPropertiesDialog({ author, description, setAuthor, setDescription }: { author: string; description: string; setAuthor: (value: string) => void; setDescription: (value: string) => void }) {
@@ -1286,7 +1307,7 @@ function RubricDialog({ insertMarkup, language }: { insertMarkup: (markup: strin
     insertMarkup(`<table class="rubric-table" data-table-style="grid" aria-label="${safeTitle}"><caption>${safeTitle}</caption><thead><tr><th scope="col">${criterionLabel}</th>${headings}</tr></thead><tbody>${rows}</tbody></table><p class="rubric-total"><strong>${maxScoreLabel}:</strong> ${safeCriteria * safeLevels} ${pointsLabel}</p>`);
     setOpen(false);
   };
-  return <Dialog open={open} onOpenChange={setOpen}><DialogTrigger asChild><Button variant="outline" className="rubric-trigger"><Table2 size={16}/> Create Rubric</Button></DialogTrigger><DialogContent className="rubric-dialog"><DialogHeader><DialogTitle>Accessible Rubric Generator</DialogTitle><DialogDescription>Creates a table with row and column headers compatible with Blackboard, HTML, Word, and PDF.</DialogDescription></DialogHeader><div className="rubric-fields"><label>Title<Input value={title} onChange={(event) => setTitle(event.target.value)}/></label><label>Criteria<Input type="number" min="1" max="12" value={criteria} onChange={(event) => setCriteria(Number(event.target.value))}/></label><label>Levels<Input type="number" min="2" max="6" value={levels} onChange={(event) => setLevels(Number(event.target.value))}/></label><label className="rubric-levels">Level names<Input value={levelNames} onChange={(event) => setLevelNames(event.target.value)} placeholder="Exemplary, Proficient, Developing, Beginning"/><span>Separate level names with commas.</span></label></div><div className="apa-actions"><Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button><Button onClick={create}><Table2 size={16}/> Insert Rubric</Button></div></DialogContent></Dialog>;
+  return <Dialog open={open} onOpenChange={setOpen}><DialogTrigger asChild><Button variant="outline" className="rubric-trigger"><Table2 size={16}/> Create Rubric</Button></DialogTrigger><DialogContent className="rubric-dialog"><DialogHeader><DialogTitle>Accessible Rubric Generator</DialogTitle><DialogDescription>Creates a portable table with row and column headers for LMS editors, HTML, Word, and PDF.</DialogDescription></DialogHeader><div className="rubric-fields"><label>Title<Input value={title} onChange={(event) => setTitle(event.target.value)}/></label><label>Criteria<Input type="number" min="1" max="12" value={criteria} onChange={(event) => setCriteria(Number(event.target.value))}/></label><label>Levels<Input type="number" min="2" max="6" value={levels} onChange={(event) => setLevels(Number(event.target.value))}/></label><label className="rubric-levels">Level names<Input value={levelNames} onChange={(event) => setLevelNames(event.target.value)} placeholder="Exemplary, Proficient, Developing, Beginning"/><span>Separate level names with commas.</span></label></div><div className="apa-actions"><Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button><Button onClick={create}><Table2 size={16}/> Insert Rubric</Button></div></DialogContent></Dialog>;
 }
 
 function TableDialog({ insertMarkup, language, block = false }: { insertMarkup: (markup: string) => void; language: DocumentLanguage; block?: boolean }) {

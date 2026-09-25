@@ -1,7 +1,7 @@
 {
   "name": "UltraPage Studio",
   "short_name": "UP Studio",
-  "description": "Accessible content authoring and native tools for Blackboard Ultra.",
+  "description": "Accessible content authoring for Blackboard Ultra, Canvas, Moodle, Brightspace, and standards-based LMS platforms.",
   "id": "/",
   "start_url": "/",
   "scope": "/",

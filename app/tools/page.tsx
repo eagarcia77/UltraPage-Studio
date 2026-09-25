@@ -25,11 +25,12 @@ type NativeManifest = {
   lastSync?: { checkedFiles?: number; updatedFiles?: string[] };
 };
 
-const tools: Array<{ id: ToolId; name: string; description: string; source: string; icon: typeof BookOpen; original: string }> = [
+const tools: Array<{ id: ToolId; name: string; description: string; compatibility: string; source: string; icon: typeof BookOpen; original: string }> = [
   {
     id: "apa",
     name: "EstiloAPA",
     description: "APA 7 references, academic formatting, audits, and document export.",
+    compatibility: "Portable documents for every LMS",
     source: "/native-tools/estiloapa/index.html",
     icon: BookOpen,
     original: "https://eagarcia77.github.io/estiloAPA/",
@@ -38,6 +39,7 @@ const tools: Array<{ id: ToolId; name: string; description: string; source: stri
     id: "txt",
     name: "TXT Test Generator",
     description: "Convert and verify questions for Blackboard Ultra TXT import.",
+    compatibility: "Blackboard Ultra TXT only",
     source: "/native-tools/txt-test-generator/index.html",
     icon: FileQuestion,
     original: "https://eagarcia77.github.io/CTEL-SG/index_generator.html",
@@ -46,6 +48,7 @@ const tools: Array<{ id: ToolId; name: string; description: string; source: stri
     id: "qti",
     name: "QTI 2.1 Blackboard",
     description: "Validate questions and create Blackboard assessment packages.",
+    compatibility: "Blackboard Ultra QTI 2.1 profile",
     source: "/native-tools/qti-blackboard/index.html",
     icon: PackageCheck,
     original: "https://eagarcia77.github.io/CTEL-SG/QTI21_BlackboardV3.html",
@@ -137,13 +140,14 @@ export default function NativeToolsPage() {
           const current = selected === tool.id;
           return <button key={tool.id} type="button" className={current ? "active" : ""} onClick={() => selectTool(tool.id)} aria-pressed={current}>
             <span><Icon size={19}/></span>
-            <span><strong>{tool.name}</strong><small>{tool.description}</small></span>
+            <span><strong>{tool.name}</strong><small>{tool.description}</small><small className="native-tool-compatibility">{tool.compatibility}</small></span>
             {current && frameState === "ready" && <CheckCircle2 className="native-tool-ready-icon" size={16} aria-label="Ready"/>}
           </button>;
         })}
         <div className="native-tools-note">
           <strong>Native, traceable copies</strong>
           <span>These tools run from UltraPage Studio. Source repositories remain unchanged.</span>
+          <span>Assessment import formats are LMS-specific. Use the Universal LMS profile in the Studio editor for portable page content.</span>
           {manifest?.lastSync?.checkedFiles && <small>{manifest.lastSync.checkedFiles} source files verified during the latest synchronization.</small>}
         </div>
       </aside>
