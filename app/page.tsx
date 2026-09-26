@@ -24,9 +24,10 @@ const DRAFT_KEY = "ultrapage-studio-draft-v1";
 const HISTORY_KEY = "ultrapage-studio-history-v1";
 type DocumentLanguage = "es-PR" | "en-US";
 type LmsProfile = "universal" | "blackboard" | "canvas" | "moodle" | "brightspace";
-type RibbonTab = "file" | "home" | "insert" | "layout" | "references" | "review" | "view" | "tools" | "table";
+type RibbonTab = "file" | "home" | "insert" | "layout" | "references" | "review" | "view" | "tools" | "table" | "picture";
 type DraftSnapshot = { id: string; html: string; title: string; fileName: string; language?: DocumentLanguage; lmsProfile?: LmsProfile; author?: string; description?: string; savedAt: string };
 type CapturedFormat = { fontFamily: string; fontSize: string; fontWeight: string; fontStyle: string; textDecorationLine: string; color: string; backgroundColor: string; lineHeight: string; textAlign: string };
+type SelectedImageData = { alt: string; caption: string; decorative: boolean; width: number };
 const languageLabels: Record<DocumentLanguage, string> = { "es-PR": "Español (Puerto Rico)", "en-US": "English (United States)" };
 const lmsProfiles: Record<LmsProfile, { label: string; shortLabel: string; guidance: string }> = {
   universal: { label: "Universal LMS", shortLabel: "Universal", guidance: "Conservative semantic HTML for standards-based LMS editors." },
@@ -356,7 +357,7 @@ export default function Home() {
   const [activeFormats, setActiveFormats] = useState({ bold: false, italic: false, underline: false, strikeThrough: false, subscript: false, superscript: false, unorderedList: false, orderedList: false, alignLeft: false, alignCenter: false, alignRight: false, alignJustify: false });
   const [activeBlock, setActiveBlock] = useState("p");
   const [capturedFormat, setCapturedFormat] = useState<CapturedFormat | null>(null);
-  const [selectionContext, setSelectionContext] = useState<"table" | null>(null);
+  const [selectionContext, setSelectionContext] = useState<"table" | "picture" | null>(null);
 
   useEffect(() => {
     const compactLayout = window.matchMedia("(max-width: 1040px)");
@@ -460,9 +461,9 @@ export default function Home() {
       if (editor.current.contains(range.commonAncestorContainer)) {
         savedSelection.current = range.cloneRange(); updateActiveFormats();
         const node = range.startContainer.nodeType === Node.TEXT_NODE ? range.startContainer.parentElement : range.startContainer as HTMLElement;
-        const context = node?.closest("table") ? "table" : null;
+        const context = node?.closest("table") ? "table" : node?.closest("figure")?.querySelector("img") || node?.closest("img") ? "picture" : null;
         setSelectionContext(context);
-        setRibbonTab((current) => current === "table" && context !== "table" ? "home" : current);
+        setRibbonTab((current) => (current === "table" && context !== "table") || (current === "picture" && context !== "picture") ? "home" : current);
       }
     };
     document.addEventListener("selectionchange", rememberSelection);
@@ -720,6 +721,52 @@ export default function Home() {
     const image = `<img src="${escapeHtml(cleanSrc)}" alt="${decorative ? "" : escapeHtml(alt.trim())}"${decorative ? ' role="presentation"' : ""} loading="lazy" style="display:block;max-width:${safeWidth}%;height:auto;margin:0 auto">`;
     const markup = caption.trim() ? `<figure>${image}<figcaption>${escapeHtml(caption.trim())}</figcaption></figure>` : `<figure>${image}</figure>`;
     command("insertHTML", markup); toast.success("Imagen accesible insertada"); return true;
+  };
+  const selectedImageContext = () => {
+    if (!editor.current || !savedSelection.current) return null;
+    const container = savedSelection.current.startContainer;
+    const element = container.nodeType === Node.TEXT_NODE ? container.parentElement : container as HTMLElement;
+    const figure = element?.closest<HTMLElement>("figure") || (element?.matches("figure") ? element : null);
+    const image = element?.closest<HTMLImageElement>("img") || figure?.querySelector<HTMLImageElement>("img") || null;
+    if (!image || !editor.current.contains(image)) return null;
+    return { image, figure: figure || image.closest<HTMLElement>("figure") };
+  };
+  const getSelectedImageData = (): SelectedImageData | null => {
+    const context = selectedImageContext();
+    if (!context) return null;
+    const { image, figure } = context;
+    const parsedWidth = Number.parseFloat(image.style.width || image.style.maxWidth || "100");
+    return { alt: image.getAttribute("alt") || "", caption: figure?.querySelector("figcaption")?.textContent || "", decorative: image.getAttribute("role") === "presentation" || image.getAttribute("aria-hidden") === "true", width: Math.min(100, Math.max(10, Number.isFinite(parsedWidth) ? parsedWidth : 100)) };
+  };
+  const updateSelectedImage = ({ alt, caption, decorative, width }: SelectedImageData) => {
+    if (!editor.current) return false;
+    const context = selectedImageContext();
+    if (!context) { toast.error("Select an image first"); return false; }
+    if (!decorative && !alt.trim()) { toast.error("Add alternative text or mark the image as decorative"); return false; }
+    const { image, figure } = context;
+    image.setAttribute("alt", decorative ? "" : alt.trim());
+    if (decorative) { image.setAttribute("role", "presentation"); image.setAttribute("aria-hidden", "true"); }
+    else { image.removeAttribute("role"); image.removeAttribute("aria-hidden"); }
+    image.style.maxWidth = `${Math.min(100, Math.max(10, width))}%`; image.style.width = "auto"; image.style.height = "auto";
+    let figcaption = figure?.querySelector<HTMLElement>("figcaption") || null;
+    if (caption.trim()) {
+      if (!figcaption && figure) { figcaption = document.createElement("figcaption"); figure.appendChild(figcaption); }
+      if (figcaption) figcaption.textContent = caption.trim();
+    } else figcaption?.remove();
+    setHtml(editor.current.innerHTML); setSaved(false); toast.success("Image properties updated"); return true;
+  };
+  const arrangeSelectedImage = (action: "left" | "center" | "right" | "full" | "delete") => {
+    if (!editor.current) return;
+    const context = selectedImageContext();
+    if (!context) { toast.error("Select an image first"); return; }
+    const { image, figure } = context;
+    if (action === "delete") { (figure || image).remove(); setSelectionContext(null); setRibbonTab("home"); }
+    else if (action === "full") { image.style.width = "100%"; image.style.maxWidth = "100%"; image.style.margin = "0 auto"; }
+    else {
+      image.style.display = "block"; image.style.width = "auto";
+      image.style.marginLeft = action === "left" ? "0" : "auto"; image.style.marginRight = action === "right" ? "0" : "auto";
+    }
+    setHtml(editor.current.innerHTML); setSaved(false); toast.success(action === "delete" ? "Image removed" : "Image layout updated");
   };
   const insertLocalImageFile = async (file: File, source: "clipboard" | "drop") => {
     const validType = /^image\/(png|jpeg|gif|webp|avif)$/i.test(file.type);
@@ -1099,7 +1146,7 @@ export default function Home() {
     setHtml(next);
     setSaved(false);
   };
-  const availableRibbonTabs: RibbonTab[] = ["file", "home", "insert", "layout", "references", "review", "view", "tools", ...(selectionContext === "table" ? ["table" as const] : [])];
+  const availableRibbonTabs: RibbonTab[] = ["file", "home", "insert", "layout", "references", "review", "view", "tools", ...(selectionContext === "table" ? ["table" as const] : []), ...(selectionContext === "picture" ? ["picture" as const] : [])];
   const handleRibbonKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>) => {
     const tabs = availableRibbonTabs;
     const currentIndex = tabs.indexOf(ribbonTab);
@@ -1124,6 +1171,7 @@ export default function Home() {
       "references": () => openRibbonTab("references"), "review": () => openRibbonTab("review"), "view": () => openRibbonTab("view"), "native tools": () => openRibbonTab("tools"),
       "accessibility review": () => { setSidePanelTab("review"); setRightPanel(true); }, "document outline": () => { setSidePanelTab("outline"); setRightPanel(true); },
       "table tools": () => selectionContext === "table" ? openRibbonTab("table") : toast.info("Select a table cell first"),
+      "picture tools": () => selectionContext === "picture" ? openRibbonTab("picture") : toast.info("Select an image first"),
       "final preview": () => changeMode("ultra"), "html editor": () => changeMode("html"), "desktop preview": () => setDevice("desktop"), "tablet preview": () => setDevice("tablet"), "mobile preview": () => setDevice("mobile"),
       "table of contents": generateTableOfContents, "clear formatting": clearFormatting, "copy": () => command("copy"), "cut": () => command("cut"), "paste plain text": pastePlainText, "format painter": useFormatPainter,
     };
@@ -1153,9 +1201,9 @@ export default function Home() {
             <div className="ribbon-nav">
               <TabsList className="mode-tabs"><TabsTrigger value="visual">Design</TabsTrigger><TabsTrigger value="ultra">Final Preview</TabsTrigger><TabsTrigger value="html">HTML</TabsTrigger></TabsList>
               {mode === "visual" && <div className="ribbon-tabs" role="tablist" aria-label="Editor ribbon">
-                {availableRibbonTabs.map((tab) => <button key={tab} id={`ribbon-tab-${tab}`} type="button" role="tab" data-ribbon-tab={tab} data-contextual={tab === "table" || undefined} aria-controls="ribbon-panel" aria-selected={ribbonTab === tab} tabIndex={ribbonTab === tab ? 0 : -1} className={`${ribbonTab === tab ? "active" : ""} ${tab === "table" ? "contextual" : ""}`.trim()} onKeyDown={handleRibbonKeyDown} onClick={() => { setRibbonTab(tab); setRibbonCollapsed(false); }}>{tab[0].toUpperCase() + tab.slice(1)}{tab === "table" && <span className="sr-only"> contextual tools</span>}</button>)}
+                {availableRibbonTabs.map((tab) => <button key={tab} id={`ribbon-tab-${tab}`} type="button" role="tab" data-ribbon-tab={tab} data-contextual={tab === "table" || tab === "picture" ? tab : undefined} aria-controls="ribbon-panel" aria-selected={ribbonTab === tab} tabIndex={ribbonTab === tab ? 0 : -1} className={`${ribbonTab === tab ? "active" : ""} ${tab === "table" || tab === "picture" ? `contextual ${tab}` : ""}`.trim()} onKeyDown={handleRibbonKeyDown} onClick={() => { setRibbonTab(tab); setRibbonCollapsed(false); }}>{tab[0].toUpperCase() + tab.slice(1)}{(tab === "table" || tab === "picture") && <span className="sr-only"> contextual tools</span>}</button>)}
               </div>}
-              {mode === "visual" && <form className="ribbon-command-search" onSubmit={executeRibbonCommand} role="search"><Search aria-hidden="true"/><label className="sr-only" htmlFor="ribbon-command-input">Search ribbon commands</label><input id="ribbon-command-input" list="ribbon-command-options" value={ribbonCommand} onChange={(event) => setRibbonCommand(event.target.value)} placeholder="Search commands" autoComplete="off"/><datalist id="ribbon-command-options">{["New document","Open document","Save document","Home tools","Insert content","Page layout","References","Review","View","Native tools","Table tools","Accessibility review","Document outline","Final preview","HTML editor","Desktop preview","Tablet preview","Mobile preview","Table of contents","Copy","Cut","Paste plain text","Format painter","Clear formatting"].map((item) => <option key={item} value={item}/>)}</datalist></form>}
+              {mode === "visual" && <form className="ribbon-command-search" onSubmit={executeRibbonCommand} role="search"><Search aria-hidden="true"/><label className="sr-only" htmlFor="ribbon-command-input">Search ribbon commands</label><input id="ribbon-command-input" list="ribbon-command-options" value={ribbonCommand} onChange={(event) => setRibbonCommand(event.target.value)} placeholder="Search commands" autoComplete="off"/><datalist id="ribbon-command-options">{["New document","Open document","Save document","Home tools","Insert content","Page layout","References","Review","View","Native tools","Table tools","Picture tools","Accessibility review","Document outline","Final preview","HTML editor","Desktop preview","Tablet preview","Mobile preview","Table of contents","Copy","Cut","Paste plain text","Format painter","Clear formatting"].map((item) => <option key={item} value={item}/>)}</datalist></form>}
               {mode === "visual" && <div className="ribbon-quick" role="group" aria-label="Quick access"><button type="button" onClick={() => command("undo")} aria-label="Undo" title="Undo"><Undo2 /></button><button type="button" onClick={() => command("redo")} aria-label="Redo" title="Redo"><Redo2 /></button><button type="button" className={ribbonCollapsed ? "collapsed" : ""} aria-expanded={!ribbonCollapsed} aria-controls="ribbon-panel" onClick={() => setRibbonCollapsed((collapsed) => !collapsed)} aria-label={ribbonCollapsed ? "Expand ribbon" : "Collapse ribbon"} title={ribbonCollapsed ? "Expand ribbon" : "Collapse ribbon"}><ChevronDown /></button></div>}
             </div>
             {mode === "visual" && !ribbonCollapsed && <div id="ribbon-panel" className="ribbon-panel" role="tabpanel" aria-labelledby={`ribbon-tab-${ribbonTab}`}>
@@ -1206,6 +1254,12 @@ export default function Home() {
                 <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row"><button type="button" className="ribbon-command" onClick={() => editSelectedTable("add-row")}><Rows3/><span>Add Row</span></button><button type="button" className="ribbon-command ribbon-danger" onClick={() => editSelectedTable("delete-row")}><Trash2/><span>Delete Row</span></button></div><span className="ribbon-group-label">Rows</span></div>
                 <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row"><button type="button" className="ribbon-command" onClick={() => editSelectedTable("add-column")}><Columns3/><span>Add Column</span></button><button type="button" className="ribbon-command ribbon-danger" onClick={() => editSelectedTable("delete-column")}><Trash2/><span>Delete Column</span></button></div><span className="ribbon-group-label">Columns</span></div>
                 <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row"><button type="button" className="ribbon-command" onClick={() => editSelectedTable("grid")}><Table2/><span>All Borders</span></button><button type="button" className="ribbon-command" onClick={() => editSelectedTable("apa7")}><BookOpen/><span>APA 7</span></button><TableEditDialog editTable={editSelectedTable}/></div><span className="ribbon-group-label">Table Style</span></div>
+              </>}
+              {ribbonTab === "picture" && <>
+                <div className="ribbon-group ribbon-context-summary picture-context"><div className="ribbon-group-body"><span className="context-badge"><FileImage/> Picture selected</span></div><span className="ribbon-group-label">Context</span></div>
+                <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row"><ImagePropertiesDialog getImage={getSelectedImageData} updateImage={updateSelectedImage}/><button type="button" className="ribbon-command" onClick={() => arrangeSelectedImage("full")}><ImagePlus/><span>Full Width</span></button></div><span className="ribbon-group-label">Accessibility & Size</span></div>
+                <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row"><button type="button" className="ribbon-command" onClick={() => arrangeSelectedImage("left")}><AlignLeft/><span>Left</span></button><button type="button" className="ribbon-command" onClick={() => arrangeSelectedImage("center")}><AlignCenter/><span>Center</span></button><button type="button" className="ribbon-command" onClick={() => arrangeSelectedImage("right")}><AlignRight/><span>Right</span></button></div><span className="ribbon-group-label">Image Alignment</span></div>
+                <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row"><button type="button" className="ribbon-command ribbon-danger" onClick={() => arrangeSelectedImage("delete")}><Trash2/><span>Remove</span></button></div><span className="ribbon-group-label">Picture</span></div>
               </>}
             </div>}
           </div>
@@ -1429,6 +1483,24 @@ function ImageDialog({ insertImage, block = false }: { insertImage: (options: { 
   };
   const insert = () => { if (insertImage({ src, alt, caption, decorative, width })) { setOpen(false); reset(); } };
   return <Dialog open={open} onOpenChange={(nextOpen) => { setOpen(nextOpen); if (!nextOpen) reset(); }}><DialogTrigger asChild>{block ? <button className="block-button" aria-label="Insert Accessible Image"><ImagePlus/><span>Image</span></button> : <button aria-label="Insert Accessible Image" title="Insert Accessible Image"><FileImage/></button>}</DialogTrigger><DialogContent className="image-dialog"><DialogHeader><DialogTitle>Insert Accessible Image</DialogTitle><DialogDescription>Choose an image from your computer, select one from WebDAV Content Collection, or use a stable HTTPS address.</DialogDescription></DialogHeader><input ref={fileInput} className="sr-only" type="file" accept=".png,.jpg,.jpeg,.gif,.webp,.avif,image/png,image/jpeg,image/gif,image/webp,image/avif" onChange={(event) => chooseLocalImage(event.target.files?.[0])} aria-label="Choose an image from your computer"/><div className="image-dialog-grid"><Button type="button" variant="outline" onClick={() => fileInput.current?.click()} disabled={readingFile}>{readingFile ? <Loader2 className="spin" size={16}/> : <Upload size={16}/>} {readingFile ? "Reading image…" : "Choose from Computer"}</Button>{localName && <p className="field-help" role="status">Selected: <strong>{localName}</strong></p>}{src.startsWith("data:image/") && <img src={src} alt="Selected image preview" style={{ maxHeight: 180, maxWidth: "100%", objectFit: "contain", margin: "0 auto" }}/>}<label>Image URL<Input value={src.startsWith("data:image/") ? "Embedded local image" : src} disabled={src.startsWith("data:image/")} onChange={(event) => { setSrc(event.target.value); setLocalName(""); }} placeholder="https://…/image.jpg"/></label><label>Alternative text<Input value={alt} disabled={decorative} onChange={(event) => setAlt(event.target.value)} placeholder="Describe the purpose of the image"/></label><label>Optional caption<Input value={caption} onChange={(event) => setCaption(event.target.value)} placeholder="Figure 1. Description"/></label><label className="checkbox-label"><input type="checkbox" checked={decorative} onChange={(event) => setDecorative(event.target.checked)}/> The image is decorative</label><label className="image-width-label">Image width <span>{width}%</span><Input type="range" min="10" max="100" step="5" value={width} onChange={(event) => setWidth(Number(event.target.value))}/></label></div><div className="apa-actions"><Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button><Button onClick={insert} disabled={readingFile}><ImagePlus size={16}/> Insert Image</Button></div></DialogContent></Dialog>;
+}
+
+function ImagePropertiesDialog({ getImage, updateImage }: { getImage: () => SelectedImageData | null; updateImage: (data: SelectedImageData) => boolean }) {
+  const [open, setOpen] = useState(false);
+  const [alt, setAlt] = useState("");
+  const [caption, setCaption] = useState("");
+  const [decorative, setDecorative] = useState(false);
+  const [width, setWidth] = useState(100);
+  const changeOpen = (nextOpen: boolean) => {
+    if (nextOpen) {
+      const data = getImage();
+      if (!data) { toast.error("Select an image first"); return; }
+      setAlt(data.alt); setCaption(data.caption); setDecorative(data.decorative); setWidth(data.width);
+    }
+    setOpen(nextOpen);
+  };
+  const apply = () => { if (updateImage({ alt, caption, decorative, width })) setOpen(false); };
+  return <Dialog open={open} onOpenChange={changeOpen}><DialogTrigger asChild><button type="button" className="ribbon-command"><FileImage/><span>Properties</span></button></DialogTrigger><DialogContent className="image-dialog"><DialogHeader><DialogTitle>Edit Picture Properties</DialogTitle><DialogDescription>Update accessibility information, caption, and responsive width without replacing the image.</DialogDescription></DialogHeader><div className="image-dialog-grid"><label>Alternative text<Input value={alt} disabled={decorative} onChange={(event) => setAlt(event.target.value)} placeholder="Describe the purpose of the image"/></label><label>Optional caption<Input value={caption} onChange={(event) => setCaption(event.target.value)} placeholder="Figure 1. Description"/></label><label className="checkbox-label"><input type="checkbox" checked={decorative} onChange={(event) => setDecorative(event.target.checked)}/> The image is decorative</label><label className="image-width-label">Maximum width <span>{Math.round(width)}%</span><Input type="range" min="10" max="100" step="5" value={width} onChange={(event) => setWidth(Number(event.target.value))}/></label></div><div className="apa-actions"><Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button><Button onClick={apply}><Check size={16}/> Apply Changes</Button></div></DialogContent></Dialog>;
 }
 
 function MediaDialog({ insertMedia }: { insertMedia: (options: { url: string; title: string; transcript: string; captions: boolean }) => boolean }) {
