@@ -24,10 +24,11 @@ const DRAFT_KEY = "ultrapage-studio-draft-v1";
 const HISTORY_KEY = "ultrapage-studio-history-v1";
 type DocumentLanguage = "es-PR" | "en-US";
 type LmsProfile = "universal" | "blackboard" | "canvas" | "moodle" | "brightspace";
-type RibbonTab = "file" | "home" | "insert" | "layout" | "references" | "review" | "view" | "tools" | "table" | "picture";
+type RibbonTab = "file" | "home" | "insert" | "layout" | "references" | "review" | "view" | "tools" | "table" | "picture" | "link";
 type DraftSnapshot = { id: string; html: string; title: string; fileName: string; language?: DocumentLanguage; lmsProfile?: LmsProfile; author?: string; description?: string; savedAt: string };
 type CapturedFormat = { fontFamily: string; fontSize: string; fontWeight: string; fontStyle: string; textDecorationLine: string; color: string; backgroundColor: string; lineHeight: string; textAlign: string };
 type SelectedImageData = { alt: string; caption: string; decorative: boolean; width: number };
+type SelectedLinkData = { text: string; url: string; newTab: boolean };
 const languageLabels: Record<DocumentLanguage, string> = { "es-PR": "Español (Puerto Rico)", "en-US": "English (United States)" };
 const lmsProfiles: Record<LmsProfile, { label: string; shortLabel: string; guidance: string }> = {
   universal: { label: "Universal LMS", shortLabel: "Universal", guidance: "Conservative semantic HTML for standards-based LMS editors." },
@@ -357,7 +358,7 @@ export default function Home() {
   const [activeFormats, setActiveFormats] = useState({ bold: false, italic: false, underline: false, strikeThrough: false, subscript: false, superscript: false, unorderedList: false, orderedList: false, alignLeft: false, alignCenter: false, alignRight: false, alignJustify: false });
   const [activeBlock, setActiveBlock] = useState("p");
   const [capturedFormat, setCapturedFormat] = useState<CapturedFormat | null>(null);
-  const [selectionContext, setSelectionContext] = useState<"table" | "picture" | null>(null);
+  const [selectionContext, setSelectionContext] = useState<"table" | "picture" | "link" | null>(null);
 
   useEffect(() => {
     const compactLayout = window.matchMedia("(max-width: 1040px)");
@@ -461,9 +462,9 @@ export default function Home() {
       if (editor.current.contains(range.commonAncestorContainer)) {
         savedSelection.current = range.cloneRange(); updateActiveFormats();
         const node = range.startContainer.nodeType === Node.TEXT_NODE ? range.startContainer.parentElement : range.startContainer as HTMLElement;
-        const context = node?.closest("table") ? "table" : node?.closest("figure")?.querySelector("img") || node?.closest("img") ? "picture" : null;
+        const context = node?.closest("table") ? "table" : node?.closest("figure")?.querySelector("img") || node?.closest("img") ? "picture" : node?.closest("a") ? "link" : null;
         setSelectionContext(context);
-        setRibbonTab((current) => (current === "table" && context !== "table") || (current === "picture" && context !== "picture") ? "home" : current);
+        setRibbonTab((current) => (current === "table" && context !== "table") || (current === "picture" && context !== "picture") || (current === "link" && context !== "link") ? "home" : current);
       }
     };
     document.addEventListener("selectionchange", rememberSelection);
@@ -673,6 +674,46 @@ export default function Home() {
     command("insertHTML", `<a href="${escapeHtml(cleanUrl)}"${target}>${escapeHtml(label)}</a>`);
     toast.success("Enlace accesible insertado");
     return true;
+  };
+  const selectedLinkContext = () => {
+    if (!editor.current || !savedSelection.current) return null;
+    const container = savedSelection.current.startContainer;
+    const element = container.nodeType === Node.TEXT_NODE ? container.parentElement : container as HTMLElement;
+    const link = element?.closest<HTMLAnchorElement>("a");
+    return link && editor.current.contains(link) ? link : null;
+  };
+  const getSelectedLinkData = (): SelectedLinkData | null => {
+    const link = selectedLinkContext();
+    return link ? { text: link.textContent || "", url: link.getAttribute("href") || "", newTab: link.getAttribute("target") === "_blank" } : null;
+  };
+  const updateSelectedLink = ({ text, url, newTab }: SelectedLinkData) => {
+    if (!editor.current) return false;
+    const link = selectedLinkContext();
+    const cleanUrl = url.trim();
+    if (!link) { toast.error("Select a link first"); return false; }
+    if (!text.trim()) { toast.error("Enter descriptive link text"); return false; }
+    if (!/^(https?:\/\/|mailto:|tel:|\/|#)/i.test(cleanUrl)) { toast.error("Use a valid address beginning with https://"); return false; }
+    link.textContent = text.trim(); link.setAttribute("href", cleanUrl);
+    if (newTab) { link.setAttribute("target", "_blank"); link.setAttribute("rel", "noopener noreferrer"); }
+    else { link.removeAttribute("target"); link.removeAttribute("rel"); }
+    setHtml(editor.current.innerHTML); setSaved(false); toast.success("Link properties updated"); return true;
+  };
+  const copySelectedLinkAddress = async () => {
+    const link = selectedLinkContext();
+    if (!link) { toast.error("Select a link first"); return; }
+    try { await navigator.clipboard.writeText(link.href); toast.success("Link address copied"); }
+    catch { toast.error("Clipboard access was blocked"); }
+  };
+  const openSelectedLink = () => {
+    const link = selectedLinkContext();
+    if (!link) { toast.error("Select a link first"); return; }
+    window.open(link.href, "_blank", "noopener,noreferrer");
+  };
+  const removeSelectedLink = () => {
+    if (!editor.current) return;
+    const link = selectedLinkContext();
+    if (!link) { toast.error("Select a link first"); return; }
+    link.replaceWith(...Array.from(link.childNodes)); setHtml(editor.current.innerHTML); setSaved(false); setSelectionContext(null); setRibbonTab("home"); toast.success("Link removed; text preserved");
   };
   const replaceText = (searchText: string, replacement: string) => {
     if (!editor.current || !searchText) return 0;
@@ -1146,7 +1187,7 @@ export default function Home() {
     setHtml(next);
     setSaved(false);
   };
-  const availableRibbonTabs: RibbonTab[] = ["file", "home", "insert", "layout", "references", "review", "view", "tools", ...(selectionContext === "table" ? ["table" as const] : []), ...(selectionContext === "picture" ? ["picture" as const] : [])];
+  const availableRibbonTabs: RibbonTab[] = ["file", "home", "insert", "layout", "references", "review", "view", "tools", ...(selectionContext === "table" ? ["table" as const] : []), ...(selectionContext === "picture" ? ["picture" as const] : []), ...(selectionContext === "link" ? ["link" as const] : [])];
   const handleRibbonKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>) => {
     const tabs = availableRibbonTabs;
     const currentIndex = tabs.indexOf(ribbonTab);
@@ -1172,6 +1213,7 @@ export default function Home() {
       "accessibility review": () => { setSidePanelTab("review"); setRightPanel(true); }, "document outline": () => { setSidePanelTab("outline"); setRightPanel(true); },
       "table tools": () => selectionContext === "table" ? openRibbonTab("table") : toast.info("Select a table cell first"),
       "picture tools": () => selectionContext === "picture" ? openRibbonTab("picture") : toast.info("Select an image first"),
+      "link tools": () => selectionContext === "link" ? openRibbonTab("link") : toast.info("Select a link first"),
       "final preview": () => changeMode("ultra"), "html editor": () => changeMode("html"), "desktop preview": () => setDevice("desktop"), "tablet preview": () => setDevice("tablet"), "mobile preview": () => setDevice("mobile"),
       "table of contents": generateTableOfContents, "clear formatting": clearFormatting, "copy": () => command("copy"), "cut": () => command("cut"), "paste plain text": pastePlainText, "format painter": useFormatPainter,
     };
@@ -1201,9 +1243,9 @@ export default function Home() {
             <div className="ribbon-nav">
               <TabsList className="mode-tabs"><TabsTrigger value="visual">Design</TabsTrigger><TabsTrigger value="ultra">Final Preview</TabsTrigger><TabsTrigger value="html">HTML</TabsTrigger></TabsList>
               {mode === "visual" && <div className="ribbon-tabs" role="tablist" aria-label="Editor ribbon">
-                {availableRibbonTabs.map((tab) => <button key={tab} id={`ribbon-tab-${tab}`} type="button" role="tab" data-ribbon-tab={tab} data-contextual={tab === "table" || tab === "picture" ? tab : undefined} aria-controls="ribbon-panel" aria-selected={ribbonTab === tab} tabIndex={ribbonTab === tab ? 0 : -1} className={`${ribbonTab === tab ? "active" : ""} ${tab === "table" || tab === "picture" ? `contextual ${tab}` : ""}`.trim()} onKeyDown={handleRibbonKeyDown} onClick={() => { setRibbonTab(tab); setRibbonCollapsed(false); }}>{tab[0].toUpperCase() + tab.slice(1)}{(tab === "table" || tab === "picture") && <span className="sr-only"> contextual tools</span>}</button>)}
+                {availableRibbonTabs.map((tab) => <button key={tab} id={`ribbon-tab-${tab}`} type="button" role="tab" data-ribbon-tab={tab} data-contextual={tab === "table" || tab === "picture" || tab === "link" ? tab : undefined} aria-controls="ribbon-panel" aria-selected={ribbonTab === tab} tabIndex={ribbonTab === tab ? 0 : -1} className={`${ribbonTab === tab ? "active" : ""} ${tab === "table" || tab === "picture" || tab === "link" ? `contextual ${tab}` : ""}`.trim()} onKeyDown={handleRibbonKeyDown} onClick={() => { setRibbonTab(tab); setRibbonCollapsed(false); }}>{tab[0].toUpperCase() + tab.slice(1)}{(tab === "table" || tab === "picture" || tab === "link") && <span className="sr-only"> contextual tools</span>}</button>)}
               </div>}
-              {mode === "visual" && <form className="ribbon-command-search" onSubmit={executeRibbonCommand} role="search"><Search aria-hidden="true"/><label className="sr-only" htmlFor="ribbon-command-input">Search ribbon commands</label><input id="ribbon-command-input" list="ribbon-command-options" value={ribbonCommand} onChange={(event) => setRibbonCommand(event.target.value)} placeholder="Search commands" autoComplete="off"/><datalist id="ribbon-command-options">{["New document","Open document","Save document","Home tools","Insert content","Page layout","References","Review","View","Native tools","Table tools","Picture tools","Accessibility review","Document outline","Final preview","HTML editor","Desktop preview","Tablet preview","Mobile preview","Table of contents","Copy","Cut","Paste plain text","Format painter","Clear formatting"].map((item) => <option key={item} value={item}/>)}</datalist></form>}
+              {mode === "visual" && <form className="ribbon-command-search" onSubmit={executeRibbonCommand} role="search"><Search aria-hidden="true"/><label className="sr-only" htmlFor="ribbon-command-input">Search ribbon commands</label><input id="ribbon-command-input" list="ribbon-command-options" value={ribbonCommand} onChange={(event) => setRibbonCommand(event.target.value)} placeholder="Search commands" autoComplete="off"/><datalist id="ribbon-command-options">{["New document","Open document","Save document","Home tools","Insert content","Page layout","References","Review","View","Native tools","Table tools","Picture tools","Link tools","Accessibility review","Document outline","Final preview","HTML editor","Desktop preview","Tablet preview","Mobile preview","Table of contents","Copy","Cut","Paste plain text","Format painter","Clear formatting"].map((item) => <option key={item} value={item}/>)}</datalist></form>}
               {mode === "visual" && <div className="ribbon-quick" role="group" aria-label="Quick access"><button type="button" onClick={() => command("undo")} aria-label="Undo" title="Undo"><Undo2 /></button><button type="button" onClick={() => command("redo")} aria-label="Redo" title="Redo"><Redo2 /></button><button type="button" className={ribbonCollapsed ? "collapsed" : ""} aria-expanded={!ribbonCollapsed} aria-controls="ribbon-panel" onClick={() => setRibbonCollapsed((collapsed) => !collapsed)} aria-label={ribbonCollapsed ? "Expand ribbon" : "Collapse ribbon"} title={ribbonCollapsed ? "Expand ribbon" : "Collapse ribbon"}><ChevronDown /></button></div>}
             </div>
             {mode === "visual" && !ribbonCollapsed && <div id="ribbon-panel" className="ribbon-panel" role="tabpanel" aria-labelledby={`ribbon-tab-${ribbonTab}`}>
@@ -1260,6 +1302,11 @@ export default function Home() {
                 <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row"><ImagePropertiesDialog getImage={getSelectedImageData} updateImage={updateSelectedImage}/><button type="button" className="ribbon-command" onClick={() => arrangeSelectedImage("full")}><ImagePlus/><span>Full Width</span></button></div><span className="ribbon-group-label">Accessibility & Size</span></div>
                 <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row"><button type="button" className="ribbon-command" onClick={() => arrangeSelectedImage("left")}><AlignLeft/><span>Left</span></button><button type="button" className="ribbon-command" onClick={() => arrangeSelectedImage("center")}><AlignCenter/><span>Center</span></button><button type="button" className="ribbon-command" onClick={() => arrangeSelectedImage("right")}><AlignRight/><span>Right</span></button></div><span className="ribbon-group-label">Image Alignment</span></div>
                 <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row"><button type="button" className="ribbon-command ribbon-danger" onClick={() => arrangeSelectedImage("delete")}><Trash2/><span>Remove</span></button></div><span className="ribbon-group-label">Picture</span></div>
+              </>}
+              {ribbonTab === "link" && <>
+                <div className="ribbon-group ribbon-context-summary link-context"><div className="ribbon-group-body"><span className="context-badge"><Link2/> Link selected</span></div><span className="ribbon-group-label">Context</span></div>
+                <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row"><LinkPropertiesDialog getLink={getSelectedLinkData} updateLink={updateSelectedLink}/><button type="button" className="ribbon-command" onClick={openSelectedLink}><Monitor/><span>Open Link</span></button><button type="button" className="ribbon-command" onClick={copySelectedLinkAddress}><Copy/><span>Copy URL</span></button></div><span className="ribbon-group-label">Link</span></div>
+                <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row"><button type="button" className="ribbon-command ribbon-danger" onClick={removeSelectedLink}><Unlink/><span>Remove Link</span></button></div><span className="ribbon-group-label">Remove</span></div>
               </>}
             </div>}
           </div>
@@ -1511,6 +1558,23 @@ function MediaDialog({ insertMedia }: { insertMedia: (options: { url: string; ti
   const [captions, setCaptions] = useState(true);
   const insert = () => { if (insertMedia({ url, title, transcript, captions })) { setOpen(false); setUrl("https://"); setTitle(""); setTranscript(""); setCaptions(true); } };
   return <Dialog open={open} onOpenChange={setOpen}><DialogTrigger asChild><button aria-label="Insert Accessible Video" title="Insert Accessible Video"><Video/></button></DialogTrigger><DialogContent className="media-dialog"><DialogHeader><DialogTitle>Insert Accessible Video</DialogTitle><DialogDescription>Supports HTTPS links from YouTube, Vimeo, and Kaltura. The video must include captions or a transcript.</DialogDescription></DialogHeader><div className="media-dialog-grid"><label>Video URL<Input value={url} onChange={(event) => setUrl(event.target.value)} placeholder="https://youtu.be/…"/></label><label>Descriptive title<Input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Introduction to Module 4"/></label><label>Optional transcript URL<Input value={transcript} onChange={(event) => setTranscript(event.target.value)} placeholder="https://…/transcript.pdf"/></label><label className="checkbox-label"><input type="checkbox" checked={captions} onChange={(event) => setCaptions(event.target.checked)}/> The video includes synchronized captions</label></div><div className="apa-actions"><Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button><Button onClick={insert}><Video size={16}/> Insert Video</Button></div></DialogContent></Dialog>;
+}
+
+function LinkPropertiesDialog({ getLink, updateLink }: { getLink: () => SelectedLinkData | null; updateLink: (data: SelectedLinkData) => boolean }) {
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState("");
+  const [url, setUrl] = useState("");
+  const [newTab, setNewTab] = useState(false);
+  const changeOpen = (nextOpen: boolean) => {
+    if (nextOpen) {
+      const data = getLink();
+      if (!data) { toast.error("Select a link first"); return; }
+      setText(data.text); setUrl(data.url); setNewTab(data.newTab);
+    }
+    setOpen(nextOpen);
+  };
+  const apply = () => { if (updateLink({ text, url, newTab })) setOpen(false); };
+  return <Dialog open={open} onOpenChange={changeOpen}><DialogTrigger asChild><button type="button" className="ribbon-command"><Link2/><span>Properties</span></button></DialogTrigger><DialogContent className="link-dialog"><DialogHeader><DialogTitle>Edit Link Properties</DialogTitle><DialogDescription>Update the descriptive text, destination, and opening behavior while preserving accessible link security.</DialogDescription></DialogHeader><div className="link-dialog-grid"><label>Descriptive text<Input value={text} onChange={(event) => setText(event.target.value)} placeholder="Module Study Guide"/></label><label>Web address<Input value={url} onChange={(event) => setUrl(event.target.value)} placeholder="https://"/></label><label className="checkbox-label"><input type="checkbox" checked={newTab} onChange={(event) => setNewTab(event.target.checked)}/> Open in a new tab</label></div><div className="apa-actions"><Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button><Button onClick={apply}><Check size={16}/> Apply Changes</Button></div></DialogContent></Dialog>;
 }
 
 function EquationDialog({ insertEquation }: { insertEquation: (options: { formula: string; description: string; block: boolean }) => boolean }) {
