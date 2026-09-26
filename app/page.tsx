@@ -38,6 +38,54 @@ function isLmsProfile(value: unknown): value is LmsProfile {
   return typeof value === "string" && value in lmsProfiles;
 }
 
+const AUTO_INDENT_ATTRIBUTE = "data-ultrapage-auto-indent";
+
+function countSentences(text: string, language: DocumentLanguage = "es-PR") {
+  const normalized = text.replace(/\s+/g, " ").trim();
+  if (!normalized) return 0;
+  const protectedText = normalized
+    .replace(/\b(?:Dr|Dra|Sr|Sra|Srta|Prof|Profa|Lic|Ing|Arq|Dept|Núm|No|pág|pp|vol|ed|aprox|etc|Mr|Mrs|Ms|St|vs|Ph\.D|e\.g|i\.e)\./giu, (abbreviation) => abbreviation.replaceAll(".", "·"))
+    .replace(/\b(?:[A-ZÁÉÍÓÚÜÑ]{1,3}\.\s*){2,}/gu, (initials) => initials.replace(/\.(?=[\s\S]*\.)/g, "·"));
+  try {
+    const segmenter = new Intl.Segmenter(language, { granularity: "sentence" });
+    return Array.from(segmenter.segment(protectedText)).filter(({ segment }) => /[\p{L}\p{N}]/u.test(segment)).length;
+  } catch {
+    return protectedText.split(/(?<=[.!?¡¿])\s+(?=[A-ZÁÉÍÓÚÜÑ0-9¡¿])/u).filter((sentence) => /[\p{L}\p{N}]/u.test(sentence)).length;
+  }
+}
+
+function applyAutomaticFirstLineIndentation(root: ParentNode, language: DocumentLanguage = "es-PR") {
+  root.querySelectorAll<HTMLElement>(`[${AUTO_INDENT_ATTRIBUTE}="true"]:not(p)`).forEach((element) => {
+    element.style.removeProperty("text-indent");
+    element.removeAttribute(AUTO_INDENT_ATTRIBUTE);
+  });
+  root.querySelectorAll<HTMLParagraphElement>("p").forEach((paragraph) => {
+    const mode = paragraph.getAttribute(AUTO_INDENT_ATTRIBUTE);
+    const excluded = paragraph.matches(".eyebrow,.lead,.apa-reference,.ultrapage-toc-title") || Boolean(paragraph.closest("li,td,th,figcaption,blockquote,figure,.callout,.ultrapage-toc"));
+    const qualifies = !excluded && countSentences(paragraph.textContent || "", language) > 3;
+    if (mode === "true" && !qualifies) {
+      paragraph.style.removeProperty("text-indent");
+      paragraph.removeAttribute(AUTO_INDENT_ATTRIBUTE);
+      if (!paragraph.getAttribute("style")) paragraph.removeAttribute("style");
+      return;
+    }
+    const hasManualIndent = Boolean(paragraph.style.textIndent) && mode !== "true";
+    if (qualifies && mode !== "off" && !hasManualIndent) {
+      paragraph.style.textIndent = "48px";
+      paragraph.setAttribute(AUTO_INDENT_ATTRIBUTE, "true");
+    }
+  });
+}
+
+function normalizeAutomaticIndentationHtml(sourceHtml: string, language: DocumentLanguage = "es-PR") {
+  if (typeof DOMParser === "undefined") return sourceHtml;
+  const parsed = new DOMParser().parseFromString(`<div id="ultrapage-auto-indent-root">${sourceHtml}</div>`, "text/html");
+  const root = parsed.querySelector<HTMLElement>("#ultrapage-auto-indent-root");
+  if (!root) return sourceHtml;
+  applyAutomaticFirstLineIndentation(root, language);
+  return root.innerHTML;
+}
+
 function escapeHtml(value: string) {
   return value.replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character] || character);
 }
@@ -103,7 +151,7 @@ function sanitizePastedHtml(source: string) {
   Array.from(parsed.body.querySelectorAll<HTMLElement>("*")).forEach((element) => {
     if (removeEntirely.has(element.tagName)) { element.remove(); return; }
     if (!allowedTags.has(element.tagName)) { element.replaceWith(...Array.from(element.childNodes)); return; }
-    const safeAttributes = new Set(["href","src","alt","title","scope","colspan","rowspan","class","role","aria-label","aria-hidden","width","height","loading","id","data-table-style","data-ultrapage-toc","data-accessible-media","data-captions","data-ultrapage-webdav-src","allow","allowfullscreen","referrerpolicy","frameborder"]);
+    const safeAttributes = new Set(["href","src","alt","title","scope","colspan","rowspan","class","role","aria-label","aria-hidden","width","height","loading","id","data-table-style","data-ultrapage-toc","data-accessible-media","data-captions","data-ultrapage-webdav-src","data-ultrapage-auto-indent","allow","allowfullscreen","referrerpolicy","frameborder"]);
     Array.from(element.attributes).forEach((attribute) => {
       if (attribute.name === "style") return;
       if (!safeAttributes.has(attribute.name.toLowerCase())) element.removeAttribute(attribute.name);
@@ -141,6 +189,7 @@ function buildLmsHtml(sourceHtml: string, language: DocumentLanguage = "es-PR", 
   const parsed = new DOMParser().parseFromString(`<div id="ultrapage-export">${sourceHtml}</div>`, "text/html");
   const root = parsed.querySelector<HTMLElement>("#ultrapage-export");
   if (!root) return sourceHtml;
+  applyAutomaticFirstLineIndentation(root, language);
   root.setAttribute("lang", language);
   root.querySelectorAll("script,style,object,embed,form,input,button").forEach((element) => element.remove());
   root.querySelectorAll<HTMLImageElement>("img[data-ultrapage-webdav-src]").forEach((image) => {
@@ -269,6 +318,7 @@ function buildLmsHtml(sourceHtml: string, language: DocumentLanguage = "es-PR", 
     const alignment = element.style.textAlign;
     if (["left", "center", "right", "justify"].includes(alignment)) element.setAttribute("align", alignment);
   });
+  root.querySelectorAll(`[${AUTO_INDENT_ATTRIBUTE}]`).forEach((element) => element.removeAttribute(AUTO_INDENT_ATTRIBUTE));
   return root.outerHTML;
 }
 
@@ -354,10 +404,23 @@ export default function Home() {
   const attachEditor = useCallback((node: HTMLDivElement | null) => {
     editor.current = node;
     if (node && node.innerHTML !== htmlRef.current) node.innerHTML = htmlRef.current;
-  }, []);
+    if (node) applyAutomaticFirstLineIndentation(node, documentLanguage);
+  }, [documentLanguage]);
+  useEffect(() => {
+    if (mode !== "visual" || !editor.current) return;
+    if (editor.current.innerHTML !== html) editor.current.innerHTML = html;
+    applyAutomaticFirstLineIndentation(editor.current, documentLanguage);
+    const normalized = editor.current.innerHTML;
+    if (normalized !== html) {
+      htmlRef.current = normalized;
+      setHtml(normalized);
+      setSaved(false);
+    }
+  }, [html, mode, documentLanguage]);
   const changeMode = (value: string) => {
     const nextMode = value as "visual" | "ultra" | "html";
     if (mode === "visual" && editor.current) {
+      applyAutomaticFirstLineIndentation(editor.current, documentLanguage);
       const currentHtml = editor.current.innerHTML;
       htmlRef.current = currentHtml;
       setHtml(currentHtml);
@@ -381,6 +444,7 @@ export default function Home() {
     const selection = window.getSelection();
     if (selection && savedSelection.current) { selection.removeAllRanges(); selection.addRange(savedSelection.current); }
     document.execCommand(name, false, value);
+    applyAutomaticFirstLineIndentation(editor.current, documentLanguage);
     htmlRef.current = editor.current.innerHTML;
     setHtml(editor.current.innerHTML); setSaved(false);
     if (selection?.rangeCount) savedSelection.current = selection.getRangeAt(0).cloneRange();
@@ -436,6 +500,7 @@ export default function Home() {
       block.style.marginLeft = "";
       block.style.paddingLeft = "";
       block.style.textIndent = "";
+      if (block.tagName === "P") block.setAttribute(AUTO_INDENT_ATTRIBUTE, "off");
       if (indentation === "first-line") block.style.textIndent = "48px";
       if (indentation === "left") block.style.marginLeft = "48px";
       if (indentation === "hanging") { block.style.paddingLeft = "48px"; block.style.textIndent = "-48px"; }
@@ -452,6 +517,7 @@ export default function Home() {
     document.execCommand("removeFormat", false);
     targets.forEach((block) => {
       block.removeAttribute("style"); block.removeAttribute("class"); block.removeAttribute("align");
+      if (block.tagName === "P") block.setAttribute(AUTO_INDENT_ATTRIBUTE, "off");
       block.querySelectorAll<HTMLElement>("*").forEach((element) => {
         element.removeAttribute("style"); element.removeAttribute("class"); element.removeAttribute("align");
         element.removeAttribute("face"); element.removeAttribute("color"); element.removeAttribute("size");
@@ -800,7 +866,7 @@ export default function Home() {
     toast.success("New document created");
   };
   const downloadDocument = () => {
-    const currentHtml = mode === "visual" ? editor.current?.innerHTML || html : html;
+    const currentHtml = normalizeAutomaticIndentationHtml(mode === "visual" ? editor.current?.innerHTML || html : html, documentLanguage);
     const safeTitle = escapeHtml(title);
     const safeAuthor = escapeHtml(documentAuthor.trim());
     const safeDescription = escapeHtml(documentDescription.trim());
@@ -957,6 +1023,13 @@ export default function Home() {
       heading.focus({ preventScroll: true });
     });
   };
+  const handleEditorInput = (event: React.FormEvent<HTMLDivElement>) => {
+    applyAutomaticFirstLineIndentation(event.currentTarget, documentLanguage);
+    const next = event.currentTarget.innerHTML;
+    htmlRef.current = next;
+    setHtml(next);
+    setSaved(false);
+  };
 
   const activeLms = lmsProfiles[lmsProfile];
   const finalPreviewMarkup = lmsHtml;
@@ -994,7 +1067,7 @@ export default function Home() {
             </div>}
           </div>
           {mode === "visual" && <div className="secondary-toolbar" role="toolbar" aria-label="Alignment, indentation, tables, and watermark"><button className="clear-format-button" onClick={clearFormatting} aria-label="Clear formatting" title="Clear all formatting from selected text"><Eraser /><span>Clear formatting</span></button><span className="secondary-divider"/><TableDialog insertMarkup={insertMarkup} language={documentLanguage}/><TableEditDialog editTable={editSelectedTable}/><WatermarkDialog applyWatermark={applyWatermark} removeWatermark={removeWatermark}/><span className="secondary-divider"/><label className="toolbar-select-label indentation-select"><span className="sr-only">Paragraph indentation</span><select defaultValue="" onChange={(event) => applyIndentation(event.target.value)} aria-label="Paragraph indentation"><option value="" disabled>Paragraph indentation</option><option value="first-line">First line (0.5″)</option><option value="left">Entire paragraph (0.5″)</option><option value="hanging">Hanging indent (0.5″)</option><option value="none">Remove indentation</option></select></label><span className="secondary-divider"/><button onClick={() => command("justifyLeft")} aria-label="Align left" title="Align left"><AlignLeft /></button><button onClick={() => command("justifyCenter")} aria-label="Center" title="Center"><AlignCenter /></button><button onClick={() => command("justifyRight")} aria-label="Align right" title="Align right"><AlignRight /></button><button onClick={() => command("justifyFull")} aria-label="Justify" title="Justify"><AlignJustify /></button></div>}
-          <TabsContent value="visual" className="canvas-wrap"><div className={`device-frame ${device}`}><div className="ultra-label"><span className="mini-logo" aria-hidden="true"><img src="/brand/ultrapage-mark.svg" alt="" /></span><span>Design Preview</span><span className="ruler-status">Rulers: {rulerUnit === "in" ? "inches" : "centimeters"}</span></div><EditorRulers unit={rulerUnit} device={device} onToggle={() => setRulerUnit((current) => current === "in" ? "cm" : "in")}><div ref={attachEditor} className={`page-canvas ${imageDragActive ? "image-drag-active" : ""}`} contentEditable suppressContentEditableWarning onPaste={handlePaste} onDragEnter={handleImageDragOver} onDragOver={handleImageDragOver} onDragLeave={() => setImageDragActive(false)} onDrop={handleImageDrop} onInput={(e) => { htmlRef.current = e.currentTarget.innerHTML; setHtml(e.currentTarget.innerHTML); setSaved(false); }} aria-label="Editable page content" /></EditorRulers></div></TabsContent>
+          <TabsContent value="visual" className="canvas-wrap"><div className={`device-frame ${device}`}><div className="ultra-label"><span className="mini-logo" aria-hidden="true"><img src="/brand/ultrapage-mark.svg" alt="" /></span><span>Design Preview</span><span className="ruler-status">Rulers: {rulerUnit === "in" ? "inches" : "centimeters"}</span></div><EditorRulers unit={rulerUnit} device={device} onToggle={() => setRulerUnit((current) => current === "in" ? "cm" : "in")}><div ref={attachEditor} className={`page-canvas ${imageDragActive ? "image-drag-active" : ""}`} contentEditable suppressContentEditableWarning onPaste={handlePaste} onDragEnter={handleImageDragOver} onDragOver={handleImageDragOver} onDragLeave={() => setImageDragActive(false)} onDrop={handleImageDrop} onInput={handleEditorInput} aria-label="Editable page content" /></EditorRulers></div></TabsContent>
           <TabsContent value="ultra" className="blackboard-preview-wrap"><div className={`device-frame ${device}`}><div className="ultra-label"><span className="mini-logo" aria-hidden="true"><img src="/brand/ultrapage-mark.svg" alt="" /></span><span>Exact {activeLms.label} output</span><span className="final-preview-badge">Read only</span></div><iframe className="blackboard-preview-frame" title={`Final preview of content prepared for ${activeLms.label}`} srcDoc={finalPreviewDocument} sandbox="allow-scripts allow-same-origin allow-presentation"/><p className="final-preview-help">This preview uses the exact fragment generated by <strong>Copy for {activeLms.shortLabel}</strong>. {activeLms.guidance} Desktop, tablet, and mobile controls adjust the test width.</p></div></TabsContent>
           <TabsContent value="html" className="code-wrap"><div className="code-header"><div className="code-heading"><span>{codeView === "lms" ? `HTML ready to paste into ${activeLms.label}` : "Editable source HTML"}</span><div className="code-view-switch" role="group" aria-label="HTML code type"><button type="button" className={codeView === "lms" ? "active" : ""} aria-pressed={codeView === "lms"} onClick={() => setCodeView("lms")}>For {activeLms.shortLabel}</button><button type="button" className={codeView === "source" ? "active" : ""} aria-pressed={codeView === "source"} onClick={() => setCodeView("source")}>Edit Source</button></div></div><button className="copy-code-button" onClick={copyHtml}><Copy size={14}/> Copy Code</button></div><Textarea value={codeView === "lms" ? lmsHtml : html} readOnly={codeView === "lms"} onChange={(e) => { if (codeView === "source") { setHtml(e.target.value); setSaved(false); } }} className={`code-editor ${codeView === "lms" ? "compatible" : ""}`} spellCheck={false} aria-label={codeView === "lms" ? `${activeLms.label}-compatible HTML` : "Editable source HTML"} /><p className="code-help">{codeView === "lms" ? `This is the same fragment used by Copy for ${activeLms.shortLabel}. Paste it into the LMS HTML source editor.` : `Changes made here appear in Design view. Switch to For ${activeLms.shortLabel} before copying.`}</p></TabsContent>
         </Tabs>
@@ -1122,7 +1195,8 @@ function arrayBufferToBase64(buffer: ArrayBuffer) {
 function ExportDialog({ html, title, language, lmsProfile, author, description, downloadHtml }: { html: string; title: string; language: DocumentLanguage; lmsProfile: LmsProfile; author: string; description: string; downloadHtml: () => void }) {
   const [open, setOpen] = useState(false);
   const [exporting, setExporting] = useState<"docx" | "pdf" | "">("");
-  const checks = accessibilityReport(html, title, language);
+  const portableHtml = normalizeAutomaticIndentationHtml(html, language);
+  const checks = accessibilityReport(portableHtml, title, language);
   const warnings = checks.filter((check) => !check.ok).length;
   const exportProject = () => {
     const project = {
@@ -1135,7 +1209,7 @@ function ExportDialog({ html, title, language, lmsProfile, author, description, 
       lmsProfile,
       author,
       description,
-      html,
+      html: portableHtml,
     };
     const blob = new Blob([JSON.stringify(project, null, 2)], { type: "application/json;charset=utf-8" });
     downloadBlob(blob, exportFileName(title, "ultrapage.json"));
@@ -1145,7 +1219,7 @@ function ExportDialog({ html, title, language, lmsProfile, author, description, 
   const exportDocument = async (format: "docx" | "pdf") => {
     setExporting(format);
     try {
-      const blob = await requestExport(format, html, title, language, author, description);
+      const blob = await requestExport(format, portableHtml, title, language, author, description);
       downloadBlob(blob, exportFileName(title, format));
       toast.success(format === "docx" ? "Word document downloaded" : "Accessible PDF descargado", { description: "Document structure, language, and metadata were preserved." });
       setOpen(false);
@@ -1514,9 +1588,10 @@ function ContentDialog({ trigger, search, setSearch, files, insertFile, document
   const saveToWebDav = async () => {
     setFileLoading("save"); setError("");
     try {
-      let payload: Record<string, string> = { action: "write", url, username, password, fileName: remoteName, content: documentHtml };
+      const portableHtml = normalizeAutomaticIndentationHtml(documentHtml, documentLanguage);
+      let payload: Record<string, string> = { action: "write", url, username, password, fileName: remoteName, content: portableHtml };
       if (remoteFormat === "docx" || remoteFormat === "pdf") {
-        const exported = await requestExport(remoteFormat, documentHtml, remoteName.replace(/\.(docx|pdf)$/i, ""), documentLanguage, documentAuthor, documentDescription);
+        const exported = await requestExport(remoteFormat, portableHtml, remoteName.replace(/\.(docx|pdf)$/i, ""), documentLanguage, documentAuthor, documentDescription);
         payload = { action: "writeBinary", url, username, password, fileName: remoteName, dataBase64: arrayBufferToBase64(await exported.arrayBuffer()) };
       }
       const response = await fetch("/api/webdav", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
