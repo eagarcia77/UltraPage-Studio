@@ -24,6 +24,7 @@ const DRAFT_KEY = "ultrapage-studio-draft-v1";
 const HISTORY_KEY = "ultrapage-studio-history-v1";
 type DocumentLanguage = "es-PR" | "en-US";
 type LmsProfile = "universal" | "blackboard" | "canvas" | "moodle" | "brightspace";
+type RibbonTab = "file" | "home" | "insert" | "layout" | "references" | "review" | "view" | "tools" | "table";
 type DraftSnapshot = { id: string; html: string; title: string; fileName: string; language?: DocumentLanguage; lmsProfile?: LmsProfile; author?: string; description?: string; savedAt: string };
 type CapturedFormat = { fontFamily: string; fontSize: string; fontWeight: string; fontStyle: string; textDecorationLine: string; color: string; backgroundColor: string; lineHeight: string; textAlign: string };
 const languageLabels: Record<DocumentLanguage, string> = { "es-PR": "Español (Puerto Rico)", "en-US": "English (United States)" };
@@ -330,7 +331,7 @@ export default function Home() {
   const [html, setHtml] = useState(starterHtml);
   const htmlRef = useRef(starterHtml);
   const [mode, setMode] = useState<"visual" | "ultra" | "html">("visual");
-  const [ribbonTab, setRibbonTab] = useState<"file" | "home" | "insert" | "layout" | "references" | "review" | "view" | "tools">("home");
+  const [ribbonTab, setRibbonTab] = useState<RibbonTab>("home");
   const [ribbonCollapsed, setRibbonCollapsed] = useState(false);
   const [codeView, setCodeView] = useState<"lms" | "source">("lms");
   const [lmsHtml, setLmsHtml] = useState("");
@@ -355,6 +356,7 @@ export default function Home() {
   const [activeFormats, setActiveFormats] = useState({ bold: false, italic: false, underline: false, strikeThrough: false, subscript: false, superscript: false, unorderedList: false, orderedList: false, alignLeft: false, alignCenter: false, alignRight: false, alignJustify: false });
   const [activeBlock, setActiveBlock] = useState("p");
   const [capturedFormat, setCapturedFormat] = useState<CapturedFormat | null>(null);
+  const [selectionContext, setSelectionContext] = useState<"table" | null>(null);
 
   useEffect(() => {
     const compactLayout = window.matchMedia("(max-width: 1040px)");
@@ -455,7 +457,13 @@ export default function Home() {
       const selection = window.getSelection();
       if (!selection?.rangeCount || !editor.current) return;
       const range = selection.getRangeAt(0);
-      if (editor.current.contains(range.commonAncestorContainer)) { savedSelection.current = range.cloneRange(); updateActiveFormats(); }
+      if (editor.current.contains(range.commonAncestorContainer)) {
+        savedSelection.current = range.cloneRange(); updateActiveFormats();
+        const node = range.startContainer.nodeType === Node.TEXT_NODE ? range.startContainer.parentElement : range.startContainer as HTMLElement;
+        const context = node?.closest("table") ? "table" : null;
+        setSelectionContext(context);
+        setRibbonTab((current) => current === "table" && context !== "table" ? "home" : current);
+      }
     };
     document.addEventListener("selectionchange", rememberSelection);
     return () => document.removeEventListener("selectionchange", rememberSelection);
@@ -1091,8 +1099,9 @@ export default function Home() {
     setHtml(next);
     setSaved(false);
   };
+  const availableRibbonTabs: RibbonTab[] = ["file", "home", "insert", "layout", "references", "review", "view", "tools", ...(selectionContext === "table" ? ["table" as const] : [])];
   const handleRibbonKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>) => {
-    const tabs = ["file", "home", "insert", "layout", "references", "review", "view", "tools"] as const;
+    const tabs = availableRibbonTabs;
     const currentIndex = tabs.indexOf(ribbonTab);
     let nextIndex = currentIndex;
     if (event.key === "ArrowRight") nextIndex = (currentIndex + 1) % tabs.length;
@@ -1114,6 +1123,7 @@ export default function Home() {
       "home tools": () => openRibbonTab("home"), "insert content": () => openRibbonTab("insert"), "page layout": () => openRibbonTab("layout"),
       "references": () => openRibbonTab("references"), "review": () => openRibbonTab("review"), "view": () => openRibbonTab("view"), "native tools": () => openRibbonTab("tools"),
       "accessibility review": () => { setSidePanelTab("review"); setRightPanel(true); }, "document outline": () => { setSidePanelTab("outline"); setRightPanel(true); },
+      "table tools": () => selectionContext === "table" ? openRibbonTab("table") : toast.info("Select a table cell first"),
       "final preview": () => changeMode("ultra"), "html editor": () => changeMode("html"), "desktop preview": () => setDevice("desktop"), "tablet preview": () => setDevice("tablet"), "mobile preview": () => setDevice("mobile"),
       "table of contents": generateTableOfContents, "clear formatting": clearFormatting, "copy": () => command("copy"), "cut": () => command("cut"), "paste plain text": pastePlainText, "format painter": useFormatPainter,
     };
@@ -1143,9 +1153,9 @@ export default function Home() {
             <div className="ribbon-nav">
               <TabsList className="mode-tabs"><TabsTrigger value="visual">Design</TabsTrigger><TabsTrigger value="ultra">Final Preview</TabsTrigger><TabsTrigger value="html">HTML</TabsTrigger></TabsList>
               {mode === "visual" && <div className="ribbon-tabs" role="tablist" aria-label="Editor ribbon">
-                {(["file", "home", "insert", "layout", "references", "review", "view", "tools"] as const).map((tab) => <button key={tab} id={`ribbon-tab-${tab}`} type="button" role="tab" data-ribbon-tab={tab} aria-controls="ribbon-panel" aria-selected={ribbonTab === tab} tabIndex={ribbonTab === tab ? 0 : -1} className={ribbonTab === tab ? "active" : ""} onKeyDown={handleRibbonKeyDown} onClick={() => { setRibbonTab(tab); setRibbonCollapsed(false); }}>{tab[0].toUpperCase() + tab.slice(1)}</button>)}
+                {availableRibbonTabs.map((tab) => <button key={tab} id={`ribbon-tab-${tab}`} type="button" role="tab" data-ribbon-tab={tab} data-contextual={tab === "table" || undefined} aria-controls="ribbon-panel" aria-selected={ribbonTab === tab} tabIndex={ribbonTab === tab ? 0 : -1} className={`${ribbonTab === tab ? "active" : ""} ${tab === "table" ? "contextual" : ""}`.trim()} onKeyDown={handleRibbonKeyDown} onClick={() => { setRibbonTab(tab); setRibbonCollapsed(false); }}>{tab[0].toUpperCase() + tab.slice(1)}{tab === "table" && <span className="sr-only"> contextual tools</span>}</button>)}
               </div>}
-              {mode === "visual" && <form className="ribbon-command-search" onSubmit={executeRibbonCommand} role="search"><Search aria-hidden="true"/><label className="sr-only" htmlFor="ribbon-command-input">Search ribbon commands</label><input id="ribbon-command-input" list="ribbon-command-options" value={ribbonCommand} onChange={(event) => setRibbonCommand(event.target.value)} placeholder="Search commands" autoComplete="off"/><datalist id="ribbon-command-options">{["New document","Open document","Save document","Home tools","Insert content","Page layout","References","Review","View","Native tools","Accessibility review","Document outline","Final preview","HTML editor","Desktop preview","Tablet preview","Mobile preview","Table of contents","Copy","Cut","Paste plain text","Format painter","Clear formatting"].map((item) => <option key={item} value={item}/>)}</datalist></form>}
+              {mode === "visual" && <form className="ribbon-command-search" onSubmit={executeRibbonCommand} role="search"><Search aria-hidden="true"/><label className="sr-only" htmlFor="ribbon-command-input">Search ribbon commands</label><input id="ribbon-command-input" list="ribbon-command-options" value={ribbonCommand} onChange={(event) => setRibbonCommand(event.target.value)} placeholder="Search commands" autoComplete="off"/><datalist id="ribbon-command-options">{["New document","Open document","Save document","Home tools","Insert content","Page layout","References","Review","View","Native tools","Table tools","Accessibility review","Document outline","Final preview","HTML editor","Desktop preview","Tablet preview","Mobile preview","Table of contents","Copy","Cut","Paste plain text","Format painter","Clear formatting"].map((item) => <option key={item} value={item}/>)}</datalist></form>}
               {mode === "visual" && <div className="ribbon-quick" role="group" aria-label="Quick access"><button type="button" onClick={() => command("undo")} aria-label="Undo" title="Undo"><Undo2 /></button><button type="button" onClick={() => command("redo")} aria-label="Redo" title="Redo"><Redo2 /></button><button type="button" className={ribbonCollapsed ? "collapsed" : ""} aria-expanded={!ribbonCollapsed} aria-controls="ribbon-panel" onClick={() => setRibbonCollapsed((collapsed) => !collapsed)} aria-label={ribbonCollapsed ? "Expand ribbon" : "Collapse ribbon"} title={ribbonCollapsed ? "Expand ribbon" : "Collapse ribbon"}><ChevronDown /></button></div>}
             </div>
             {mode === "visual" && !ribbonCollapsed && <div id="ribbon-panel" className="ribbon-panel" role="tabpanel" aria-labelledby={`ribbon-tab-${ribbonTab}`}>
@@ -1190,6 +1200,12 @@ export default function Home() {
                 <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row ribbon-native-tools"><a className="ribbon-command" href="/tools#apa"><BookOpen/><span>EstiloAPA</span></a><a className="ribbon-command" href="/tools#txt"><FileText/><span>TXT Tests</span></a><a className="ribbon-command" href="/tools#qti"><Table2/><span>QTI 2.1</span></a></div><span className="ribbon-group-label">Native UltraPage Tools</span></div>
                 <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row"><button type="button" className="ribbon-command" onClick={() => { setSidePanelTab("blocks"); setRightPanel(true); }}><Folder/><span>Resources</span></button><ContentDialog documentLanguage={documentLanguage} documentAuthor={documentAuthor} documentDescription={documentDescription} trigger={<button className="ribbon-command" aria-label="Open Content Collection"><Cloud/><span>WebDAV</span></button>} search={search} setSearch={setSearch} files={filteredFiles} insertFile={insertFile} documentHtml={html} documentFileName={documentFileName} openDocument={openDocument} newDocument={newDocument}/><button type="button" className="ribbon-command" onClick={() => { setSidePanelTab("review"); setRightPanel(true); }}><Accessibility/><span>Accessibility</span></button></div><span className="ribbon-group-label">Connected Services</span></div>
                 <div className="ribbon-group"><div className="ribbon-group-body ribbon-tool-summary"><strong>3 native tools</strong><span>APA 7, Blackboard TXT and QTI 2.1</span><small>Original repositories remain independent.</small></div><span className="ribbon-group-label">Studio Integration</span></div>
+              </>}
+              {ribbonTab === "table" && <>
+                <div className="ribbon-group ribbon-context-summary"><div className="ribbon-group-body"><span className="context-badge"><Table2/> Table selected</span></div><span className="ribbon-group-label">Context</span></div>
+                <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row"><button type="button" className="ribbon-command" onClick={() => editSelectedTable("add-row")}><Rows3/><span>Add Row</span></button><button type="button" className="ribbon-command ribbon-danger" onClick={() => editSelectedTable("delete-row")}><Trash2/><span>Delete Row</span></button></div><span className="ribbon-group-label">Rows</span></div>
+                <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row"><button type="button" className="ribbon-command" onClick={() => editSelectedTable("add-column")}><Columns3/><span>Add Column</span></button><button type="button" className="ribbon-command ribbon-danger" onClick={() => editSelectedTable("delete-column")}><Trash2/><span>Delete Column</span></button></div><span className="ribbon-group-label">Columns</span></div>
+                <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row"><button type="button" className="ribbon-command" onClick={() => editSelectedTable("grid")}><Table2/><span>All Borders</span></button><button type="button" className="ribbon-command" onClick={() => editSelectedTable("apa7")}><BookOpen/><span>APA 7</span></button><TableEditDialog editTable={editSelectedTable}/></div><span className="ribbon-group-label">Table Style</span></div>
               </>}
             </div>}
           </div>
