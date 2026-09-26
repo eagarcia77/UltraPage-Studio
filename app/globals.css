@@ -358,6 +358,10 @@
   object-fit: contain;
 }
 
+.right-panel .side-tabs {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 /* Word-style status bar: document facts live here instead of repeating in the Ribbon. */
 .editor-tabs {
   margin-bottom: 0;
