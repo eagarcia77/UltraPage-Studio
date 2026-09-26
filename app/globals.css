@@ -357,3 +357,81 @@
   height: 100%;
   object-fit: contain;
 }
+
+/* Word-style status bar: document facts live here instead of repeating in the Ribbon. */
+.editor-tabs {
+  margin-bottom: 0;
+}
+
+.editor-status-bar {
+  position: sticky;
+  z-index: 22;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 34px;
+  margin: 0 28px 12px;
+  padding: 5px 12px;
+  color: #43365d;
+  background: rgba(255, 255, 255, .96);
+  border: 1px solid #ddd6ea;
+  border-radius: 0 0 10px 10px;
+  box-shadow: 0 8px 20px rgba(44, 30, 70, .08);
+  font-size: 12px;
+  backdrop-filter: blur(10px);
+}
+
+.status-cluster {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.status-cluster > span,
+.status-cluster > button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.status-save {
+  color: #157347;
+  font-weight: 750;
+}
+
+.status-save.pending {
+  color: #9a5b00;
+}
+
+.status-context button {
+  padding: 2px 5px;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  border-radius: 5px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.status-context button:hover,
+.status-context button:focus-visible {
+  color: #5625b8;
+  background: #f0eafd;
+  outline: 2px solid transparent;
+}
+
+@media (max-width: 900px) {
+  .editor-status-bar {
+    margin: 0 10px 10px;
+    overflow-x: auto;
+  }
+
+  .status-context span:not(:last-child),
+  .status-cluster > span:nth-child(4) {
+    display: none;
+  }
+}
