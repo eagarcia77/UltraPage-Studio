@@ -439,3 +439,173 @@
     display: none;
   }
 }
+
+/* The auxiliary panel only consumes space while it is actually open. */
+.workspace {
+  grid-template-columns: 64px minmax(520px, 1fr);
+}
+
+.workspace.panel-open {
+  grid-template-columns: 64px minmax(520px, 1fr) 285px;
+}
+
+.ribbon-zoom-controls {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.ribbon-zoom-controls button {
+  min-width: 34px;
+  height: 34px;
+  padding: 0 7px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  color: #4e586b;
+  background: transparent;
+  font: 700 11px Inter, Segoe UI, Arial, sans-serif;
+  cursor: pointer;
+}
+
+.ribbon-zoom-controls button:hover,
+.ribbon-zoom-controls button:focus-visible {
+  color: #6030c0;
+  background: #eee9fb;
+  outline: 2px solid transparent;
+}
+
+.ribbon-zoom-controls svg {
+  width: 17px;
+}
+
+.ribbon-zoom-controls select {
+  height: 34px;
+  border: 1px solid #dfe3eb;
+  border-radius: 7px;
+  color: #4e586b;
+  background: #fff;
+  font: 650 11px Inter, Segoe UI, Arial, sans-serif;
+}
+
+.status-zoom {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding-left: 6px;
+  border-left: 1px solid #ddd6ea;
+}
+
+.status-zoom button {
+  display: grid;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  place-items: center;
+  border: 0;
+  border-radius: 5px;
+  color: #514765;
+  background: transparent;
+  cursor: pointer;
+}
+
+.status-zoom button:hover,
+.status-zoom button:focus-visible {
+  color: #5625b8;
+  background: #eee7fb;
+  outline: 2px solid transparent;
+}
+
+.page-canvas .ultrapage-page-break {
+  position: relative;
+  height: 24px;
+  margin: 28px 0;
+  border: 0;
+  border-top: 2px dashed #9a8bb7;
+}
+
+.page-canvas .ultrapage-page-break::after {
+  content: "Page break";
+  position: absolute;
+  top: -11px;
+  left: 50%;
+  padding: 2px 8px;
+  transform: translateX(-50%);
+  color: #675b7a;
+  background: #fff;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+@media (max-width: 1040px) {
+  .workspace,
+  .workspace.panel-open {
+    grid-template-columns: 58px minmax(480px, 1fr);
+  }
+}
+
+@media (max-width: 700px) {
+  .workspace,
+  .workspace.panel-open {
+    display: block;
+  }
+}
+
+@media print {
+  body {
+    background: #fff;
+  }
+
+  .topbar,
+  .leftbar,
+  .document-head,
+  .ribbon-shell,
+  .editor-status-bar,
+  .right-panel,
+  .panel-backdrop,
+  .ultra-label,
+  .ruler-corner,
+  .horizontal-ruler,
+  .vertical-ruler {
+    display: none !important;
+  }
+
+  .workspace,
+  .workspace.panel-open,
+  .editor-shell,
+  .editor-tabs,
+  .canvas-wrap,
+  .device-frame,
+  .editor-rulers,
+  .measurement-page {
+    display: block;
+    width: 100%;
+    height: auto;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    overflow: visible;
+    border: 0;
+    box-shadow: none;
+    background: #fff;
+    zoom: 1 !important;
+  }
+
+  .page-canvas {
+    min-height: 0;
+    padding: .5in .75in;
+    border: 0;
+    box-shadow: none;
+  }
+
+  .page-canvas .ultrapage-page-break {
+    height: 0;
+    margin: 0;
+    border: 0;
+    break-after: page;
+    page-break-after: always;
+  }
+
+  .page-canvas .ultrapage-page-break::after {
+    display: none;
+  }
+}
