@@ -359,7 +359,189 @@
 }
 
 .right-panel .side-tabs {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+/* Design Preview inspection tools keep editing diagnostics inside the Word-style workspace. */
+.design-audit-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 24px;
+  padding: 3px 7px;
+  border: 1px solid #cdd5e0;
+  border-radius: 999px;
+  color: #4e596b;
+  background: #fff;
+  font: 750 9px Inter, Segoe UI, Arial, sans-serif;
+  cursor: pointer;
+}
+
+.design-audit-pill svg {
+  width: 13px;
+  height: 13px;
+}
+
+.design-audit-pill.ready {
+  color: #12633e;
+  background: #ecf8f1;
+  border-color: #b9dfc9;
+}
+
+.design-audit-pill.attention {
+  color: #875300;
+  background: #fff7e6;
+  border-color: #efd18b;
+}
+
+.design-audit-pill:hover,
+.design-audit-pill:focus-visible {
+  outline: 2px solid #6b38d1;
+  outline-offset: 2px;
+}
+
+.page-canvas.show-formatting-marks p::after,
+.page-canvas.show-formatting-marks h1::after,
+.page-canvas.show-formatting-marks h2::after,
+.page-canvas.show-formatting-marks h3::after,
+.page-canvas.show-formatting-marks h4::after,
+.page-canvas.show-formatting-marks li::after {
+  content: " ¶";
+  color: #7b55c1;
+  font: 700 11px Inter, Segoe UI, Arial, sans-serif;
+  opacity: .75;
+  pointer-events: none;
+  user-select: none;
+}
+
+.preview-audit-command {
+  color: #5124a9 !important;
+}
+
+.preview-audit-panel {
+  display: grid;
+  gap: 11px;
+}
+
+.preview-audit-summary {
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  align-items: center;
+  gap: 9px;
+  padding: 12px;
+  border: 1px solid #dce1e9;
+  border-radius: 11px;
+  background: #f8fafc;
+}
+
+.preview-audit-summary > svg {
+  width: 30px;
+  height: 30px;
+  padding: 6px;
+  border-radius: 9px;
+  color: #5c2db4;
+  background: #eee8fb;
+}
+
+.preview-audit-summary.ready {
+  border-color: #b9dfc9;
+  background: #ecf8f1;
+}
+
+.preview-audit-summary.attention {
+  border-color: #efd18b;
+  background: #fff7e6;
+}
+
+.preview-audit-summary span,
+.preview-audit-item div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.preview-audit-summary strong,
+.preview-audit-item strong {
+  color: #30394a;
+  font-size: 11px;
+}
+
+.preview-audit-summary small,
+.preview-audit-item small {
+  color: #707b8d;
+  font-size: 9px;
+  line-height: 1.45;
+}
+
+.preview-audit-run {
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid #cdbce9;
+  border-radius: 8px;
+  color: #5124a9;
+  background: #f7f3ff;
+  font-size: 10px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.preview-audit-run:hover,
+.preview-audit-run:focus-visible {
+  background: #eee7fb;
+  outline: 2px solid #6b38d1;
+  outline-offset: 2px;
+}
+
+.preview-audit-run svg {
+  width: 15px;
+}
+
+.preview-audit-list {
+  display: grid;
+}
+
+.preview-audit-item {
+  display: grid;
+  grid-template-columns: 25px 1fr;
+  gap: 8px;
+  padding: 10px 0;
+  border-bottom: 1px solid #edf0f4;
+}
+
+.preview-audit-item > span {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+}
+
+.preview-audit-item > span svg {
+  width: 13px;
+}
+
+.preview-audit-item.ok > span {
+  color: #23805e;
+  background: #dcf4e9;
+}
+
+.preview-audit-item.warn > span {
+  color: #a86b0b;
+  background: #fff0d5;
+}
+
+.preview-audit-note {
+  margin: 0;
+  padding: 9px 10px;
+  border-radius: 8px;
+  color: #647084;
+  background: #f3f5f8;
+  font-size: 9px;
+  line-height: 1.5;
 }
 
 /* Word-style status bar: document facts live here instead of repeating in the Ribbon. */
