@@ -30,6 +30,7 @@ type CapturedFormat = { fontFamily: string; fontSize: string; fontWeight: string
 type SelectedImageData = { alt: string; caption: string; decorative: boolean; width: number };
 type SelectedLinkData = { text: string; url: string; newTab: boolean };
 type PreviewAuditCheck = { ok: boolean; label: string; detail: string };
+type PreviewDeviceResult = { device: "desktop" | "tablet" | "mobile"; label: string; width: number; ok: boolean; detail: string };
 const languageLabels: Record<DocumentLanguage, string> = { "es-PR": "Español (Puerto Rico)", "en-US": "English (United States)" };
 const lmsProfiles: Record<LmsProfile, { label: string; shortLabel: string; guidance: string }> = {
   universal: { label: "Universal LMS", shortLabel: "Universal", guidance: "Conservative semantic HTML for standards-based LMS editors." },
@@ -348,6 +349,7 @@ export default function Home() {
   const [rightPanel, setRightPanel] = useState(false);
   const [sidePanelTab, setSidePanelTab] = useState<"review" | "outline" | "preview">("review");
   const [previewAuditChecks, setPreviewAuditChecks] = useState<PreviewAuditCheck[]>([]);
+  const [previewDeviceResults, setPreviewDeviceResults] = useState<PreviewDeviceResult[]>([]);
   const [title, setTitle] = useState("Untitled document");
   const [saved, setSaved] = useState(true);
   const [draftLoaded, setDraftLoaded] = useState(false);
@@ -426,11 +428,39 @@ export default function Home() {
     const pageOverflow = canvas.scrollWidth > canvas.clientWidth + 2;
     const mediaContained = images.every((image) => image.clientWidth <= (image.parentElement?.clientWidth || canvas.clientWidth) + 2);
     const tablesScrollable = tables.every((table) => table.scrollWidth <= table.clientWidth + 2 || ["auto", "scroll"].includes(getComputedStyle(table).overflowX));
+    const auditStage = document.createElement("div");
+    auditStage.className = "responsive-audit-stage";
+    document.body.appendChild(auditStage);
+    const deviceResults: PreviewDeviceResult[] = ([
+      ["desktop", "Desktop", 860],
+      ["tablet", "Tablet", 720],
+      ["mobile", "Mobile", 390],
+    ] as const).map(([testedDevice, label, width]) => {
+      const frame = document.createElement("div");
+      frame.className = `device-frame ${testedDevice}`;
+      frame.style.width = `${width}px`;
+      frame.style.transition = "none";
+      const clone = canvas.cloneNode(true) as HTMLDivElement;
+      clone.removeAttribute("contenteditable");
+      clone.removeAttribute("role");
+      clone.removeAttribute("aria-label");
+      clone.classList.remove("show-formatting-marks", "image-drag-active");
+      frame.appendChild(clone); auditStage.appendChild(frame);
+      const pageFits = clone.scrollWidth <= clone.clientWidth + 2;
+      const imagesFit = Array.from(clone.querySelectorAll<HTMLImageElement>("img")).every((image) => image.clientWidth <= (image.parentElement?.clientWidth || clone.clientWidth) + 2);
+      const tablesFit = Array.from(clone.querySelectorAll<HTMLTableElement>("table")).every((table) => table.scrollWidth <= table.clientWidth + 2 || ["auto", "scroll"].includes(getComputedStyle(table).overflowX));
+      const ok = pageFits && imagesFit && tablesFit;
+      return { device: testedDevice, label, width, ok, detail: ok ? "Content, images, and tables fit." : "Review an element that exceeds this viewport." };
+    });
+    auditStage.remove();
+    setPreviewDeviceResults(deviceResults);
+    const matrixReady = deviceResults.every((result) => result.ok);
     const checks: PreviewAuditCheck[] = [
       { ok: Boolean(canvas.textContent?.trim() || images.length || tables.length), label: "Content renders", detail: "The editable canvas contains visible content." },
       { ok: !pageOverflow, label: "No page overflow", detail: pageOverflow ? "An element extends beyond the simulated device width." : "Content remains inside the simulated viewport." },
       { ok: mediaContained, label: "Responsive images", detail: images.length ? `${images.length} image${images.length === 1 ? " fits" : "s fit"} the content area.` : "No images require responsive testing." },
       { ok: tablesScrollable, label: "Responsive tables", detail: tables.length ? `${tables.length} table${tables.length === 1 ? " remains contained or scrolls" : "s remain contained or scroll"} horizontally.` : "No tables require responsive testing." },
+      { ok: matrixReady, label: "Responsive device matrix", detail: matrixReady ? "Desktop, Tablet, and Mobile passed simultaneously." : "At least one simulated viewport requires review." },
       { ok: headings.length === 0 || headings[0].tagName === "H1", label: "Preview structure", detail: headings.length ? `${headings.length} heading${headings.length === 1 ? "" : "s"} detected; the first is ${headings[0].tagName}.` : "No headings are present yet." },
       { ok: Boolean(buildLmsHtml(canvas.innerHTML, documentLanguage, lmsProfile).trim()), label: `${lmsProfiles[lmsProfile].shortLabel} output`, detail: "The current design produces portable LMS HTML." },
     ];
@@ -1389,7 +1419,7 @@ export default function Home() {
               </>}
             </div>}
           </div>
-          <TabsContent value="visual" className="canvas-wrap"><div className={`device-frame ${device}`} style={{ zoom: `${zoom}%` }}><div className="ultra-label"><span className="mini-logo" aria-hidden="true"><img src="/brand/ultrapage-mark.svg" alt="" /></span><span>Design Preview</span><span className="design-state">{device[0].toUpperCase() + device.slice(1)} · {zoom}%</span><span className="design-state design-editable">Editable</span>{device === "desktop" && <span className="design-state design-paper">Letter · 8.5 × 11 in minimum</span>}<button type="button" className={`design-audit-pill ${previewAuditChecks.every((check) => check.ok) ? "ready" : "attention"}`} onClick={() => runPreviewAudit(true)} aria-label="Open Design Preview audit"><Eye/>{previewAuditChecks.filter((check) => check.ok).length}/{previewAuditChecks.length || 6}</button><span className="ruler-status">{showRulers ? `Rulers: ${rulerUnit === "in" ? "inches" : "centimeters"}` : "Rulers hidden"}</span></div><EditorRulers unit={rulerUnit} device={device} onToggle={() => setRulerUnit((current) => current === "in" ? "cm" : "in")} showRulers={showRulers} showMarginGuides={showMarginGuides}><div ref={attachEditor} className={`page-canvas ${imageDragActive ? "image-drag-active" : ""} ${showFormattingMarks ? "show-formatting-marks" : ""}`} contentEditable role="textbox" aria-multiline="true" aria-describedby="design-editor-help" lang={documentLanguage} spellCheck={spellCheckEnabled} suppressContentEditableWarning onClick={handleEditorClick} onPaste={handlePaste} onDragEnter={handleImageDragOver} onDragOver={handleImageDragOver} onDragLeave={() => setImageDragActive(false)} onDrop={handleImageDrop} onInput={handleEditorInput} aria-label="Editable page content" /><span id="design-editor-help" className="sr-only">Rich text editing area. Click an image, link, or table cell to open its contextual Ribbon tools. Use the Ribbon to format content, insert accessible elements, and review the document.</span></EditorRulers></div></TabsContent>
+          <TabsContent value="visual" className="canvas-wrap"><div className={`device-frame ${device}`} style={{ zoom: `${zoom}%` }}><div className="ultra-label"><span className="mini-logo" aria-hidden="true"><img src="/brand/ultrapage-mark.svg" alt="" /></span><span>Design Preview</span><span className="design-state">{device[0].toUpperCase() + device.slice(1)} · {zoom}%</span><span className="design-state design-editable">Editable</span>{device === "desktop" && <span className="design-state design-paper">Letter · 8.5 × 11 in minimum</span>}<button type="button" className={`design-audit-pill ${previewAuditChecks.length > 0 && previewAuditChecks.every((check) => check.ok) ? "ready" : "attention"}`} onClick={() => runPreviewAudit(true)} aria-label="Open Design Preview audit"><Eye/>{previewAuditChecks.filter((check) => check.ok).length}/{previewAuditChecks.length || 7}</button><span className="ruler-status">{showRulers ? `Rulers: ${rulerUnit === "in" ? "inches" : "centimeters"}` : "Rulers hidden"}</span></div><EditorRulers unit={rulerUnit} device={device} onToggle={() => setRulerUnit((current) => current === "in" ? "cm" : "in")} showRulers={showRulers} showMarginGuides={showMarginGuides}><div ref={attachEditor} className={`page-canvas ${imageDragActive ? "image-drag-active" : ""} ${showFormattingMarks ? "show-formatting-marks" : ""}`} contentEditable role="textbox" aria-multiline="true" aria-describedby="design-editor-help" lang={documentLanguage} spellCheck={spellCheckEnabled} suppressContentEditableWarning onClick={handleEditorClick} onPaste={handlePaste} onDragEnter={handleImageDragOver} onDragOver={handleImageDragOver} onDragLeave={() => setImageDragActive(false)} onDrop={handleImageDrop} onInput={handleEditorInput} aria-label="Editable page content" /><span id="design-editor-help" className="sr-only">Rich text editing area. Click an image, link, or table cell to open its contextual Ribbon tools. Use the Ribbon to format content, insert accessible elements, and review the document.</span></EditorRulers></div></TabsContent>
           <TabsContent value="ultra" className="blackboard-preview-wrap"><div className={`device-frame ${device}`} style={{ zoom: `${zoom}%` }}><div className="ultra-label"><span className="mini-logo" aria-hidden="true"><img src="/brand/ultrapage-mark.svg" alt="" /></span><span>Exact {activeLms.label} output</span><span className="final-preview-badge">Read only</span></div><iframe className="blackboard-preview-frame" title={`Final preview of content prepared for ${activeLms.label}`} srcDoc={finalPreviewDocument} sandbox="allow-scripts allow-same-origin allow-presentation"/><p className="final-preview-help">This preview uses the exact fragment generated by <strong>Copy for {activeLms.shortLabel}</strong>. {activeLms.guidance} Desktop, tablet, and mobile controls adjust the test width.</p></div></TabsContent>
           <TabsContent value="html" className={`code-wrap code-workspace-${codeWorkspace}`}>
             <div className="code-header">
@@ -1410,7 +1440,7 @@ export default function Home() {
           <div className="status-cluster status-context"><button type="button" onClick={() => { setSidePanelTab("review"); setRightPanel(true); }}><Accessibility size={14}/>{accessibilityScore}% accessible · {pageChecks.filter((check) => !check.ok).length} pending</button><span>{languageLabels[documentLanguage]}</span><span>{activeLms.shortLabel}</span><span>{device[0].toUpperCase() + device.slice(1)}</span><div className="status-zoom" role="group" aria-label="Document zoom"><button type="button" onClick={() => setZoom((value) => Math.max(50, value - 10))} aria-label="Zoom out"><Minus size={13}/></button><span>{zoom}%</span><button type="button" onClick={() => setZoom((value) => Math.min(150, value + 10))} aria-label="Zoom in"><Plus size={13}/></button></div></div>
         </div>
       </section>
-      {rightPanel && <><button type="button" className="panel-backdrop" onClick={() => setRightPanel(false)} aria-label="Close auxiliary panel"/><aside id="editor-side-panel" className="right-panel" aria-label="Document insights panel"><div className="mobile-panel-heading"><strong>Document insights</strong><button type="button" onClick={() => setRightPanel(false)} aria-label="Close panel"><X size={18}/></button></div><Tabs value={sidePanelTab} onValueChange={(value) => setSidePanelTab(value as "review" | "outline" | "preview")}><TabsList className="side-tabs"><TabsTrigger value="review">Accessibility</TabsTrigger><TabsTrigger value="preview">Preview</TabsTrigger><TabsTrigger value="outline">Outline</TabsTrigger></TabsList><TabsContent value="review"><div className="score-card"><div className="score-ring">{accessibilityScore}</div><div><strong>{accessibilityScore === 100 ? "Accessibility ready" : "Review required"}</strong><span>{pageChecks.filter((check) => !check.ok).length} recommendations pending</span></div></div><button type="button" className="accessibility-repair" onClick={repairAccessibility}><Accessibility size={18}/><span><strong>Safe Fix</strong><small>Repairs structure, tables, links, and HTML without inventing descriptions.</small></span></button>{pageChecks.map((check) => <ReviewItem key={check.text} ok={check.ok} text={check.text}/>)}</TabsContent><TabsContent value="preview"><PreviewAudit checks={previewAuditChecks} device={device} zoom={zoom} onRun={() => runPreviewAudit(true)}/></TabsContent><TabsContent value="outline"><DocumentOutline items={documentOutline} onSelect={focusHeading}/></TabsContent></Tabs></aside></>}
+      {rightPanel && <><button type="button" className="panel-backdrop" onClick={() => setRightPanel(false)} aria-label="Close auxiliary panel"/><aside id="editor-side-panel" className="right-panel" aria-label="Document insights panel"><div className="mobile-panel-heading"><strong>Document insights</strong><button type="button" onClick={() => setRightPanel(false)} aria-label="Close panel"><X size={18}/></button></div><Tabs value={sidePanelTab} onValueChange={(value) => setSidePanelTab(value as "review" | "outline" | "preview")}><TabsList className="side-tabs"><TabsTrigger value="review">Accessibility</TabsTrigger><TabsTrigger value="preview">Preview</TabsTrigger><TabsTrigger value="outline">Outline</TabsTrigger></TabsList><TabsContent value="review"><div className="score-card"><div className="score-ring">{accessibilityScore}</div><div><strong>{accessibilityScore === 100 ? "Accessibility ready" : "Review required"}</strong><span>{pageChecks.filter((check) => !check.ok).length} recommendations pending</span></div></div><button type="button" className="accessibility-repair" onClick={repairAccessibility}><Accessibility size={18}/><span><strong>Safe Fix</strong><small>Repairs structure, tables, links, and HTML without inventing descriptions.</small></span></button>{pageChecks.map((check) => <ReviewItem key={check.text} ok={check.ok} text={check.text}/>)}</TabsContent><TabsContent value="preview"><PreviewAudit checks={previewAuditChecks} deviceResults={previewDeviceResults} device={device} zoom={zoom} onRun={() => runPreviewAudit(true)} onSelectDevice={setDevice}/></TabsContent><TabsContent value="outline"><DocumentOutline items={documentOutline} onSelect={focusHeading}/></TabsContent></Tabs></aside></>}
     </div>
   </main>;
 }
@@ -1446,14 +1476,15 @@ function EditorRulers({ unit, device, onToggle, showRulers, showMarginGuides, ch
 function Block({ icon: Icon, label, onClick }: { icon: typeof FileText; label: string; onClick: () => void }) { return <button className="block-button" onClick={onClick}><Icon size={19}/><span>{label}</span></button>; }
 function ReviewItem({ ok, text }: { ok: boolean; text: string }) { return <div className={`review-item ${ok ? "ok" : "warn"}`}><span>{ok ? <Check size={15}/> : "!"}</span><p>{text}</p></div>; }
 
-function PreviewAudit({ checks, device, zoom, onRun }: { checks: PreviewAuditCheck[]; device: "desktop" | "tablet" | "mobile"; zoom: number; onRun: () => void }) {
+function PreviewAudit({ checks, deviceResults, device, zoom, onRun, onSelectDevice }: { checks: PreviewAuditCheck[]; deviceResults: PreviewDeviceResult[]; device: "desktop" | "tablet" | "mobile"; zoom: number; onRun: () => void; onSelectDevice: (device: "desktop" | "tablet" | "mobile") => void }) {
   const passed = checks.filter((check) => check.ok).length;
   const ready = checks.length > 0 && passed === checks.length;
   return <section className="preview-audit-panel" aria-label="Design Preview audit results">
-    <div className={`preview-audit-summary ${ready ? "ready" : "attention"}`}><Eye/><span><strong>{ready ? "Preview ready" : "Preview review"}</strong><small>{passed}/{checks.length || 6} checks passed · {device} at {zoom}%</small></span></div>
+    <div className={`preview-audit-summary ${ready ? "ready" : "attention"}`}><Eye/><span><strong>{ready ? "Preview ready" : "Preview review"}</strong><small>{passed}/{checks.length || 7} checks passed · {device} at {zoom}%</small></span></div>
     <button type="button" className="preview-audit-run" onClick={onRun}><Eye/> Run audit again</button>
+    <div className="preview-device-matrix" role="group" aria-label="Responsive device audit">{deviceResults.map((result) => <button type="button" key={result.device} className={`${result.ok ? "ok" : "warn"} ${device === result.device ? "active" : ""}`} aria-pressed={device === result.device} onClick={() => onSelectDevice(result.device)}><span>{result.device === "desktop" ? <Monitor/> : result.device === "tablet" ? <Tablet/> : <Smartphone/>}</span><strong>{result.label}</strong><small>{result.width}px · {result.ok ? "Passed" : "Review"}</small></button>)}</div>
     <div className="preview-audit-list">{checks.map((check) => <div className={`preview-audit-item ${check.ok ? "ok" : "warn"}`} key={check.label}><span>{check.ok ? <Check/> : <AlertTriangle/>}</span><div><strong>{check.label}</strong><small>{check.detail}</small></div></div>)}</div>
-    <p className="preview-audit-note">Test Desktop, Tablet, and Mobile before copying the LMS HTML. Wide tables remain keyboard-accessible through horizontal scrolling.</p>
+    <p className="preview-audit-note">The matrix tests all three viewports during every audit. Select a device card to inspect it on the canvas. Wide tables remain keyboard-accessible through horizontal scrolling.</p>
   </section>;
 }
 
