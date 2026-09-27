@@ -573,6 +573,63 @@
   margin-left: auto;
 }
 
+/* Responsive Design Preview uses the simulated device width, not the browser viewport. */
+.device-frame.tablet .page-canvas {
+  padding: 46px 52px;
+}
+
+.device-frame.mobile .page-canvas {
+  min-height: 520px;
+  padding: 28px 20px;
+  font-size: 15px;
+  line-height: 1.62;
+}
+
+.device-frame.mobile .page-canvas h1 {
+  font-size: 27px;
+  line-height: 1.18;
+}
+
+.device-frame.mobile .page-canvas h2 {
+  margin-top: 26px;
+  font-size: 21px;
+}
+
+.device-frame.mobile .page-canvas h3 {
+  font-size: 18px;
+}
+
+.device-frame.mobile .page-canvas h4 {
+  font-size: 16px;
+}
+
+.device-frame.mobile .page-canvas .lead {
+  font-size: 17px;
+}
+
+.device-frame.mobile .page-canvas .callout,
+.device-frame.mobile .page-canvas blockquote {
+  padding: 14px 15px;
+}
+
+.device-frame.mobile .page-canvas table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  font-size: 14px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.device-frame.mobile .page-canvas th,
+.device-frame.mobile .page-canvas td {
+  min-width: 104px;
+  padding: 7px;
+}
+
+.device-frame.mobile .margin-guides {
+  background: linear-gradient(to right, transparent calc(6% - 1px), rgba(107,56,209,.2) calc(6% - 1px), rgba(107,56,209,.2) 6%, transparent 6%, transparent calc(94% - 1px), rgba(107,56,209,.2) calc(94% - 1px), rgba(107,56,209,.2) 94%, transparent 94%);
+}
+
 .design-editable {
   color: #12633e;
   background: #ecf8f1;
