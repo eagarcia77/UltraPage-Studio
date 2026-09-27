@@ -1410,16 +1410,18 @@ export default function Home() {
       const candidates = location.selector === "@editor-start" ? [] : Array.from(root.querySelectorAll<HTMLElement>(location.selector));
       const target = location.selector === "@editor-start" ? (root.firstElementChild as HTMLElement | null) || root : candidates[location.index];
       if (!target) { toast.error("The affected element is no longer in the document", { description: "Run Accessibility Checks again to refresh the location." }); return; }
-      target.classList.add("accessibility-issue-highlight");
-      target.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
       if (location.context === "picture") selectEditorContext(target, "picture", true);
       else if (location.context === "link") selectEditorContext(target, "link", true);
       else if (location.context === "table") {
         const tableTarget = target.querySelector<HTMLElement>("th,td") || target;
         selectEditorContext(tableTarget, "table");
       }
-      toast.warning(`Located: ${location.label}`, { description: check.text });
-      window.setTimeout(() => target.classList.remove("accessibility-issue-highlight"), 6000);
+      window.requestAnimationFrame(() => {
+        target.classList.add("accessibility-issue-highlight");
+        target.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+        toast.warning(`Located: ${location.label}`, { description: check.text });
+        window.setTimeout(() => target.classList.remove("accessibility-issue-highlight"), 6000);
+      });
     }, 60));
   };
   const plainText = html.replace(/<[^>]+>/g, " ").replace(/&nbsp;|&amp;|&lt;|&gt;|&#39;|&quot;/g, " ").replace(/\s+/g, " ").trim();
