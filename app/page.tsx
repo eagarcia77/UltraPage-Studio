@@ -604,6 +604,7 @@ export default function Home() {
   const changeMode = (value: string) => {
     const nextMode = value as "visual" | "ultra" | "html";
     if (mode === "visual" && editor.current) {
+      editor.current.querySelectorAll<HTMLElement>(".accessibility-issue-highlight").forEach((element) => element.classList.remove("accessibility-issue-highlight"));
       applyAutomaticFirstLineIndentation(editor.current, documentLanguage);
       const currentHtml = editor.current.innerHTML;
       htmlRef.current = currentHtml;
@@ -1375,6 +1376,48 @@ export default function Home() {
   const filteredFiles = demoFiles.filter((f) => f.name.toLowerCase().includes(search.toLowerCase()));
   const pageChecks = accessibilityReport(html, title, documentLanguage);
   const accessibilityScore = Math.round((pageChecks.filter((check) => check.ok).length / pageChecks.length) * 100);
+  const locateAccessibilityIssue = (check: AccessibilityCheck) => {
+    const location = check.location;
+    if (!location) { toast.info("This recommendation applies to the document as a whole"); return; }
+    if (location.view === "settings" || location.selector === "@title") {
+      changeMode("visual");
+      window.requestAnimationFrame(() => {
+        const titleField = document.querySelector<HTMLInputElement>(".title-input");
+        titleField?.scrollIntoView({ behavior: "smooth", block: "center" });
+        titleField?.focus();
+        titleField?.select();
+        toast.warning(`Located: ${location.label}`, { description: check.text });
+      });
+      return;
+    }
+    if (location.view === "html" || location.selector === "@html") {
+      setCodeView("source"); setCodeWorkspace("code"); changeMode("html");
+      window.requestAnimationFrame(() => {
+        codeEditor.current?.focus();
+        toast.warning(`Located: ${location.label}`, { description: "Review the editable HTML source for unsafe or unsupported markup." });
+      });
+      return;
+    }
+    changeMode("visual");
+    window.requestAnimationFrame(() => window.setTimeout(() => {
+      const root = editor.current;
+      if (!root) return;
+      root.querySelectorAll<HTMLElement>(".accessibility-issue-highlight").forEach((element) => element.classList.remove("accessibility-issue-highlight"));
+      const candidates = location.selector === "@editor-start" ? [] : Array.from(root.querySelectorAll<HTMLElement>(location.selector));
+      const target = location.selector === "@editor-start" ? (root.firstElementChild as HTMLElement | null) || root : candidates[location.index];
+      if (!target) { toast.error("The affected element is no longer in the document", { description: "Run Accessibility Checks again to refresh the location." }); return; }
+      target.classList.add("accessibility-issue-highlight");
+      target.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+      if (location.context === "picture") selectEditorContext(target, "picture", true);
+      else if (location.context === "link") selectEditorContext(target, "link", true);
+      else if (location.context === "table") {
+        const tableTarget = target.querySelector<HTMLElement>("th,td") || target;
+        selectEditorContext(tableTarget, "table");
+      }
+      toast.warning(`Located: ${location.label}`, { description: check.text });
+      window.setTimeout(() => target.classList.remove("accessibility-issue-highlight"), 6000);
+    }, 60));
+  };
   const plainText = html.replace(/<[^>]+>/g, " ").replace(/&nbsp;|&amp;|&lt;|&gt;|&#39;|&quot;/g, " ").replace(/\s+/g, " ").trim();
   const wordCount = plainText ? plainText.split(" ").length : 0;
   const characterCount = plainText.length;
@@ -1578,7 +1621,7 @@ export default function Home() {
           <div className="status-cluster status-context"><button type="button" onClick={() => { setSidePanelTab("review"); setRightPanel(true); }}><Accessibility size={14}/>{accessibilityScore}% accessible · {pageChecks.filter((check) => !check.ok).length} pending</button><span>{languageLabels[documentLanguage]}</span><span>{activeLms.shortLabel}</span><span>{device[0].toUpperCase() + device.slice(1)}</span><div className="status-zoom" role="group" aria-label="Document zoom"><button type="button" onClick={() => setZoom((value) => Math.max(50, value - 10))} aria-label="Zoom out"><Minus size={13}/></button><span>{zoom}%</span><button type="button" onClick={() => setZoom((value) => Math.min(150, value + 10))} aria-label="Zoom in"><Plus size={13}/></button></div></div>
         </div>
       </section>
-      {rightPanel && <><button type="button" className="panel-backdrop" onClick={() => setRightPanel(false)} aria-label="Close auxiliary panel"/><aside id="editor-side-panel" className="right-panel" aria-label="Document insights panel"><div className="mobile-panel-heading"><strong>Document insights</strong><button type="button" onClick={() => setRightPanel(false)} aria-label="Close panel"><X size={18}/></button></div><Tabs value={sidePanelTab} onValueChange={(value) => setSidePanelTab(value as "review" | "outline" | "preview")}><TabsList className="side-tabs"><TabsTrigger value="review">Accessibility</TabsTrigger><TabsTrigger value="preview">Preview</TabsTrigger><TabsTrigger value="outline">Outline</TabsTrigger></TabsList><TabsContent value="review"><div className="score-card"><div className="score-ring">{accessibilityScore}</div><div><strong>{accessibilityScore === 100 ? "Accessibility ready" : "Review required"}</strong><span>{pageChecks.filter((check) => !check.ok).length} recommendations pending</span></div></div><button type="button" className="accessibility-repair" onClick={repairAccessibility}><Accessibility size={18}/><span><strong>Safe Fix</strong><small>Repairs structure, tables, links, and HTML without inventing descriptions.</small></span></button>{pageChecks.map((check) => <ReviewItem key={check.text} ok={check.ok} text={check.text}/>)}</TabsContent><TabsContent value="preview"><PreviewAudit checks={previewAuditChecks} deviceResults={previewDeviceResults} device={device} zoom={zoom} auditedAt={previewAuditTime} onRun={() => runPreviewAudit(true)} onSelectDevice={setDevice}/></TabsContent><TabsContent value="outline"><DocumentOutline items={documentOutline} onSelect={focusHeading}/></TabsContent></Tabs></aside></>}
+      {rightPanel && <><button type="button" className="panel-backdrop" onClick={() => setRightPanel(false)} aria-label="Close auxiliary panel"/><aside id="editor-side-panel" className="right-panel" aria-label="Document insights panel"><div className="mobile-panel-heading"><strong>Document insights</strong><button type="button" onClick={() => setRightPanel(false)} aria-label="Close panel"><X size={18}/></button></div><Tabs value={sidePanelTab} onValueChange={(value) => setSidePanelTab(value as "review" | "outline" | "preview")}><TabsList className="side-tabs"><TabsTrigger value="review">Accessibility</TabsTrigger><TabsTrigger value="preview">Preview</TabsTrigger><TabsTrigger value="outline">Outline</TabsTrigger></TabsList><TabsContent value="review"><div className="score-card"><div className="score-ring">{accessibilityScore}</div><div><strong>{accessibilityScore === 100 ? "Accessibility ready" : "Review required"}</strong><span>{pageChecks.filter((check) => !check.ok).length} recommendations pending</span></div></div><button type="button" className="accessibility-repair" onClick={repairAccessibility}><Accessibility size={18}/><span><strong>Safe Fix</strong><small>Repairs structure, tables, links, and HTML without inventing descriptions.</small></span></button><div className="accessibility-location-help"><Eye/><span><strong>Element-level guidance</strong><small>Use Locate to highlight the first affected element in Design Preview.</small></span></div>{pageChecks.map((check) => <AccessibilityReviewItem key={check.text} check={check} onLocate={locateAccessibilityIssue}/>)}</TabsContent><TabsContent value="preview"><PreviewAudit checks={previewAuditChecks} deviceResults={previewDeviceResults} device={device} zoom={zoom} auditedAt={previewAuditTime} onRun={() => runPreviewAudit(true)} onSelectDevice={setDevice}/></TabsContent><TabsContent value="outline"><DocumentOutline items={documentOutline} onSelect={focusHeading}/></TabsContent></Tabs></aside></>}
     </div>
   </main>;
 }
@@ -1613,6 +1656,9 @@ function EditorRulers({ unit, device, onToggle, showRulers, showMarginGuides, ch
 
 function Block({ icon: Icon, label, onClick }: { icon: typeof FileText; label: string; onClick: () => void }) { return <button className="block-button" onClick={onClick}><Icon size={19}/><span>{label}</span></button>; }
 function ReviewItem({ ok, text }: { ok: boolean; text: string }) { return <div className={`review-item ${ok ? "ok" : "warn"}`}><span>{ok ? <Check size={15}/> : "!"}</span><p>{text}</p></div>; }
+function AccessibilityReviewItem({ check, onLocate }: { check: AccessibilityCheck; onLocate: (check: AccessibilityCheck) => void }) {
+  return <div className={`review-item accessibility-review-item ${check.ok ? "ok" : "warn"}`}><span>{check.ok ? <Check size={15}/> : <AlertTriangle size={13}/>}</span><div className="accessibility-review-copy"><p>{check.text}</p>{!check.ok && check.location && <small><strong>Where:</strong> {check.location.label}</small>}</div>{!check.ok && check.location && <button type="button" className="accessibility-locate" onClick={() => onLocate(check)}><Eye/> Locate</button>}</div>;
+}
 
 function PreviewAudit({ checks, deviceResults, device, zoom, auditedAt, onRun, onSelectDevice }: { checks: PreviewAuditCheck[]; deviceResults: PreviewDeviceResult[]; device: "desktop" | "tablet" | "mobile"; zoom: number; auditedAt: string; onRun: () => void; onSelectDevice: (device: "desktop" | "tablet" | "mobile") => void }) {
   const passed = checks.filter((check) => check.ok).length;
@@ -1631,25 +1677,28 @@ function DocumentOutline({ items, onSelect }: { items: Array<{ level: number; te
   return <nav className="document-outline" aria-label="Esquema del documento"><p className="panel-label">DOCUMENT OUTLINE</p><ol>{items.map((item) => <li key={`${item.index}-${item.text}`} style={{ paddingLeft: `${(item.level - 1) * 14}px` }}><button onClick={() => onSelect(item.index)}><span>H{item.level}</span><strong>{item.text}</strong></button></li>)}</ol></nav>;
 }
 
-type AccessibilityCheck = { ok: boolean; text: string };
+type AccessibilityLocation = { selector: string; index: number; label: string; view?: "design" | "html" | "settings"; context?: "table" | "picture" | "link" };
+type AccessibilityCheck = { ok: boolean; text: string; location?: AccessibilityLocation };
 
 function accessibilityReport(html: string, title: string, language: DocumentLanguage = "es-PR"): AccessibilityCheck[] {
   const headingLevels = Array.from(html.matchAll(/<h([1-6])\b[^>]*>/gi), (match) => Number(match[1]));
   const headings = Array.from(html.matchAll(/<h([1-6])\b[^>]*>([\s\S]*?)<\/h\1>/gi), (match) => match[2].replace(/<[^>]+>/g, "").trim());
   const h1Count = headingLevels.filter((level) => level === 1).length;
   let hierarchyOk = headingLevels.length > 0;
+  let hierarchyIssueIndex = -1;
   let previous = 0;
-  for (const level of headingLevels) {
-    if (previous && level > previous + 1) hierarchyOk = false;
+  for (const [index, level] of headingLevels.entries()) {
+    if (previous && level > previous + 1) { hierarchyOk = false; if (hierarchyIssueIndex < 0) hierarchyIssueIndex = index; }
     previous = level;
   }
   const images = Array.from(html.matchAll(/<img\b[^>]*>/gi), (match) => match[0]);
-  const imagesAccessible = images.every((image) => {
+  const imageHasAccessibleDescription = (image: string) => {
     const altMatch = image.match(/\balt=["']([^"']*)["']/i);
     if (!altMatch) return false;
     if (!altMatch[1]) return /\brole=["']presentation["']/i.test(image) || /\baria-hidden=["']true["']/i.test(image);
     return !/^(imagen|foto|gráfico|grafico|describa|image|photo)$/i.test(altMatch[1].trim());
-  });
+  };
+  const imagesAccessible = images.every(imageHasAccessibleDescription);
   const imagesPortable = images.every((image) => /\bsrc=["']data:image\/(?:png|jpe?g);base64,/i.test(image));
   const links = Array.from(html.matchAll(/<a\b([^>]*)href=["']([^"']+)["']([^>]*)>([\s\S]*?)<\/a>/gi), (match) => ({ attributes: `${match[1]}${match[3]}`, href: match[2], text: match[4].replace(/<[^>]+>/g, "").trim() }));
   const vagueLink = /^(aquí|clic aquí|click here|más|ver más|enlace)$/i;
@@ -1659,21 +1708,31 @@ function accessibilityReport(html: string, title: string, language: DocumentLang
   const responsiveMarkup = !/min-width\s*:\s*(?:[4-9]\d{2,}|\d{4,})px/i.test(html);
   const ids = Array.from(html.matchAll(/\bid=["']([^"']+)["']/gi), (match) => match[1]);
   const uniqueIds = new Set(ids).size === ids.length;
+  const duplicateIdIndex = ids.findIndex((id, index) => ids.indexOf(id) !== index);
+  const emptyHeadingIndex = headings.findIndex((heading) => !heading);
+  const inaccessibleImageIndex = images.findIndex((image) => !imageHasAccessibleDescription(image));
+  const nonPortableImageIndex = images.findIndex((image) => !/\bsrc=["']data:image\/(?:png|jpe?g);base64,/i.test(image));
+  const invalidLinkIndex = links.findIndex((link) => vagueLink.test(link.text) || !link.text || !/^(https?:|mailto:|tel:|\/|#)/i.test(link.href));
+  const insecureLinkIndex = links.findIndex((link) => /target=["']_blank["']/i.test(link.attributes) && !/rel=["'][^"']*noopener/i.test(link.attributes));
+  const headerlessTableIndex = tables.findIndex((table) => !/<th\b/i.test(table));
+  const unnamedTableIndex = tables.findIndex((table) => !/<caption\b/i.test(table) && !/aria-label=["'][^"']+["']/i.test(table));
+  const inaccessibleMediaIndex = media.findIndex((item) => !/<iframe\b[^>]*title=["'][^"']+["']/i.test(item) || (!/data-captions=["']true["']/i.test(item) && !/class=["'][^"']*media-transcript/i.test(item)));
+  const locate = (selector: string, index: number, label: string, context?: AccessibilityLocation["context"], view: AccessibilityLocation["view"] = "design"): AccessibilityLocation => ({ selector, index: Math.max(0, index), label, context, view });
   return [
-    { ok: Boolean(title.trim()), text: "The document has an identifiable title" },
-    { ok: h1Count === 1, text: h1Count === 1 ? "There is exactly one H1 heading" : `There must be exactly one H1; currently there are ${h1Count}` },
-    { ok: hierarchyOk, text: "The heading hierarchy does not skip levels" },
-    { ok: headings.every(Boolean), text: "Headings contain descriptive text" },
-    { ok: imagesAccessible, text: images.length ? "Informative images have alternative text and decorative images are identified correctly" : "No images require alternative text" },
-    { ok: imagesPortable, text: images.length ? "Images are embedded as PNG or JPEG for reliable Word and PDF export" : "No images require portable embedding" },
-    { ok: links.every((link) => !vagueLink.test(link.text) && Boolean(link.text) && /^(https?:|mailto:|tel:|\/|#)/i.test(link.href)), text: "Links have descriptive text and valid destinations" },
-    { ok: links.every((link) => !/target=["']_blank["']/i.test(link.attributes) || /rel=["'][^"']*noopener/i.test(link.attributes)), text: "Links opened in new tabs include security protection" },
-    { ok: tables.every((table) => /<th\b/i.test(table)), text: tables.length ? "Tables include header cells" : "No tables require headers" },
-    { ok: tables.every((table) => /<caption\b/i.test(table) || /aria-label=["'][^"']+["']/i.test(table)), text: tables.length ? "All tables have a caption or accessible name" : "No tables require a caption" },
-    { ok: media.every((item) => /<iframe\b[^>]*title=["'][^"']+["']/i.test(item) && (/data-captions=["']true["']/i.test(item) || /class=["'][^"']*media-transcript/i.test(item))), text: media.length ? "Videos have a title and captions or a transcript" : "No videos require review" },
-    { ok: safeMarkup, text: "The HTML contains no executable or unsafe code" },
-    { ok: responsiveMarkup, text: responsiveMarkup ? "The content does not impose minimum widths that overflow mobile screens" : "Remove fixed minimum widths of 400 px or more to improve mobile display" },
-    { ok: uniqueIds, text: uniqueIds ? "Internal identifiers are unique" : "Duplicate identifiers may break the table of contents" },
+    { ok: Boolean(title.trim()), text: "The document has an identifiable title", location: locate("@title", 0, "Document title field", undefined, "settings") },
+    { ok: h1Count === 1, text: h1Count === 1 ? "There is exactly one H1 heading" : `There must be exactly one H1; currently there are ${h1Count}`, location: h1Count ? locate("h1", h1Count > 1 ? 1 : 0, h1Count > 1 ? "Second H1 heading" : "H1 heading") : locate("@editor-start", 0, "Beginning of the document") },
+    { ok: hierarchyOk, text: "The heading hierarchy does not skip levels", location: hierarchyIssueIndex >= 0 ? locate("h1,h2,h3,h4,h5,h6", hierarchyIssueIndex, `Heading ${hierarchyIssueIndex + 1}`) : locate("@editor-start", 0, "Beginning of the document") },
+    { ok: headings.every(Boolean), text: "Headings contain descriptive text", location: locate("h1,h2,h3,h4,h5,h6", emptyHeadingIndex, `Empty heading ${emptyHeadingIndex + 1}`) },
+    { ok: imagesAccessible, text: images.length ? "Informative images have alternative text and decorative images are identified correctly" : "No images require alternative text", location: locate("img", inaccessibleImageIndex, `Image ${inaccessibleImageIndex + 1}`, "picture") },
+    { ok: imagesPortable, text: images.length ? "Images are embedded as PNG or JPEG for reliable Word and PDF export" : "No images require portable embedding", location: locate("img", nonPortableImageIndex, `Image ${nonPortableImageIndex + 1}`, "picture") },
+    { ok: invalidLinkIndex < 0, text: "Links have descriptive text and valid destinations", location: locate("a", invalidLinkIndex, `Link ${invalidLinkIndex + 1}`, "link") },
+    { ok: insecureLinkIndex < 0, text: "Links opened in new tabs include security protection", location: locate("a", insecureLinkIndex, `Link ${insecureLinkIndex + 1}`, "link") },
+    { ok: headerlessTableIndex < 0, text: tables.length ? "Tables include header cells" : "No tables require headers", location: locate("table", headerlessTableIndex, `Table ${headerlessTableIndex + 1}`, "table") },
+    { ok: unnamedTableIndex < 0, text: tables.length ? "All tables have a caption or accessible name" : "No tables require a caption", location: locate("table", unnamedTableIndex, `Table ${unnamedTableIndex + 1}`, "table") },
+    { ok: inaccessibleMediaIndex < 0, text: media.length ? "Videos have a title and captions or a transcript" : "No videos require review", location: locate('figure[data-accessible-media="true"]', inaccessibleMediaIndex, `Video ${inaccessibleMediaIndex + 1}`) },
+    { ok: safeMarkup, text: "The HTML contains no executable or unsafe code", location: locate("@html", 0, "HTML source", undefined, "html") },
+    { ok: responsiveMarkup, text: responsiveMarkup ? "The content does not impose minimum widths that overflow mobile screens" : "Remove fixed minimum widths of 400 px or more to improve mobile display", location: locate('[style*="min-width"]', 0, "Element with a fixed minimum width") },
+    { ok: uniqueIds, text: uniqueIds ? "Internal identifiers are unique" : "Duplicate identifiers may break the table of contents", location: locate("[id]", duplicateIdIndex, `Element with duplicate ID “${duplicateIdIndex >= 0 ? ids[duplicateIdIndex] : ""}”`) },
     { ok: true, text: `The primary language is set to ${languageLabels[language]}` },
   ];
 }
