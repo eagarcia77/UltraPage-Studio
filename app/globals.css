@@ -567,6 +567,36 @@
   margin-left: auto;
 }
 
+.design-editable {
+  color: #12633e;
+  background: #ecf8f1;
+}
+
+.design-paper {
+  color: #4d596b;
+  background: #edf0f4;
+}
+
+.editor-rulers.rulers-hidden {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto;
+}
+
+.editor-rulers.rulers-hidden .ruler-corner,
+.editor-rulers.rulers-hidden .horizontal-ruler,
+.editor-rulers.rulers-hidden .vertical-ruler {
+  display: none;
+}
+
+.editor-rulers.rulers-hidden .measurement-page {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.editor-rulers.rulers-hidden .measurement-page > .page-canvas {
+  border-radius: 5px;
+}
+
 .page-canvas[role="textbox"] {
   caret-color: #6030c0;
 }
@@ -605,6 +635,10 @@
   .workspace,
   .workspace.panel-open {
     display: block;
+  }
+
+  .design-paper {
+    display: none;
   }
 }
 
