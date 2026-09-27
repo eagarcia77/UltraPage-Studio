@@ -452,6 +452,28 @@ export default function Home() {
     document.addEventListener("selectionchange", rememberSelection);
     return () => document.removeEventListener("selectionchange", rememberSelection);
   }, []);
+  const selectEditorContext = (element: HTMLElement, context: "table" | "picture" | "link", selectWholeElement = false) => {
+    if (!editor.current?.contains(element)) return;
+    const range = document.createRange();
+    if (selectWholeElement) range.selectNode(element);
+    else { range.selectNodeContents(element); range.collapse(true); }
+    const selection = window.getSelection();
+    selection?.removeAllRanges(); selection?.addRange(range);
+    savedSelection.current = range.cloneRange();
+    setSelectionContext(context);
+    setRibbonTab(context);
+    setRibbonCollapsed(false);
+  };
+  const handleEditorClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    const target = event.target instanceof HTMLElement ? event.target : null;
+    if (!target || !editor.current) return;
+    const image = target.closest<HTMLImageElement>("img");
+    if (image && editor.current.contains(image)) { selectEditorContext(image, "picture", true); return; }
+    const cell = target.closest<HTMLTableCellElement>("th,td");
+    if (cell && editor.current.contains(cell)) { selectEditorContext(cell, "table"); return; }
+    const link = target.closest<HTMLAnchorElement>("a");
+    if (link && editor.current.contains(link)) { event.preventDefault(); selectEditorContext(link, "link"); }
+  };
   const command = (name: string, value?: string) => {
     if (!editor.current) return;
     editor.current.focus();
@@ -599,16 +621,23 @@ export default function Home() {
     const context = selectedTableContext();
     if (!context) { toast.error("Select a table cell first"); return false; }
     const { table, row, cell } = context;
+    let nextCell: HTMLTableCellElement | null = cell;
     if (action === "add-row") {
       const columnCount = table.rows[0]?.cells.length || 1;
       const body = table.tBodies[0] || table.createTBody();
       const newRow = body.insertRow(row && row.parentElement === body ? row.sectionRowIndex + 1 : -1);
       Array.from({ length: columnCount }, () => { const newCell = newRow.insertCell(); newCell.textContent = "Data"; });
+      nextCell = newRow.cells[Math.min(cell?.cellIndex ?? 0, newRow.cells.length - 1)] || null;
     }
     if (action === "delete-row") {
       const target = row && row.parentElement?.tagName.toLowerCase() === "tbody" ? row : table.tBodies[0]?.rows[table.tBodies[0].rows.length - 1];
       if (!target) { toast.error("La fila de encabezado no se puede eliminar"); return false; }
+      const body = target.parentElement as HTMLTableSectionElement;
+      if (body.rows.length <= 1) { toast.error("La tabla debe conservar al menos una fila de datos"); return false; }
+      const nextRowIndex = Math.max(0, target.sectionRowIndex - 1);
       target.remove();
+      const remainingRow = body.rows[Math.min(nextRowIndex, body.rows.length - 1)];
+      nextCell = remainingRow?.cells[Math.min(cell?.cellIndex ?? 0, remainingRow.cells.length - 1)] || null;
     }
     if (action === "add-column") {
       const insertAfter = cell?.cellIndex ?? ((table.rows[0]?.cells.length || 1) - 1);
@@ -618,14 +647,23 @@ export default function Home() {
           const heading = document.createElement("th"); heading.scope = "col"; heading.textContent = `Header ${tableRow.cells.length}`; newCell.replaceWith(heading);
         } else newCell.textContent = "Data";
       });
+      nextCell = row?.cells[Math.min(insertAfter + 1, (row?.cells.length || 1) - 1)] || table.rows[0]?.cells[Math.min(insertAfter + 1, (table.rows[0]?.cells.length || 1) - 1)] || null;
     }
     if (action === "delete-column") {
       if ((table.rows[0]?.cells.length || 0) <= 1) { toast.error("La tabla debe conservar al menos una columna"); return false; }
       const index = cell?.cellIndex ?? ((table.rows[0]?.cells.length || 1) - 1);
       Array.from(table.rows).forEach((tableRow) => { if (tableRow.cells[index]) tableRow.deleteCell(index); });
+      const targetRow = row && table.contains(row) ? row : table.rows[0];
+      nextCell = targetRow?.cells[Math.min(index, (targetRow?.cells.length || 1) - 1)] || null;
     }
     if (action === "grid" || action === "apa7") table.setAttribute("data-table-style", action);
-    setHtml(editor.current.innerHTML); setSaved(false); savedSelection.current = null;
+    if (nextCell && table.contains(nextCell)) {
+      const nextRange = document.createRange(); nextRange.selectNodeContents(nextCell); nextRange.collapse(true);
+      const selection = window.getSelection(); selection?.removeAllRanges(); selection?.addRange(nextRange);
+      savedSelection.current = nextRange.cloneRange();
+    }
+    setSelectionContext("table"); setRibbonTab("table");
+    setHtml(editor.current.innerHTML); setSaved(false);
     toast.success("Table updated");
     return true;
   };
@@ -1310,7 +1348,7 @@ export default function Home() {
               </>}
             </div>}
           </div>
-          <TabsContent value="visual" className="canvas-wrap"><div className={`device-frame ${device}`} style={{ zoom: `${zoom}%` }}><div className="ultra-label"><span className="mini-logo" aria-hidden="true"><img src="/brand/ultrapage-mark.svg" alt="" /></span><span>Design Preview</span><span className="design-state">{device[0].toUpperCase() + device.slice(1)} · {zoom}%</span><span className="design-state design-editable">Editable</span>{device === "desktop" && <span className="design-state design-paper">Letter · 8.5 × 11 in minimum</span>}<span className="ruler-status">{showRulers ? `Rulers: ${rulerUnit === "in" ? "inches" : "centimeters"}` : "Rulers hidden"}</span></div><EditorRulers unit={rulerUnit} device={device} onToggle={() => setRulerUnit((current) => current === "in" ? "cm" : "in")} showRulers={showRulers} showMarginGuides={showMarginGuides}><div ref={attachEditor} className={`page-canvas ${imageDragActive ? "image-drag-active" : ""}`} contentEditable role="textbox" aria-multiline="true" aria-describedby="design-editor-help" lang={documentLanguage} spellCheck={spellCheckEnabled} suppressContentEditableWarning onPaste={handlePaste} onDragEnter={handleImageDragOver} onDragOver={handleImageDragOver} onDragLeave={() => setImageDragActive(false)} onDrop={handleImageDrop} onInput={handleEditorInput} aria-label="Editable page content" /><span id="design-editor-help" className="sr-only">Rich text editing area. Use the Ribbon to format content, insert accessible elements, and review the document.</span></EditorRulers></div></TabsContent>
+          <TabsContent value="visual" className="canvas-wrap"><div className={`device-frame ${device}`} style={{ zoom: `${zoom}%` }}><div className="ultra-label"><span className="mini-logo" aria-hidden="true"><img src="/brand/ultrapage-mark.svg" alt="" /></span><span>Design Preview</span><span className="design-state">{device[0].toUpperCase() + device.slice(1)} · {zoom}%</span><span className="design-state design-editable">Editable</span>{device === "desktop" && <span className="design-state design-paper">Letter · 8.5 × 11 in minimum</span>}<span className="ruler-status">{showRulers ? `Rulers: ${rulerUnit === "in" ? "inches" : "centimeters"}` : "Rulers hidden"}</span></div><EditorRulers unit={rulerUnit} device={device} onToggle={() => setRulerUnit((current) => current === "in" ? "cm" : "in")} showRulers={showRulers} showMarginGuides={showMarginGuides}><div ref={attachEditor} className={`page-canvas ${imageDragActive ? "image-drag-active" : ""}`} contentEditable role="textbox" aria-multiline="true" aria-describedby="design-editor-help" lang={documentLanguage} spellCheck={spellCheckEnabled} suppressContentEditableWarning onClick={handleEditorClick} onPaste={handlePaste} onDragEnter={handleImageDragOver} onDragOver={handleImageDragOver} onDragLeave={() => setImageDragActive(false)} onDrop={handleImageDrop} onInput={handleEditorInput} aria-label="Editable page content" /><span id="design-editor-help" className="sr-only">Rich text editing area. Click an image, link, or table cell to open its contextual Ribbon tools. Use the Ribbon to format content, insert accessible elements, and review the document.</span></EditorRulers></div></TabsContent>
           <TabsContent value="ultra" className="blackboard-preview-wrap"><div className={`device-frame ${device}`} style={{ zoom: `${zoom}%` }}><div className="ultra-label"><span className="mini-logo" aria-hidden="true"><img src="/brand/ultrapage-mark.svg" alt="" /></span><span>Exact {activeLms.label} output</span><span className="final-preview-badge">Read only</span></div><iframe className="blackboard-preview-frame" title={`Final preview of content prepared for ${activeLms.label}`} srcDoc={finalPreviewDocument} sandbox="allow-scripts allow-same-origin allow-presentation"/><p className="final-preview-help">This preview uses the exact fragment generated by <strong>Copy for {activeLms.shortLabel}</strong>. {activeLms.guidance} Desktop, tablet, and mobile controls adjust the test width.</p></div></TabsContent>
           <TabsContent value="html" className="code-wrap"><div className="code-header"><div className="code-heading"><span>{codeView === "lms" ? `HTML ready to paste into ${activeLms.label}` : "Editable source HTML"}</span><div className="code-view-switch" role="group" aria-label="HTML code type"><button type="button" className={codeView === "lms" ? "active" : ""} aria-pressed={codeView === "lms"} onClick={() => setCodeView("lms")}>For {activeLms.shortLabel}</button><button type="button" className={codeView === "source" ? "active" : ""} aria-pressed={codeView === "source"} onClick={() => setCodeView("source")}>Edit Source</button></div></div><button className="copy-code-button" onClick={copyHtml}><Copy size={14}/> Copy Code</button></div><Textarea value={codeView === "lms" ? lmsHtml : html} readOnly={codeView === "lms"} onChange={(e) => { if (codeView === "source") { setHtml(e.target.value); setSaved(false); } }} className={`code-editor ${codeView === "lms" ? "compatible" : ""}`} spellCheck={false} aria-label={codeView === "lms" ? `${activeLms.label}-compatible HTML` : "Editable source HTML"} /><p className="code-help">{codeView === "lms" ? `This is the same fragment used by Copy for ${activeLms.shortLabel}. Paste it into the LMS HTML source editor.` : `Changes made here appear in Design view. Switch to For ${activeLms.shortLabel} before copying.`}</p></TabsContent>
         </Tabs>
