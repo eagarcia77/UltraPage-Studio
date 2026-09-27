@@ -637,8 +637,12 @@ export default function Home() {
       const range = selection.getRangeAt(0);
       if (editor.current.contains(range.commonAncestorContainer)) {
         savedSelection.current = range.cloneRange(); updateActiveFormats();
-        const node = range.startContainer.nodeType === Node.TEXT_NODE ? range.startContainer.parentElement : range.startContainer as HTMLElement;
-        const context = node?.closest("table") ? "table" : node?.closest("figure")?.querySelector("img") || node?.closest("img") ? "picture" : node?.closest("a") ? "link" : null;
+        const fullySelectedNode = range.startContainer === range.endContainer && range.startContainer.nodeType === Node.ELEMENT_NODE && range.endOffset === range.startOffset + 1
+          ? range.startContainer.childNodes[range.startOffset]
+          : null;
+        const selectedElement = fullySelectedNode instanceof HTMLElement ? fullySelectedNode : null;
+        const node = selectedElement || (range.startContainer.nodeType === Node.TEXT_NODE ? range.startContainer.parentElement : range.startContainer as HTMLElement);
+        const context = node?.closest("table") ? "table" : node?.matches("img") || node?.closest("figure")?.querySelector("img") || node?.closest("img") ? "picture" : node?.closest("a") ? "link" : null;
         setSelectionContext(context);
         setRibbonTab((current) => (current === "table" && context !== "table") || (current === "picture" && context !== "picture") || (current === "link" && context !== "link") ? "home" : current);
       }
