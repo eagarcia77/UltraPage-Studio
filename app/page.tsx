@@ -422,6 +422,7 @@ export default function Home() {
   const [previewAuditChecks, setPreviewAuditChecks] = useState<PreviewAuditCheck[]>([]);
   const [previewDeviceResults, setPreviewDeviceResults] = useState<PreviewDeviceResult[]>([]);
   const [previewAuditTime, setPreviewAuditTime] = useState("");
+  const [accessibilityHighlight, setAccessibilityHighlight] = useState<{ location: AccessibilityLocation; requestId: number } | null>(null);
   const [title, setTitle] = useState("Untitled document");
   const [saved, setSaved] = useState(true);
   const [draftLoaded, setDraftLoaded] = useState(false);
@@ -491,6 +492,28 @@ export default function Home() {
       setSaved(false);
     }
   }, [html, mode, documentLanguage]);
+  useEffect(() => {
+    if (mode !== "visual" || !accessibilityHighlight || !editor.current) return;
+    let removalTimer = 0;
+    const frame = window.requestAnimationFrame(() => {
+      const root = editor.current;
+      if (!root) return;
+      root.querySelectorAll<HTMLElement>(".accessibility-issue-highlight").forEach((element) => element.classList.remove("accessibility-issue-highlight"));
+      const { location } = accessibilityHighlight;
+      const target = location.selector === "@editor-start"
+        ? (root.firstElementChild as HTMLElement | null) || root
+        : Array.from(root.querySelectorAll<HTMLElement>(location.selector))[location.index];
+      if (!target) return;
+      target.classList.add("accessibility-issue-highlight");
+      target.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+      removalTimer = window.setTimeout(() => { target.classList.remove("accessibility-issue-highlight"); setAccessibilityHighlight(null); }, 6000);
+    });
+    return () => {
+      window.cancelAnimationFrame(frame);
+      if (removalTimer) window.clearTimeout(removalTimer);
+      editor.current?.querySelectorAll<HTMLElement>(".accessibility-issue-highlight").forEach((element) => element.classList.remove("accessibility-issue-highlight"));
+    };
+  }, [accessibilityHighlight, mode, html]);
   const runPreviewAudit = useCallback((announce = false) => {
     const canvas = editor.current;
     if (!canvas) return;
@@ -605,6 +628,7 @@ export default function Home() {
     const nextMode = value as "visual" | "ultra" | "html";
     if (mode === "visual" && editor.current) {
       editor.current.querySelectorAll<HTMLElement>(".accessibility-issue-highlight").forEach((element) => element.classList.remove("accessibility-issue-highlight"));
+      setAccessibilityHighlight(null);
       applyAutomaticFirstLineIndentation(editor.current, documentLanguage);
       const currentHtml = editor.current.innerHTML;
       htmlRef.current = currentHtml;
@@ -1421,14 +1445,8 @@ export default function Home() {
         const tableTarget = target.querySelector<HTMLElement>("th,td") || target;
         selectEditorContext(tableTarget, "table");
       }
-      window.requestAnimationFrame(() => {
-        const highlightTarget = resolveTarget();
-        if (!highlightTarget) return;
-        highlightTarget.classList.add("accessibility-issue-highlight");
-        highlightTarget.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
-        toast.warning(`Located: ${location.label}`, { description: check.text });
-        window.setTimeout(() => highlightTarget.classList.remove("accessibility-issue-highlight"), 6000);
-      });
+      setAccessibilityHighlight({ location, requestId: Date.now() });
+      toast.warning(`Located: ${location.label}`, { description: check.text });
     }, 60));
   };
   const plainText = html.replace(/<[^>]+>/g, " ").replace(/&nbsp;|&amp;|&lt;|&gt;|&#39;|&quot;/g, " ").replace(/\s+/g, " ").trim();
