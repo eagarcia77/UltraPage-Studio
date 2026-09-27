@@ -467,6 +467,12 @@
   cursor: pointer;
 }
 
+.ribbon-zoom-controls .fit-width-button,
+.ribbon-zoom-controls .reset-view-button {
+  min-width: auto;
+  white-space: nowrap;
+}
+
 .ribbon-zoom-controls button:hover,
 .ribbon-zoom-controls button:focus-visible {
   color: #6030c0;

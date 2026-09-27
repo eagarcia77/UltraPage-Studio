@@ -1162,6 +1162,23 @@ export default function Home() {
       heading.focus({ preventScroll: true });
     });
   };
+  const fitPageWidth = () => {
+    const workspaceWidth = document.querySelector<HTMLElement>(".canvas-wrap")?.clientWidth || window.innerWidth;
+    const previewWidth = device === "desktop" ? 860 : device === "tablet" ? 720 : 390;
+    const availableWidth = Math.max(260, workspaceWidth - 64);
+    const fittedZoom = Math.max(50, Math.min(150, Math.floor((availableWidth / previewWidth) * 10) * 10));
+    setZoom(fittedZoom);
+    toast.success(`Page width fitted to ${fittedZoom}%`);
+  };
+  const resetPreview = () => {
+    setDevice("desktop");
+    setZoom(100);
+    setShowRulers(true);
+    setShowMarginGuides(true);
+    setRulerUnit("in");
+    setRightPanel(false);
+    toast.success("Design Preview reset");
+  };
   const handleEditorInput = (event: React.FormEvent<HTMLDivElement>) => {
     applyAutomaticFirstLineIndentation(event.currentTarget, documentLanguage);
     const next = event.currentTarget.innerHTML;
@@ -1198,6 +1215,7 @@ export default function Home() {
       "link tools": () => selectionContext === "link" ? openRibbonTab("link") : toast.info("Select a link first"),
       "final preview": () => changeMode("ultra"), "html editor": () => changeMode("html"), "desktop preview": () => setDevice("desktop"), "tablet preview": () => setDevice("tablet"), "mobile preview": () => setDevice("mobile"),
       "show rulers": () => setShowRulers(true), "hide rulers": () => setShowRulers(false), "show margin guides": () => setShowMarginGuides(true), "hide margin guides": () => setShowMarginGuides(false),
+      "page width": fitPageWidth, "reset view": resetPreview,
       "table of contents": generateTableOfContents, "clear formatting": clearFormatting, "copy": () => command("copy"), "cut": () => command("cut"), "paste plain text": pastePlainText, "format painter": useFormatPainter,
     };
     const action = actions[value];
@@ -1228,7 +1246,7 @@ export default function Home() {
               {mode === "visual" && <div className="ribbon-tabs" role="tablist" aria-label="Editor ribbon">
                 {availableRibbonTabs.map((tab) => <button key={tab} id={`ribbon-tab-${tab}`} type="button" role="tab" data-ribbon-tab={tab} data-contextual={tab === "table" || tab === "picture" || tab === "link" ? tab : undefined} aria-controls="ribbon-panel" aria-selected={ribbonTab === tab} tabIndex={ribbonTab === tab ? 0 : -1} className={`${ribbonTab === tab ? "active" : ""} ${tab === "table" || tab === "picture" || tab === "link" ? `contextual ${tab}` : ""}`.trim()} onKeyDown={handleRibbonKeyDown} onClick={() => { setRibbonTab(tab); setRibbonCollapsed(false); }}>{tab[0].toUpperCase() + tab.slice(1)}{(tab === "table" || tab === "picture" || tab === "link") && <span className="sr-only"> contextual tools</span>}</button>)}
               </div>}
-              {mode === "visual" && <form className="ribbon-command-search" onSubmit={executeRibbonCommand} role="search"><Search aria-hidden="true"/><label className="sr-only" htmlFor="ribbon-command-input">Search ribbon commands</label><input id="ribbon-command-input" list="ribbon-command-options" value={ribbonCommand} onChange={(event) => setRibbonCommand(event.target.value)} placeholder="Search commands" autoComplete="off"/><datalist id="ribbon-command-options">{["New document","Open document","Save document","Home tools","Insert content","Page layout","References","Review","View","Native tools","Table tools","Picture tools","Link tools","Accessibility review","Document outline","Final preview","HTML editor","Desktop preview","Tablet preview","Mobile preview","Show rulers","Hide rulers","Show margin guides","Hide margin guides","Table of contents","Copy","Cut","Paste plain text","Format painter","Clear formatting"].map((item) => <option key={item} value={item}/>)}</datalist></form>}
+              {mode === "visual" && <form className="ribbon-command-search" onSubmit={executeRibbonCommand} role="search"><Search aria-hidden="true"/><label className="sr-only" htmlFor="ribbon-command-input">Search ribbon commands</label><input id="ribbon-command-input" list="ribbon-command-options" value={ribbonCommand} onChange={(event) => setRibbonCommand(event.target.value)} placeholder="Search commands" autoComplete="off"/><datalist id="ribbon-command-options">{["New document","Open document","Save document","Home tools","Insert content","Page layout","References","Review","View","Native tools","Table tools","Picture tools","Link tools","Accessibility review","Document outline","Final preview","HTML editor","Desktop preview","Tablet preview","Mobile preview","Page width","Reset view","Show rulers","Hide rulers","Show margin guides","Hide margin guides","Table of contents","Copy","Cut","Paste plain text","Format painter","Clear formatting"].map((item) => <option key={item} value={item}/>)}</datalist></form>}
               {mode === "visual" && <div className="ribbon-quick" role="group" aria-label="Quick access"><button type="button" onClick={() => command("undo")} aria-label="Undo" title="Undo"><Undo2 /></button><button type="button" onClick={() => command("redo")} aria-label="Redo" title="Redo"><Redo2 /></button><button type="button" className={ribbonCollapsed ? "collapsed" : ""} aria-expanded={!ribbonCollapsed} aria-controls="ribbon-panel" onClick={() => setRibbonCollapsed((collapsed) => !collapsed)} aria-label={ribbonCollapsed ? "Expand ribbon" : "Collapse ribbon"} title={ribbonCollapsed ? "Expand ribbon" : "Collapse ribbon"}><ChevronDown /></button></div>}
             </div>
             {mode === "visual" && !ribbonCollapsed && <div id="ribbon-panel" className="ribbon-panel" role="tabpanel" aria-labelledby={`ribbon-tab-${ribbonTab}`}>
@@ -1265,7 +1283,7 @@ export default function Home() {
               </>}
               {ribbonTab === "view" && <>
                 <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row"><button type="button" className={`ribbon-command ${device === "desktop" ? "is-active" : ""}`} aria-pressed={device === "desktop"} onClick={() => setDevice("desktop")}><Monitor/><span>Desktop</span></button><button type="button" className={`ribbon-command ${device === "tablet" ? "is-active" : ""}`} aria-pressed={device === "tablet"} onClick={() => setDevice("tablet")}><Tablet/><span>Tablet</span></button><button type="button" className={`ribbon-command ${device === "mobile" ? "is-active" : ""}`} aria-pressed={device === "mobile"} onClick={() => setDevice("mobile")}><Smartphone/><span>Mobile</span></button></div><span className="ribbon-group-label">Responsive Preview</span></div>
-                <div className="ribbon-group"><div className="ribbon-group-body ribbon-zoom-controls"><button type="button" onClick={() => setZoom((value) => Math.max(50, value - 10))} aria-label="Zoom out"><ZoomOut/></button><label><span className="sr-only">Document zoom</span><select value={zoom} onChange={(event) => setZoom(Number(event.target.value))} aria-label="Document zoom"><option value="50">50%</option><option value="75">75%</option><option value="90">90%</option><option value="100">100%</option><option value="110">110%</option><option value="125">125%</option><option value="150">150%</option></select></label><button type="button" onClick={() => setZoom((value) => Math.min(150, value + 10))} aria-label="Zoom in"><ZoomIn/></button><button type="button" onClick={() => setZoom(100)}>100%</button></div><span className="ribbon-group-label">Zoom</span></div>
+                <div className="ribbon-group"><div className="ribbon-group-body ribbon-zoom-controls"><button type="button" onClick={() => setZoom((value) => Math.max(50, value - 10))} aria-label="Zoom out"><ZoomOut/></button><label><span className="sr-only">Document zoom</span><select value={zoom} onChange={(event) => setZoom(Number(event.target.value))} aria-label="Document zoom"><option value="50">50%</option><option value="75">75%</option><option value="90">90%</option><option value="100">100%</option><option value="110">110%</option><option value="125">125%</option><option value="150">150%</option></select></label><button type="button" onClick={() => setZoom((value) => Math.min(150, value + 10))} aria-label="Zoom in"><ZoomIn/></button><button type="button" onClick={() => setZoom(100)}>100%</button><button type="button" className="fit-width-button" onClick={fitPageWidth}>Page Width</button><button type="button" className="reset-view-button" onClick={resetPreview}>Reset</button></div><span className="ribbon-group-label">Zoom</span></div>
                 <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row"><button type="button" className={`ribbon-command ${showRulers ? "is-active" : ""}`} aria-pressed={showRulers} onClick={() => setShowRulers((visible) => !visible)}><Columns3/><span>Rulers</span></button><button type="button" className={`ribbon-command ${showMarginGuides ? "is-active" : ""}`} aria-pressed={showMarginGuides} onClick={() => setShowMarginGuides((visible) => !visible)}><Rows3/><span>Margins</span></button><button type="button" className="ribbon-command" onClick={() => setRulerUnit((current) => current === "in" ? "cm" : "in")}><Columns3/><span>{rulerUnit === "in" ? "Inches" : "Centimeters"}</span></button><button type="button" className={`ribbon-command ${rightPanel ? "is-active" : ""}`} aria-pressed={rightPanel} onClick={() => setRightPanel((visible) => !visible)}><PanelRight/><span>Insights</span></button><button type="button" className="ribbon-command" onClick={() => { setSidePanelTab("outline"); setRightPanel(true); }}><Heading2/><span>Outline</span></button><KeyboardShortcutsDialog ribbon/></div><span className="ribbon-group-label">Workspace</span></div>
               </>}
               {ribbonTab === "tools" && <>
