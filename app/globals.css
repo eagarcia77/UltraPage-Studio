@@ -572,6 +572,24 @@
   outline-offset: -3px;
 }
 
+/* Keep the complete Home Ribbon visible on standard laptop displays. */
+.ribbon-clipboard-group,
+.ribbon-font-group,
+.ribbon-paragraph-group,
+.ribbon-styles-group {
+  padding-inline: 6px;
+}
+
+.ribbon-clipboard-group .ribbon-command {
+  min-width: 50px;
+  padding-inline: 4px;
+}
+
+.ribbon-styles-group .ribbon-style-gallery > button {
+  min-width: 49px;
+  padding-inline: 5px;
+}
+
 @media (max-width: 1040px) {
   .workspace,
   .workspace.panel-open {
