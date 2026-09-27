@@ -429,8 +429,8 @@ export default function Home() {
     const checks: PreviewAuditCheck[] = [
       { ok: Boolean(canvas.textContent?.trim() || images.length || tables.length), label: "Content renders", detail: "The editable canvas contains visible content." },
       { ok: !pageOverflow, label: "No page overflow", detail: pageOverflow ? "An element extends beyond the simulated device width." : "Content remains inside the simulated viewport." },
-      { ok: mediaContained, label: "Responsive images", detail: images.length ? `${images.length} image${images.length === 1 ? "" : "s"} fit the content area.` : "No images require responsive testing." },
-      { ok: tablesScrollable, label: "Responsive tables", detail: tables.length ? `${tables.length} table${tables.length === 1 ? "" : "s"} remain contained or scroll horizontally.` : "No tables require responsive testing." },
+      { ok: mediaContained, label: "Responsive images", detail: images.length ? `${images.length} image${images.length === 1 ? " fits" : "s fit"} the content area.` : "No images require responsive testing." },
+      { ok: tablesScrollable, label: "Responsive tables", detail: tables.length ? `${tables.length} table${tables.length === 1 ? " remains" : "s remain"} contained or scroll horizontally.` : "No tables require responsive testing." },
       { ok: headings.length === 0 || headings[0].tagName === "H1", label: "Preview structure", detail: headings.length ? `${headings.length} heading${headings.length === 1 ? "" : "s"} detected; the first is ${headings[0].tagName}.` : "No headings are present yet." },
       { ok: Boolean(buildLmsHtml(canvas.innerHTML, documentLanguage, lmsProfile).trim()), label: `${lmsProfiles[lmsProfile].shortLabel} output`, detail: "The current design produces portable LMS HTML." },
     ];
