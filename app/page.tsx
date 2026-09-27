@@ -1407,8 +1407,13 @@ export default function Home() {
       const root = editor.current;
       if (!root) return;
       root.querySelectorAll<HTMLElement>(".accessibility-issue-highlight").forEach((element) => element.classList.remove("accessibility-issue-highlight"));
-      const candidates = location.selector === "@editor-start" ? [] : Array.from(root.querySelectorAll<HTMLElement>(location.selector));
-      const target = location.selector === "@editor-start" ? (root.firstElementChild as HTMLElement | null) || root : candidates[location.index];
+      const resolveTarget = () => {
+        const currentRoot = editor.current;
+        if (!currentRoot) return null;
+        if (location.selector === "@editor-start") return (currentRoot.firstElementChild as HTMLElement | null) || currentRoot;
+        return Array.from(currentRoot.querySelectorAll<HTMLElement>(location.selector))[location.index] || null;
+      };
+      const target = resolveTarget();
       if (!target) { toast.error("The affected element is no longer in the document", { description: "Run Accessibility Checks again to refresh the location." }); return; }
       if (location.context === "picture") selectEditorContext(target, "picture", true);
       else if (location.context === "link") selectEditorContext(target, "link", true);
@@ -1417,10 +1422,12 @@ export default function Home() {
         selectEditorContext(tableTarget, "table");
       }
       window.requestAnimationFrame(() => {
-        target.classList.add("accessibility-issue-highlight");
-        target.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+        const highlightTarget = resolveTarget();
+        if (!highlightTarget) return;
+        highlightTarget.classList.add("accessibility-issue-highlight");
+        highlightTarget.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
         toast.warning(`Located: ${location.label}`, { description: check.text });
-        window.setTimeout(() => target.classList.remove("accessibility-issue-highlight"), 6000);
+        window.setTimeout(() => highlightTarget.classList.remove("accessibility-issue-highlight"), 6000);
       });
     }, 60));
   };
