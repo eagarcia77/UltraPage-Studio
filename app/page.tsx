@@ -34,6 +34,44 @@ type PreviewAuditCheck = { ok: boolean; label: string; detail: string; location?
 type PreviewDeviceResult = { device: "desktop" | "tablet" | "mobile"; label: string; width: number; ok: boolean; detail: string };
 type HtmlDiagnostic = { severity: "error" | "warning"; message: string; line: number; column: number; offset: number; length: number };
 type HtmlTagCrumb = { name: string; offset: number };
+
+function parseComputedColor(value: string): [number, number, number, number] | null {
+  const match = value.match(/rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)(?:\s*[,/]\s*([\d.]+))?\s*\)/i);
+  if (!match) return null;
+  return [Number(match[1]), Number(match[2]), Number(match[3]), match[4] === undefined ? 1 : Number(match[4])];
+}
+
+function relativeLuminance([red, green, blue]: [number, number, number]) {
+  const channels = [red, green, blue].map((channel) => {
+    const value = channel / 255;
+    return value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
+}
+
+function computedContrastRatio(element: HTMLElement, boundary: HTMLElement) {
+  const foreground = parseComputedColor(getComputedStyle(element).color);
+  if (!foreground) return 21;
+  let background: [number, number, number] = [255, 255, 255];
+  let current: HTMLElement | null = element;
+  while (current) {
+    const parsed = parseComputedColor(getComputedStyle(current).backgroundColor);
+    if (parsed && parsed[3] > 0) {
+      const alpha = parsed[3];
+      background = [
+        parsed[0] * alpha + 255 * (1 - alpha),
+        parsed[1] * alpha + 255 * (1 - alpha),
+        parsed[2] * alpha + 255 * (1 - alpha),
+      ];
+      break;
+    }
+    if (current === boundary) break;
+    current = current.parentElement;
+  }
+  const textLuminance = relativeLuminance([foreground[0], foreground[1], foreground[2]]);
+  const backgroundLuminance = relativeLuminance(background);
+  return (Math.max(textLuminance, backgroundLuminance) + 0.05) / (Math.min(textLuminance, backgroundLuminance) + 0.05);
+}
 const languageLabels: Record<DocumentLanguage, string> = { "es-PR": "Español (Puerto Rico)", "en-US": "English (United States)" };
 const lmsProfiles: Record<LmsProfile, { label: string; shortLabel: string; guidance: string }> = {
   universal: { label: "Universal LMS", shortLabel: "Universal", guidance: "Conservative semantic HTML for standards-based LMS editors." },
@@ -488,6 +526,8 @@ export default function Home() {
   const [showRulers, setShowRulers] = useState(true);
   const [showMarginGuides, setShowMarginGuides] = useState(true);
   const [showFormattingMarks, setShowFormattingMarks] = useState(false);
+  const [showSemanticMap, setShowSemanticMap] = useState(false);
+  const [accessibilityIssueCursor, setAccessibilityIssueCursor] = useState(-1);
   const [rightPanel, setRightPanel] = useState(false);
   const [sidePanelTab, setSidePanelTab] = useState<"review" | "outline" | "preview">("review");
   const [previewAuditChecks, setPreviewAuditChecks] = useState<PreviewAuditCheck[]>([]);
@@ -622,7 +662,7 @@ export default function Home() {
       clone.removeAttribute("contenteditable");
       clone.removeAttribute("role");
       clone.removeAttribute("aria-label");
-      clone.classList.remove("show-formatting-marks", "image-drag-active");
+      clone.classList.remove("show-formatting-marks", "show-semantic-map", "image-drag-active");
       frame.appendChild(clone); auditStage.appendChild(frame);
       const pageFits = clone.scrollWidth <= clone.clientWidth + 2;
       const imagesFit = Array.from(clone.querySelectorAll<HTMLImageElement>("img")).every((image) => image.clientWidth <= (image.parentElement?.clientWidth || clone.clientWidth) + 2);
@@ -642,6 +682,24 @@ export default function Home() {
     const textIssue = textIssueIndex >= 0 ? wrappingCandidates[textIssueIndex] : null;
     const textIssueSelector = textIssue?.tagName.toLowerCase() || "p";
     const textIssueSelectorIndex = textIssue ? Array.from(canvas.querySelectorAll<HTMLElement>(textIssueSelector)).indexOf(textIssue) : 0;
+    const contrastCandidates = Array.from(canvas.querySelectorAll<HTMLElement>("p,li,a,h1,h2,h3,h4,td,th,figcaption,blockquote")).filter((element) => Boolean(element.textContent?.trim()));
+    const contrastIssueIndex = contrastCandidates.findIndex((element) => {
+      const style = getComputedStyle(element);
+      const fontSize = Number.parseFloat(style.fontSize) || 16;
+      const fontWeight = Number.parseInt(style.fontWeight, 10) || (style.fontWeight === "bold" ? 700 : 400);
+      const largeText = fontSize >= 24 || (fontSize >= 18.66 && fontWeight >= 700);
+      return computedContrastRatio(element, canvas) < (largeText ? 3 : 4.5);
+    });
+    const contrastIssue = contrastIssueIndex >= 0 ? contrastCandidates[contrastIssueIndex] : null;
+    const contrastSelector = contrastIssue?.tagName.toLowerCase() || "p";
+    const contrastSelectorIndex = contrastIssue ? Array.from(canvas.querySelectorAll<HTMLElement>(contrastSelector)).indexOf(contrastIssue) : 0;
+    const lmsAuditOutput = buildLmsHtml(canvas.innerHTML, documentLanguage, lmsProfile);
+    const lmsAuditDocument = new DOMParser().parseFromString(lmsAuditOutput, "text/html");
+    const normalizeAuditText = (value: string | null | undefined) => (value || "").replace(/\s+/g, " ").trim();
+    const semanticSelectors = ["h1", "h2", "h3", "h4", "p", "ul", "ol", "li", "a", "img", "figure", "figcaption", "table", "caption", "thead", "tbody", "tr", "th", "td", "blockquote"];
+    const lmsStructurePreserved = semanticSelectors.every((selector) => lmsAuditDocument.querySelectorAll(selector).length >= canvas.querySelectorAll(selector).length);
+    const lmsTextPreserved = normalizeAuditText(lmsAuditDocument.body.textContent) === normalizeAuditText(canvas.textContent);
+    const lmsParityReady = Boolean(lmsAuditOutput.trim()) && lmsStructurePreserved && lmsTextPreserved;
     const checks: PreviewAuditCheck[] = [
       { ok: Boolean(canvas.textContent?.trim() || images.length || tables.length), label: "Content renders", detail: "The editable canvas contains visible content." },
       { ok: !pageOverflow, label: "No page overflow", detail: pageOverflow ? "An element extends beyond the simulated device width." : "Content remains inside the simulated viewport.", location: overflowingElement ? { selector: overflowingElement.tagName.toLowerCase(), index: Math.max(0, overflowingIndex), label: `Overflowing ${overflowingElement.tagName.toLowerCase()} element` } : undefined },
@@ -652,7 +710,9 @@ export default function Home() {
       { ok: headingHierarchyOk, label: "Heading hierarchy", detail: headingHierarchyOk ? "Heading levels progress without skipped levels." : "A heading level is skipped; adjust the document outline.", location: !headingHierarchyOk ? { selector: "h1,h2,h3,h4", index: Math.max(0, headingLevels.findIndex((level, index) => index > 0 && level > headingLevels[index - 1] + 1)), label: "Skipped heading level" } : undefined },
       { ok: sourceSynchronized, label: "Design and HTML synchronized", detail: sourceSynchronized ? "The Design canvas matches the current editable HTML source." : "Refresh the Design canvas before publishing." },
       { ok: textWraps, label: "Text and links wrap", detail: textWraps ? "Paragraphs, headings, list items, and links remain inside the content area." : "A long text or link requires wrapping review.", location: !textWraps ? { selector: textIssueSelector, index: Math.max(0, textIssueSelectorIndex), label: `Non-wrapping ${textIssueSelector} element` } : undefined },
-      { ok: Boolean(buildLmsHtml(canvas.innerHTML, documentLanguage, lmsProfile).trim()), label: `${lmsProfiles[lmsProfile].shortLabel} output`, detail: "The current design produces portable LMS HTML." },
+      { ok: contrastIssueIndex < 0, label: "Readable color contrast", detail: contrastIssue ? `${contrastSelector.toUpperCase()} text does not meet the WCAG contrast threshold.` : "Visible text meets WCAG AA contrast thresholds.", location: contrastIssue ? { selector: contrastSelector, index: Math.max(0, contrastSelectorIndex), label: `Low-contrast ${contrastSelector} element` } : undefined },
+      { ok: lmsParityReady, label: "LMS content parity", detail: lmsParityReady ? `Text and semantic elements are preserved in ${lmsProfiles[lmsProfile].shortLabel} HTML.` : `The ${lmsProfiles[lmsProfile].shortLabel} conversion changes visible text or removes a semantic element.` },
+      { ok: Boolean(lmsAuditOutput.trim()), label: `${lmsProfiles[lmsProfile].shortLabel} output`, detail: "The current design produces portable LMS HTML." },
     ];
     setPreviewAuditChecks(checks);
     setPreviewAuditTime(new Intl.DateTimeFormat(documentLanguage, { hour: "numeric", minute: "2-digit", second: "2-digit" }).format(new Date()));
@@ -1534,6 +1594,7 @@ export default function Home() {
   const pageChecks = accessibilityReport(html, title, documentLanguage);
   const accessibilityScore = Math.round((pageChecks.filter((check) => check.ok).length / pageChecks.length) * 100);
   const accessibilityIssueCount = pageChecks.reduce((total, check) => check.ok ? total : total + Math.max(1, check.locations?.length || (check.location ? 1 : 0)), 0);
+  const accessibilityIssueMap = pageChecks.flatMap((check) => check.ok ? [] : (check.locations?.length ? check.locations : check.location ? [check.location] : []).map((location) => ({ check, location })));
   const locateAccessibilityIssue = (check: AccessibilityCheck, requestedLocation?: AccessibilityLocation) => {
     const location = requestedLocation || check.locations?.[0] || check.location;
     if (!location) { toast.info("This recommendation applies to the document as a whole"); return; }
@@ -1578,6 +1639,14 @@ export default function Home() {
       setAccessibilityHighlight({ location, requestId: Date.now() });
       toast.warning(`Located: ${location.label}`, { description: check.text });
     }, 60));
+  };
+  const navigateAccessibilityIssue = (direction: 1 | -1) => {
+    if (!accessibilityIssueMap.length) { toast.success("No accessibility issues are pending"); return; }
+    const next = accessibilityIssueCursor < 0 ? (direction === 1 ? 0 : accessibilityIssueMap.length - 1) : (accessibilityIssueCursor + direction + accessibilityIssueMap.length) % accessibilityIssueMap.length;
+    setAccessibilityIssueCursor(next);
+    const issue = accessibilityIssueMap[next];
+    locateAccessibilityIssue(issue.check, issue.location);
+    toast.info(`Issue ${next + 1} of ${accessibilityIssueMap.length}`);
   };
   const inspectPreviewIssue = (check: PreviewAuditCheck) => {
     if (!check.location) return;
@@ -1625,6 +1694,7 @@ export default function Home() {
     setShowRulers(true);
     setShowMarginGuides(true);
     setShowFormattingMarks(false);
+    setShowSemanticMap(false);
     setRulerUnit("in");
     setRightPanel(false);
     toast.success("Design Preview reset");
@@ -1666,6 +1736,7 @@ export default function Home() {
       "final preview": () => changeMode("ultra"), "html editor": () => changeMode("html"), "desktop preview": () => setDevice("desktop"), "tablet preview": () => setDevice("tablet"), "mobile preview": () => setDevice("mobile"),
       "show rulers": () => setShowRulers(true), "hide rulers": () => setShowRulers(false), "show margin guides": () => setShowMarginGuides(true), "hide margin guides": () => setShowMarginGuides(false),
       "show formatting marks": () => setShowFormattingMarks(true), "hide formatting marks": () => setShowFormattingMarks(false),
+      "show structure map": () => setShowSemanticMap(true), "hide structure map": () => setShowSemanticMap(false),
       "page width": fitPageWidth, "reset view": resetPreview,
       "table of contents": generateTableOfContents, "clear formatting": clearFormatting, "copy": () => command("copy"), "cut": () => command("cut"), "paste plain text": pastePlainText, "format painter": useFormatPainter,
     };
@@ -1686,7 +1757,7 @@ export default function Home() {
   const htmlTagPath = useMemo(() => getHtmlTagPath(activeCode, Math.min(codeCaret, activeCode.length)), [activeCode, codeCaret]);
   const codePreviewDocument = codeView === "lms" ? finalPreviewDocument : sourcePreviewDocument;
   const previewChecksPassed = previewAuditChecks.filter((check) => check.ok).length;
-  const previewChecksTotal = previewAuditChecks.length || 10;
+  const previewChecksTotal = previewAuditChecks.length || 12;
 
   return <main className="min-h-screen bg-[#f4f6f9] text-[#172033]">
     <Toaster position="bottom-right" richColors />
@@ -1707,7 +1778,7 @@ export default function Home() {
               {mode === "visual" && <div className="ribbon-tabs" role="tablist" aria-label="Editor ribbon">
                 {availableRibbonTabs.map((tab) => <button key={tab} id={`ribbon-tab-${tab}`} type="button" role="tab" data-ribbon-tab={tab} data-contextual={tab === "table" || tab === "picture" || tab === "link" ? tab : undefined} aria-controls="ribbon-panel" aria-selected={ribbonTab === tab} tabIndex={ribbonTab === tab ? 0 : -1} className={`${ribbonTab === tab ? "active" : ""} ${tab === "table" || tab === "picture" || tab === "link" ? `contextual ${tab}` : ""}`.trim()} onKeyDown={handleRibbonKeyDown} onClick={() => { setRibbonTab(tab); setRibbonCollapsed(false); }}>{tab[0].toUpperCase() + tab.slice(1)}{(tab === "table" || tab === "picture" || tab === "link") && <span className="sr-only"> contextual tools</span>}</button>)}
               </div>}
-              {mode === "visual" && <form className="ribbon-command-search" onSubmit={executeRibbonCommand} role="search"><Search aria-hidden="true"/><label className="sr-only" htmlFor="ribbon-command-input">Search ribbon commands</label><input id="ribbon-command-input" list="ribbon-command-options" value={ribbonCommand} onChange={(event) => setRibbonCommand(event.target.value)} placeholder="Search commands" autoComplete="off"/><datalist id="ribbon-command-options">{["New document","Open document","Save document","Home tools","Insert content","Page layout","References","Review","View","Native tools","Table tools","Picture tools","Link tools","Accessibility review","Preview audit","Document outline","Final preview","HTML editor","Desktop preview","Tablet preview","Mobile preview","Page width","Reset view","Show rulers","Hide rulers","Show margin guides","Hide margin guides","Show formatting marks","Hide formatting marks","Table of contents","Copy","Cut","Paste plain text","Format painter","Clear formatting"].map((item) => <option key={item} value={item}/>)}</datalist></form>}
+              {mode === "visual" && <form className="ribbon-command-search" onSubmit={executeRibbonCommand} role="search"><Search aria-hidden="true"/><label className="sr-only" htmlFor="ribbon-command-input">Search ribbon commands</label><input id="ribbon-command-input" list="ribbon-command-options" value={ribbonCommand} onChange={(event) => setRibbonCommand(event.target.value)} placeholder="Search commands" autoComplete="off"/><datalist id="ribbon-command-options">{["New document","Open document","Save document","Home tools","Insert content","Page layout","References","Review","View","Native tools","Table tools","Picture tools","Link tools","Accessibility review","Preview audit","Document outline","Final preview","HTML editor","Desktop preview","Tablet preview","Mobile preview","Page width","Reset view","Show rulers","Hide rulers","Show margin guides","Hide margin guides","Show formatting marks","Hide formatting marks","Show structure map","Hide structure map","Table of contents","Copy","Cut","Paste plain text","Format painter","Clear formatting"].map((item) => <option key={item} value={item}/>)}</datalist></form>}
               {mode === "visual" && <div className="ribbon-quick" role="group" aria-label="Quick access"><button type="button" onClick={() => command("undo")} aria-label="Undo" title="Undo"><Undo2 /></button><button type="button" onClick={() => command("redo")} aria-label="Redo" title="Redo"><Redo2 /></button><button type="button" className={ribbonCollapsed ? "collapsed" : ""} aria-expanded={!ribbonCollapsed} aria-controls="ribbon-panel" onClick={() => setRibbonCollapsed((collapsed) => !collapsed)} aria-label={ribbonCollapsed ? "Expand ribbon" : "Collapse ribbon"} title={ribbonCollapsed ? "Expand ribbon" : "Collapse ribbon"}><ChevronDown /></button></div>}
             </div>
             {mode === "visual" && !ribbonCollapsed && <div id="ribbon-panel" className="ribbon-panel" role="tabpanel" aria-labelledby={`ribbon-tab-${ribbonTab}`}>
@@ -1740,12 +1811,13 @@ export default function Home() {
               </>}
               {ribbonTab === "review" && <>
                 <div className="ribbon-group ribbon-review-score"><div className="ribbon-group-body"><button type="button" className="ribbon-score-button" onClick={() => { setSidePanelTab("review"); setRightPanel(true); }}><span>{accessibilityScore}</span><strong>Accessibility</strong><small>{accessibilityIssueCount} issue{accessibilityIssueCount === 1 ? "" : "s"}</small></button></div><span className="ribbon-group-label">Review</span></div>
-                <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row"><button type="button" className="ribbon-command" onClick={repairAccessibility}><Accessibility/><span>Safe Fix</span></button><button type="button" className={`ribbon-command ${spellCheckEnabled ? "is-active" : ""}`} aria-pressed={spellCheckEnabled} onClick={() => setSpellCheckEnabled((enabled) => !enabled)}><Check/><span>Spelling</span></button><button type="button" className="ribbon-command" onClick={() => { setSidePanelTab("review"); setRightPanel(true); }}><Check/><span>Checks</span></button></div><span className="ribbon-group-label">Proofing</span></div>
+                <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row"><button type="button" className="ribbon-command" onClick={repairAccessibility}><Accessibility/><span>Safe Fix</span></button><button type="button" className={`ribbon-command ${spellCheckEnabled ? "is-active" : ""}`} aria-pressed={spellCheckEnabled} onClick={() => setSpellCheckEnabled((enabled) => !enabled)}><Check/><span>Spelling</span></button></div><span className="ribbon-group-label">Proofing</span></div>
+                <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row"><button type="button" className="ribbon-command" disabled={!accessibilityIssueMap.length} onClick={() => navigateAccessibilityIssue(-1)}><ChevronDown className="issue-previous"/><span>Previous</span></button><button type="button" className="ribbon-command" disabled={!accessibilityIssueMap.length} onClick={() => navigateAccessibilityIssue(1)}><ChevronDown/><span>Next Issue</span></button><button type="button" className="ribbon-command" onClick={() => { setSidePanelTab("review"); setRightPanel(true); }}><Eye/><span>Issue Map</span></button></div><span className="ribbon-group-label">Accessibility Navigation</span></div>
               </>}
               {ribbonTab === "view" && <>
                 <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row"><button type="button" className={`ribbon-command ${device === "desktop" ? "is-active" : ""}`} aria-pressed={device === "desktop"} onClick={() => setDevice("desktop")}><Monitor/><span>Desktop</span></button><button type="button" className={`ribbon-command ${device === "tablet" ? "is-active" : ""}`} aria-pressed={device === "tablet"} onClick={() => setDevice("tablet")}><Tablet/><span>Tablet</span></button><button type="button" className={`ribbon-command ${device === "mobile" ? "is-active" : ""}`} aria-pressed={device === "mobile"} onClick={() => setDevice("mobile")}><Smartphone/><span>Mobile</span></button></div><span className="ribbon-group-label">Responsive Preview</span></div>
                 <div className="ribbon-group"><div className="ribbon-group-body ribbon-zoom-controls"><button type="button" onClick={() => setZoom((value) => Math.max(50, value - 10))} aria-label="Zoom out"><ZoomOut/></button><label><span className="sr-only">Document zoom</span><select value={zoom} onChange={(event) => setZoom(Number(event.target.value))} aria-label="Document zoom"><option value="50">50%</option><option value="75">75%</option><option value="90">90%</option><option value="100">100%</option><option value="110">110%</option><option value="125">125%</option><option value="150">150%</option></select></label><button type="button" onClick={() => setZoom((value) => Math.min(150, value + 10))} aria-label="Zoom in"><ZoomIn/></button><button type="button" onClick={() => setZoom(100)}>100%</button><button type="button" className="fit-width-button" onClick={fitPageWidth}>Page Width</button><button type="button" className="reset-view-button" onClick={resetPreview}>Reset</button></div><span className="ribbon-group-label">Zoom</span></div>
-                <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row"><button type="button" className={`ribbon-command ${showRulers ? "is-active" : ""}`} aria-pressed={showRulers} onClick={() => setShowRulers((visible) => !visible)}><Columns3/><span>Rulers</span></button><button type="button" className={`ribbon-command ${showMarginGuides ? "is-active" : ""}`} aria-pressed={showMarginGuides} onClick={() => setShowMarginGuides((visible) => !visible)}><Rows3/><span>Margins</span></button><button type="button" className={`ribbon-command ${showFormattingMarks ? "is-active" : ""}`} aria-pressed={showFormattingMarks} onClick={() => setShowFormattingMarks((visible) => !visible)}><Pilcrow/><span>Marks</span></button><button type="button" className="ribbon-command" onClick={() => setRulerUnit((current) => current === "in" ? "cm" : "in")}><Columns3/><span>{rulerUnit === "in" ? "Inches" : "Centimeters"}</span></button></div><span className="ribbon-group-label">Show</span></div>
+                <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row"><button type="button" className={`ribbon-command ${showRulers ? "is-active" : ""}`} aria-pressed={showRulers} onClick={() => setShowRulers((visible) => !visible)}><Columns3/><span>Rulers</span></button><button type="button" className={`ribbon-command ${showMarginGuides ? "is-active" : ""}`} aria-pressed={showMarginGuides} onClick={() => setShowMarginGuides((visible) => !visible)}><Rows3/><span>Margins</span></button><button type="button" className={`ribbon-command ${showFormattingMarks ? "is-active" : ""}`} aria-pressed={showFormattingMarks} onClick={() => setShowFormattingMarks((visible) => !visible)}><Pilcrow/><span>Marks</span></button><button type="button" className={`ribbon-command ${showSemanticMap ? "is-active" : ""}`} aria-pressed={showSemanticMap} onClick={() => setShowSemanticMap((visible) => !visible)}><Eye/><span>Structure</span></button><button type="button" className="ribbon-command" onClick={() => setRulerUnit((current) => current === "in" ? "cm" : "in")}><Columns3/><span>{rulerUnit === "in" ? "Inches" : "Centimeters"}</span></button></div><span className="ribbon-group-label">Show</span></div>
                 <div className="ribbon-group ribbon-preview-quality"><div className="ribbon-group-body"><button type="button" className={`ribbon-preview-score ${previewAuditChecks.length > 0 && previewChecksPassed === previewChecksTotal ? "ready" : "attention"}`} onClick={() => runPreviewAudit(true)} aria-label={`Run Preview Audit. ${previewChecksPassed} of ${previewChecksTotal} checks passed`}><span>{previewChecksPassed}/{previewChecksTotal}</span><strong>Preview Audit</strong><small>{previewAuditChecks.length ? "Quality gate" : "Run quality gate"}</small></button></div><span className="ribbon-group-label">Preview Quality</span></div>
                 <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row"><button type="button" className={`ribbon-command ${rightPanel ? "is-active" : ""}`} aria-pressed={rightPanel} onClick={() => setRightPanel((visible) => !visible)}><PanelRight/><span>Insights</span></button><button type="button" className="ribbon-command" onClick={() => { setSidePanelTab("outline"); setRightPanel(true); }}><Heading2/><span>Outline</span></button><KeyboardShortcutsDialog ribbon/></div><span className="ribbon-group-label">Workspace</span></div>
               </>}
@@ -1773,7 +1845,7 @@ export default function Home() {
               </>}
             </div>}
           </div>
-          <TabsContent value="visual" className="canvas-wrap"><div className={`device-frame ${device}`} style={{ zoom: `${zoom}%` }}><div className="ultra-label"><span className="mini-logo" aria-hidden="true"><img src="/brand/ultrapage-mark.svg" alt="" /></span><span>Design Preview</span><span className="design-state">{device[0].toUpperCase() + device.slice(1)} · {zoom}%</span><span className="design-state design-editable">Editable</span>{device === "desktop" && <span className="design-state design-paper">Letter · 8.5 × 11 in minimum</span>}<button type="button" className={`design-audit-pill ${previewAuditChecks.length > 0 && previewAuditChecks.every((check) => check.ok) ? "ready" : "attention"}`} onClick={() => runPreviewAudit(true)} aria-label="Open Design Preview audit" title={previewAuditTime ? `Last checked ${previewAuditTime}` : "Run Preview Audit"}><Eye/>{previewChecksPassed}/{previewChecksTotal}</button><span className="ruler-status">{showRulers ? `Rulers: ${rulerUnit === "in" ? "inches" : "centimeters"}` : "Rulers hidden"}</span></div><EditorRulers unit={rulerUnit} device={device} onToggle={() => setRulerUnit((current) => current === "in" ? "cm" : "in")} showRulers={showRulers} showMarginGuides={showMarginGuides}><div ref={attachEditor} className={`page-canvas ${imageDragActive ? "image-drag-active" : ""} ${showFormattingMarks ? "show-formatting-marks" : ""}`} contentEditable role="textbox" aria-multiline="true" aria-describedby="design-editor-help" lang={documentLanguage} spellCheck={spellCheckEnabled} suppressContentEditableWarning onClick={handleEditorClick} onPaste={handlePaste} onDragEnter={handleImageDragOver} onDragOver={handleImageDragOver} onDragLeave={() => setImageDragActive(false)} onDrop={handleImageDrop} onInput={handleEditorInput} aria-label="Editable page content" />{accessibilitySpotlight && <div className="accessibility-spotlight" style={{ top: accessibilitySpotlight.top, left: accessibilitySpotlight.left, width: accessibilitySpotlight.width, height: accessibilitySpotlight.height }} aria-hidden="true"><span>{accessibilitySpotlight.label}</span></div>}<span id="design-editor-help" className="sr-only">Rich text editing area. Click an image, link, or table cell to open its contextual Ribbon tools. Use the Ribbon to format content, insert accessible elements, and review the document.</span></EditorRulers></div></TabsContent>
+          <TabsContent value="visual" className="canvas-wrap"><div className={`device-frame ${device}`} style={{ zoom: `${zoom}%` }}><div className="ultra-label"><span className="mini-logo" aria-hidden="true"><img src="/brand/ultrapage-mark.svg" alt="" /></span><span>Design Preview</span><span className="design-state">{device[0].toUpperCase() + device.slice(1)} · {zoom}%</span><span className="design-state design-editable">Editable</span>{showSemanticMap && <span className="design-state design-structure">Structure map</span>}{device === "desktop" && <span className="design-state design-paper">Letter · 8.5 × 11 in minimum</span>}<button type="button" className={`design-audit-pill ${previewAuditChecks.length > 0 && previewAuditChecks.every((check) => check.ok) ? "ready" : "attention"}`} onClick={() => runPreviewAudit(true)} aria-label="Open Design Preview audit" title={previewAuditTime ? `Last checked ${previewAuditTime}` : "Run Preview Audit"}><Eye/>{previewChecksPassed}/{previewChecksTotal}</button><span className="ruler-status">{showRulers ? `Rulers: ${rulerUnit === "in" ? "inches" : "centimeters"}` : "Rulers hidden"}</span></div><EditorRulers unit={rulerUnit} device={device} onToggle={() => setRulerUnit((current) => current === "in" ? "cm" : "in")} showRulers={showRulers} showMarginGuides={showMarginGuides}><div ref={attachEditor} className={`page-canvas ${imageDragActive ? "image-drag-active" : ""} ${showFormattingMarks ? "show-formatting-marks" : ""} ${showSemanticMap ? "show-semantic-map" : ""}`} contentEditable role="textbox" aria-multiline="true" aria-describedby="design-editor-help" lang={documentLanguage} spellCheck={spellCheckEnabled} suppressContentEditableWarning onClick={handleEditorClick} onPaste={handlePaste} onDragEnter={handleImageDragOver} onDragOver={handleImageDragOver} onDragLeave={() => setImageDragActive(false)} onDrop={handleImageDrop} onInput={handleEditorInput} aria-label="Editable page content" />{accessibilitySpotlight && <div className="accessibility-spotlight" style={{ top: accessibilitySpotlight.top, left: accessibilitySpotlight.left, width: accessibilitySpotlight.width, height: accessibilitySpotlight.height }} aria-hidden="true"><span>{accessibilitySpotlight.label}</span></div>}<span id="design-editor-help" className="sr-only">Rich text editing area. Click an image, link, or table cell to open its contextual Ribbon tools. Use the Ribbon to format content, insert accessible elements, and review the document.</span></EditorRulers></div></TabsContent>
           <TabsContent value="ultra" className="blackboard-preview-wrap"><div className={`device-frame ${device}`} style={{ zoom: `${zoom}%` }}><div className="ultra-label"><span className="mini-logo" aria-hidden="true"><img src="/brand/ultrapage-mark.svg" alt="" /></span><span>Exact {activeLms.label} output</span><span className="final-preview-badge">Read only</span></div><iframe className="blackboard-preview-frame" title={`Final preview of content prepared for ${activeLms.label}`} srcDoc={finalPreviewDocument} sandbox="allow-scripts allow-same-origin allow-presentation"/><p className="final-preview-help">This preview uses the exact fragment generated by <strong>Copy for {activeLms.shortLabel}</strong>. {activeLms.guidance} Desktop, tablet, and mobile controls adjust the test width.</p></div></TabsContent>
           <TabsContent value="html" className={`code-wrap code-workspace-${codeWorkspace}`}>
             <div className="code-header">
@@ -1846,7 +1918,7 @@ function PreviewAudit({ checks, deviceResults, device, zoom, auditedAt, onRun, o
   const passed = checks.filter((check) => check.ok).length;
   const ready = checks.length > 0 && passed === checks.length;
   return <section className="preview-audit-panel" aria-label="Design Preview audit results">
-    <div className={`preview-audit-summary ${ready ? "ready" : "attention"}`}><Eye/><span><strong>{ready ? "Preview ready" : "Preview review"}</strong><small>{passed}/{checks.length || 10} checks passed · {device} at {zoom}%{auditedAt ? ` · checked ${auditedAt}` : ""}</small></span></div>
+    <div className={`preview-audit-summary ${ready ? "ready" : "attention"}`}><Eye/><span><strong>{ready ? "Preview ready" : "Preview review"}</strong><small>{passed}/{checks.length || 12} checks passed · {device} at {zoom}%{auditedAt ? ` · checked ${auditedAt}` : ""}</small></span></div>
     <button type="button" className="preview-audit-run" onClick={onRun}><Eye/> Run audit again</button>
     <div className="preview-device-matrix" role="group" aria-label="Responsive device audit">{deviceResults.map((result) => <button type="button" key={result.device} className={`${result.ok ? "ok" : "warn"} ${device === result.device ? "active" : ""}`} aria-pressed={device === result.device} onClick={() => onSelectDevice(result.device)}><span>{result.device === "desktop" ? <Monitor/> : result.device === "tablet" ? <Tablet/> : <Smartphone/>}</span><strong>{result.label}</strong><small>{result.width}px · {result.ok ? "Passed" : "Review"}</small></button>)}</div>
     <div className="preview-audit-list">{checks.map((check) => <div className={`preview-audit-item ${check.ok ? "ok" : "warn"}`} key={check.label}><span>{check.ok ? <Check/> : <AlertTriangle/>}</span><div><strong>{check.label}</strong><small>{check.detail}</small>{!check.ok && check.location && <small className="preview-location">Where: {check.location.label}</small>}</div>{!check.ok && check.location && <button type="button" className="preview-inspect" onClick={() => onInspect(check)}><Eye/> Inspect</button>}</div>)}</div>

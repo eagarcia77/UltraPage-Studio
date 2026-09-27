@@ -890,6 +890,49 @@
   user-select: none;
 }
 
+.ribbon-command:disabled {
+  opacity: .42;
+  cursor: not-allowed;
+}
+
+.ribbon-command .issue-previous {
+  transform: rotate(180deg);
+}
+
+.design-state.design-structure {
+  color: #164f6b;
+  background: #e5f5fb;
+}
+
+.page-canvas.show-semantic-map :is(h1,h2,h3,h4) {
+  outline: 2px dashed #6b38d1;
+  outline-offset: 3px;
+}
+
+.page-canvas.show-semantic-map p {
+  outline: 1px dashed #3977b8;
+  outline-offset: 2px;
+}
+
+.page-canvas.show-semantic-map :is(ul,ol,blockquote) {
+  outline: 2px dashed #248262;
+  outline-offset: 3px;
+}
+
+.page-canvas.show-semantic-map :is(table,caption,th,td) {
+  outline: 1px dashed #c87316;
+  outline-offset: -1px;
+}
+
+.page-canvas.show-semantic-map :is(figure,img,video,iframe) {
+  outline: 2px dashed #16829c;
+  outline-offset: 3px;
+}
+
+.page-canvas.show-semantic-map a {
+  box-shadow: 0 2px 0 #b32d86;
+}
+
 .preview-audit-command {
   color: #5124a9 !important;
 }
