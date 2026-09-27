@@ -423,6 +423,7 @@ export default function Home() {
   const [previewDeviceResults, setPreviewDeviceResults] = useState<PreviewDeviceResult[]>([]);
   const [previewAuditTime, setPreviewAuditTime] = useState("");
   const [accessibilityHighlight, setAccessibilityHighlight] = useState<{ location: AccessibilityLocation; requestId: number } | null>(null);
+  const [accessibilitySpotlight, setAccessibilitySpotlight] = useState<{ top: number; left: number; width: number; height: number; label: string } | null>(null);
   const [title, setTitle] = useState("Untitled document");
   const [saved, setSaved] = useState(true);
   const [draftLoaded, setDraftLoaded] = useState(false);
@@ -498,22 +499,28 @@ export default function Home() {
     const frame = window.requestAnimationFrame(() => {
       const root = editor.current;
       if (!root) return;
-      root.querySelectorAll<HTMLElement>(".accessibility-issue-highlight").forEach((element) => element.classList.remove("accessibility-issue-highlight"));
       const { location } = accessibilityHighlight;
       const target = location.selector === "@editor-start"
         ? (root.firstElementChild as HTMLElement | null) || root
         : Array.from(root.querySelectorAll<HTMLElement>(location.selector))[location.index];
-      if (!target) return;
-      target.classList.add("accessibility-issue-highlight");
+      if (!target) { setAccessibilityHighlight(null); return; }
+      const targetRect = target.getBoundingClientRect();
+      const rootRect = root.getBoundingClientRect();
+      setAccessibilitySpotlight({
+        top: targetRect.top - rootRect.top + root.offsetTop,
+        left: targetRect.left - rootRect.left + root.offsetLeft,
+        width: Math.max(targetRect.width, 36),
+        height: Math.max(targetRect.height, 28),
+        label: location.label,
+      });
       target.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
-      removalTimer = window.setTimeout(() => { target.classList.remove("accessibility-issue-highlight"); setAccessibilityHighlight(null); }, 6000);
+      removalTimer = window.setTimeout(() => { setAccessibilitySpotlight(null); setAccessibilityHighlight(null); }, 6000);
     });
     return () => {
       window.cancelAnimationFrame(frame);
       if (removalTimer) window.clearTimeout(removalTimer);
-      editor.current?.querySelectorAll<HTMLElement>(".accessibility-issue-highlight").forEach((element) => element.classList.remove("accessibility-issue-highlight"));
     };
-  }, [accessibilityHighlight, mode, html]);
+  }, [accessibilityHighlight, mode]);
   const runPreviewAudit = useCallback((announce = false) => {
     const canvas = editor.current;
     if (!canvas) return;
@@ -627,8 +634,8 @@ export default function Home() {
   const changeMode = (value: string) => {
     const nextMode = value as "visual" | "ultra" | "html";
     if (mode === "visual" && editor.current) {
-      editor.current.querySelectorAll<HTMLElement>(".accessibility-issue-highlight").forEach((element) => element.classList.remove("accessibility-issue-highlight"));
       setAccessibilityHighlight(null);
+      setAccessibilitySpotlight(null);
       applyAutomaticFirstLineIndentation(editor.current, documentLanguage);
       const currentHtml = editor.current.innerHTML;
       htmlRef.current = currentHtml;
@@ -1430,7 +1437,7 @@ export default function Home() {
     window.requestAnimationFrame(() => window.setTimeout(() => {
       const root = editor.current;
       if (!root) return;
-      root.querySelectorAll<HTMLElement>(".accessibility-issue-highlight").forEach((element) => element.classList.remove("accessibility-issue-highlight"));
+      setAccessibilitySpotlight(null);
       const resolveTarget = () => {
         const currentRoot = editor.current;
         if (!currentRoot) return null;
@@ -1625,7 +1632,7 @@ export default function Home() {
               </>}
             </div>}
           </div>
-          <TabsContent value="visual" className="canvas-wrap"><div className={`device-frame ${device}`} style={{ zoom: `${zoom}%` }}><div className="ultra-label"><span className="mini-logo" aria-hidden="true"><img src="/brand/ultrapage-mark.svg" alt="" /></span><span>Design Preview</span><span className="design-state">{device[0].toUpperCase() + device.slice(1)} · {zoom}%</span><span className="design-state design-editable">Editable</span>{device === "desktop" && <span className="design-state design-paper">Letter · 8.5 × 11 in minimum</span>}<button type="button" className={`design-audit-pill ${previewAuditChecks.length > 0 && previewAuditChecks.every((check) => check.ok) ? "ready" : "attention"}`} onClick={() => runPreviewAudit(true)} aria-label="Open Design Preview audit" title={previewAuditTime ? `Last checked ${previewAuditTime}` : "Run Preview Audit"}><Eye/>{previewChecksPassed}/{previewChecksTotal}</button><span className="ruler-status">{showRulers ? `Rulers: ${rulerUnit === "in" ? "inches" : "centimeters"}` : "Rulers hidden"}</span></div><EditorRulers unit={rulerUnit} device={device} onToggle={() => setRulerUnit((current) => current === "in" ? "cm" : "in")} showRulers={showRulers} showMarginGuides={showMarginGuides}><div ref={attachEditor} className={`page-canvas ${imageDragActive ? "image-drag-active" : ""} ${showFormattingMarks ? "show-formatting-marks" : ""}`} contentEditable role="textbox" aria-multiline="true" aria-describedby="design-editor-help" lang={documentLanguage} spellCheck={spellCheckEnabled} suppressContentEditableWarning onClick={handleEditorClick} onPaste={handlePaste} onDragEnter={handleImageDragOver} onDragOver={handleImageDragOver} onDragLeave={() => setImageDragActive(false)} onDrop={handleImageDrop} onInput={handleEditorInput} aria-label="Editable page content" /><span id="design-editor-help" className="sr-only">Rich text editing area. Click an image, link, or table cell to open its contextual Ribbon tools. Use the Ribbon to format content, insert accessible elements, and review the document.</span></EditorRulers></div></TabsContent>
+          <TabsContent value="visual" className="canvas-wrap"><div className={`device-frame ${device}`} style={{ zoom: `${zoom}%` }}><div className="ultra-label"><span className="mini-logo" aria-hidden="true"><img src="/brand/ultrapage-mark.svg" alt="" /></span><span>Design Preview</span><span className="design-state">{device[0].toUpperCase() + device.slice(1)} · {zoom}%</span><span className="design-state design-editable">Editable</span>{device === "desktop" && <span className="design-state design-paper">Letter · 8.5 × 11 in minimum</span>}<button type="button" className={`design-audit-pill ${previewAuditChecks.length > 0 && previewAuditChecks.every((check) => check.ok) ? "ready" : "attention"}`} onClick={() => runPreviewAudit(true)} aria-label="Open Design Preview audit" title={previewAuditTime ? `Last checked ${previewAuditTime}` : "Run Preview Audit"}><Eye/>{previewChecksPassed}/{previewChecksTotal}</button><span className="ruler-status">{showRulers ? `Rulers: ${rulerUnit === "in" ? "inches" : "centimeters"}` : "Rulers hidden"}</span></div><EditorRulers unit={rulerUnit} device={device} onToggle={() => setRulerUnit((current) => current === "in" ? "cm" : "in")} showRulers={showRulers} showMarginGuides={showMarginGuides}><div ref={attachEditor} className={`page-canvas ${imageDragActive ? "image-drag-active" : ""} ${showFormattingMarks ? "show-formatting-marks" : ""}`} contentEditable role="textbox" aria-multiline="true" aria-describedby="design-editor-help" lang={documentLanguage} spellCheck={spellCheckEnabled} suppressContentEditableWarning onClick={handleEditorClick} onPaste={handlePaste} onDragEnter={handleImageDragOver} onDragOver={handleImageDragOver} onDragLeave={() => setImageDragActive(false)} onDrop={handleImageDrop} onInput={handleEditorInput} aria-label="Editable page content" />{accessibilitySpotlight && <div className="accessibility-spotlight" style={{ top: accessibilitySpotlight.top, left: accessibilitySpotlight.left, width: accessibilitySpotlight.width, height: accessibilitySpotlight.height }} aria-hidden="true"><span>{accessibilitySpotlight.label}</span></div>}<span id="design-editor-help" className="sr-only">Rich text editing area. Click an image, link, or table cell to open its contextual Ribbon tools. Use the Ribbon to format content, insert accessible elements, and review the document.</span></EditorRulers></div></TabsContent>
           <TabsContent value="ultra" className="blackboard-preview-wrap"><div className={`device-frame ${device}`} style={{ zoom: `${zoom}%` }}><div className="ultra-label"><span className="mini-logo" aria-hidden="true"><img src="/brand/ultrapage-mark.svg" alt="" /></span><span>Exact {activeLms.label} output</span><span className="final-preview-badge">Read only</span></div><iframe className="blackboard-preview-frame" title={`Final preview of content prepared for ${activeLms.label}`} srcDoc={finalPreviewDocument} sandbox="allow-scripts allow-same-origin allow-presentation"/><p className="final-preview-help">This preview uses the exact fragment generated by <strong>Copy for {activeLms.shortLabel}</strong>. {activeLms.guidance} Desktop, tablet, and mobile controls adjust the test width.</p></div></TabsContent>
           <TabsContent value="html" className={`code-wrap code-workspace-${codeWorkspace}`}>
             <div className="code-header">
