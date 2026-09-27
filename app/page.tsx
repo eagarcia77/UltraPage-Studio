@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Accessibility, AlertTriangle, AlignCenter, AlignJustify, AlignLeft, AlignRight, Bold, BookOpen, CalendarDays, Check, ChevronDown, ClipboardPaste, Cloud, Code2, Columns3, Copy, Download, Eraser, Eye, FileImage, FilePlus2, FileText, Folder, Heading2, Highlighter, History, ImagePlus, Italic, Keyboard, Link2, List, ListOrdered, Loader2, LockKeyhole, Minus, Monitor, MoreHorizontal, Palette, PanelRight, Pilcrow, PlugZap, Plus, Printer, Quote, Redo2, Rows3, Save, Scissors, Search, Sigma, Smartphone, Stamp, Strikethrough, Subscript, Superscript, Table2, Tablet, Trash2, Underline, Undo2, Unlink, Upload, Video, X, ZoomIn, ZoomOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -29,8 +29,11 @@ type DraftSnapshot = { id: string; html: string; title: string; fileName: string
 type CapturedFormat = { fontFamily: string; fontSize: string; fontWeight: string; fontStyle: string; textDecorationLine: string; color: string; backgroundColor: string; lineHeight: string; textAlign: string };
 type SelectedImageData = { alt: string; caption: string; decorative: boolean; width: number };
 type SelectedLinkData = { text: string; url: string; newTab: boolean };
-type PreviewAuditCheck = { ok: boolean; label: string; detail: string };
+type PreviewAuditLocation = { selector: string; index: number; label: string };
+type PreviewAuditCheck = { ok: boolean; label: string; detail: string; location?: PreviewAuditLocation };
 type PreviewDeviceResult = { device: "desktop" | "tablet" | "mobile"; label: string; width: number; ok: boolean; detail: string };
+type HtmlDiagnostic = { severity: "error" | "warning"; message: string; line: number; column: number; offset: number; length: number };
+type HtmlTagCrumb = { name: string; offset: number };
 const languageLabels: Record<DocumentLanguage, string> = { "es-PR": "Español (Puerto Rico)", "en-US": "English (United States)" };
 const lmsProfiles: Record<LmsProfile, { label: string; shortLabel: string; guidance: string }> = {
   universal: { label: "Universal LMS", shortLabel: "Universal", guidance: "Conservative semantic HTML for standards-based LMS editors." },
@@ -161,6 +164,72 @@ function highlightHtmlSyntax(source: string) {
     if (cursor < attributes.length) attributeNodes.push(<span key={`tail-${tokenIndex}`}>{attributes.slice(cursor)}</span>);
     return <span className="syntax-tag" key={`tag-${tokenIndex}`}><span className="syntax-punctuation">{opening}</span><span className="syntax-tag-name">{name}</span>{attributeNodes}<span className="syntax-punctuation">{closing}</span></span>;
   });
+}
+
+function sourcePosition(source: string, offset: number) {
+  const before = source.slice(0, offset);
+  const lines = before.split(/\r?\n/);
+  return { line: lines.length, column: (lines.at(-1)?.length || 0) + 1 };
+}
+
+function analyzeHtmlSource(source: string): HtmlDiagnostic[] {
+  const diagnostics: HtmlDiagnostic[] = [];
+  const stack: Array<{ name: string; offset: number; length: number }> = [];
+  const ids = new Map<string, number>();
+  const tagPattern = /<!--[\s\S]*?-->|<![^>]*>|<\/?([A-Za-z][\w:-]*)([^>]*)>/g;
+  let match: RegExpExecArray | null;
+  const add = (severity: HtmlDiagnostic["severity"], message: string, offset: number, length: number) => {
+    const position = sourcePosition(source, offset);
+    diagnostics.push({ severity, message, line: position.line, column: position.column, offset, length: Math.max(1, length) });
+  };
+  while ((match = tagPattern.exec(source)) !== null) {
+    const token = match[0];
+    if (token.startsWith("<!--") || token.startsWith("<!")) continue;
+    const name = (match[1] || "").toLowerCase();
+    const attributes = match[2] || "";
+    const closing = token.startsWith("</");
+    const selfClosing = /\/\s*>$/.test(token) || HTML_VOID_ELEMENTS.has(name.toUpperCase());
+    if (closing) {
+      const matchingIndex = stack.map((item) => item.name).lastIndexOf(name);
+      if (matchingIndex < 0) add("error", `Closing tag </${name}> has no matching opening tag.`, match.index, token.length);
+      else {
+        const top = stack.at(-1);
+        if (top?.name !== name) add("error", `Closing tag </${name}> appears before <${top?.name}> is closed.`, match.index, token.length);
+        stack.splice(matchingIndex);
+      }
+      continue;
+    }
+    if (/^(script|object|embed|form)$/i.test(name) || /\son[a-z]+\s*=|(?:href|src)\s*=\s*["']javascript:/i.test(attributes)) {
+      add("error", `<${name}> contains executable or unsafe markup that an LMS may remove.`, match.index, token.length);
+    }
+    const id = attributes.match(/\sid\s*=\s*["']([^"']+)["']/i)?.[1];
+    if (id) {
+      if (ids.has(id)) add("error", `Duplicate id “${id}” breaks reliable navigation.`, match.index, token.length);
+      else ids.set(id, match.index);
+    }
+    if (name === "img" && !/\salt\s*=\s*["'][^"']*["']/i.test(attributes)) add("warning", "Image is missing an alt attribute.", match.index, token.length);
+    if (name === "a" && !/\shref\s*=\s*["'][^"']+["']/i.test(attributes)) add("warning", "Link is missing a usable href destination.", match.index, token.length);
+    if (/\sstyle\s*=\s*["'][^"']*(?:min-width|width)\s*:\s*(?:[4-9]\d{2,}|\d{4,})px/i.test(attributes)) add("warning", "A fixed width may overflow on mobile devices.", match.index, token.length);
+    if (!selfClosing) stack.push({ name, offset: match.index, length: token.length });
+  }
+  stack.forEach((item) => add("error", `Opening tag <${item.name}> is not closed.`, item.offset, item.length));
+  return diagnostics.sort((a, b) => a.offset - b.offset || (a.severity === "error" ? -1 : 1));
+}
+
+function getHtmlTagPath(source: string, caret: number): HtmlTagCrumb[] {
+  const stack: HtmlTagCrumb[] = [];
+  const tagPattern = /<!--[\s\S]*?-->|<![^>]*>|<\/?([A-Za-z][\w:-]*)([^>]*)>/g;
+  let match: RegExpExecArray | null;
+  while ((match = tagPattern.exec(source)) !== null && match.index < caret) {
+    const token = match[0];
+    if (token.startsWith("<!--") || token.startsWith("<!")) continue;
+    const name = (match[1] || "").toLowerCase();
+    if (token.startsWith("</")) {
+      const matchingIndex = stack.map((item) => item.name).lastIndexOf(name);
+      if (matchingIndex >= 0) stack.splice(matchingIndex);
+    } else if (!/\/\s*>$/.test(token) && !HTML_VOID_ELEMENTS.has(name.toUpperCase())) stack.push({ name, offset: match.index });
+  }
+  return stack;
 }
 
 function readBlobAsDataUrl(blob: Blob) {
@@ -410,6 +479,8 @@ export default function Home() {
   const [codeView, setCodeView] = useState<"lms" | "source">("source");
   const [codeWorkspace, setCodeWorkspace] = useState<"code" | "split" | "live">("split");
   const [codeWrapEnabled, setCodeWrapEnabled] = useState(false);
+  const [codeCaret, setCodeCaret] = useState(0);
+  const [showCodeDiagnostics, setShowCodeDiagnostics] = useState(true);
   const [lmsHtml, setLmsHtml] = useState("");
   const [device, setDevice] = useState<"desktop" | "tablet" | "mobile">("desktop");
   const [zoom, setZoom] = useState(100);
@@ -562,16 +633,25 @@ export default function Home() {
     auditStage.remove();
     setPreviewDeviceResults(deviceResults);
     const matrixReady = deviceResults.every((result) => result.ok);
+    const overflowingElements = Array.from(canvas.querySelectorAll<HTMLElement>("*:not(table)")).filter((element) => element.scrollWidth > element.clientWidth + 2 && !["auto", "scroll"].includes(getComputedStyle(element).overflowX));
+    const overflowingElement = overflowingElements[0];
+    const overflowingIndex = overflowingElement ? Array.from(canvas.querySelectorAll<HTMLElement>(overflowingElement.tagName.toLowerCase())).indexOf(overflowingElement) : -1;
+    const mediaIssueIndex = images.findIndex((image) => image.clientWidth > (image.parentElement?.clientWidth || canvas.clientWidth) + 2);
+    const tableIssueIndex = tables.findIndex((table) => table.scrollWidth > table.clientWidth + 2 && !["auto", "scroll"].includes(getComputedStyle(table).overflowX));
+    const textIssueIndex = wrappingCandidates.findIndex((element) => element.scrollWidth > element.clientWidth + 2 && !["auto", "scroll"].includes(getComputedStyle(element).overflowX));
+    const textIssue = textIssueIndex >= 0 ? wrappingCandidates[textIssueIndex] : null;
+    const textIssueSelector = textIssue?.tagName.toLowerCase() || "p";
+    const textIssueSelectorIndex = textIssue ? Array.from(canvas.querySelectorAll<HTMLElement>(textIssueSelector)).indexOf(textIssue) : 0;
     const checks: PreviewAuditCheck[] = [
       { ok: Boolean(canvas.textContent?.trim() || images.length || tables.length), label: "Content renders", detail: "The editable canvas contains visible content." },
-      { ok: !pageOverflow, label: "No page overflow", detail: pageOverflow ? "An element extends beyond the simulated device width." : "Content remains inside the simulated viewport." },
-      { ok: mediaContained, label: "Responsive images", detail: images.length ? `${images.length} image${images.length === 1 ? " fits" : "s fit"} the content area.` : "No images require responsive testing." },
-      { ok: tablesScrollable, label: "Responsive tables", detail: tables.length ? `${tables.length} table${tables.length === 1 ? " remains contained or scrolls" : "s remain contained or scroll"} horizontally.` : "No tables require responsive testing." },
+      { ok: !pageOverflow, label: "No page overflow", detail: pageOverflow ? "An element extends beyond the simulated device width." : "Content remains inside the simulated viewport.", location: overflowingElement ? { selector: overflowingElement.tagName.toLowerCase(), index: Math.max(0, overflowingIndex), label: `Overflowing ${overflowingElement.tagName.toLowerCase()} element` } : undefined },
+      { ok: mediaContained, label: "Responsive images", detail: images.length ? `${images.length} image${images.length === 1 ? " fits" : "s fit"} the content area.` : "No images require responsive testing.", location: mediaIssueIndex >= 0 ? { selector: "img", index: mediaIssueIndex, label: `Image ${mediaIssueIndex + 1}` } : undefined },
+      { ok: tablesScrollable, label: "Responsive tables", detail: tables.length ? `${tables.length} table${tables.length === 1 ? " remains contained or scrolls" : "s remain contained or scroll"} horizontally.` : "No tables require responsive testing.", location: tableIssueIndex >= 0 ? { selector: "table", index: tableIssueIndex, label: `Table ${tableIssueIndex + 1}` } : undefined },
       { ok: matrixReady, label: "Responsive device matrix", detail: matrixReady ? "Desktop, Tablet, and Mobile passed simultaneously." : "At least one simulated viewport requires review." },
-      { ok: headings.length === 0 || headings[0].tagName === "H1", label: "Preview structure", detail: headings.length ? `${headings.length} heading${headings.length === 1 ? "" : "s"} detected; the first is ${headings[0].tagName}.` : "No headings are present yet." },
-      { ok: headingHierarchyOk, label: "Heading hierarchy", detail: headingHierarchyOk ? "Heading levels progress without skipped levels." : "A heading level is skipped; adjust the document outline." },
+      { ok: headings.length === 0 || headings[0].tagName === "H1", label: "Preview structure", detail: headings.length ? `${headings.length} heading${headings.length === 1 ? "" : "s"} detected; the first is ${headings[0].tagName}.` : "No headings are present yet.", location: headings.length && headings[0].tagName !== "H1" ? { selector: "h1,h2,h3,h4", index: 0, label: "First heading" } : undefined },
+      { ok: headingHierarchyOk, label: "Heading hierarchy", detail: headingHierarchyOk ? "Heading levels progress without skipped levels." : "A heading level is skipped; adjust the document outline.", location: !headingHierarchyOk ? { selector: "h1,h2,h3,h4", index: Math.max(0, headingLevels.findIndex((level, index) => index > 0 && level > headingLevels[index - 1] + 1)), label: "Skipped heading level" } : undefined },
       { ok: sourceSynchronized, label: "Design and HTML synchronized", detail: sourceSynchronized ? "The Design canvas matches the current editable HTML source." : "Refresh the Design canvas before publishing." },
-      { ok: textWraps, label: "Text and links wrap", detail: textWraps ? "Paragraphs, headings, list items, and links remain inside the content area." : "A long text or link requires wrapping review." },
+      { ok: textWraps, label: "Text and links wrap", detail: textWraps ? "Paragraphs, headings, list items, and links remain inside the content area." : "A long text or link requires wrapping review.", location: !textWraps ? { selector: textIssueSelector, index: Math.max(0, textIssueSelectorIndex), label: `Non-wrapping ${textIssueSelector} element` } : undefined },
       { ok: Boolean(buildLmsHtml(canvas.innerHTML, documentLanguage, lmsProfile).trim()), label: `${lmsProfiles[lmsProfile].shortLabel} output`, detail: "The current design produces portable LMS HTML." },
     ];
     setPreviewAuditChecks(checks);
@@ -603,6 +683,39 @@ export default function Home() {
     if (typeof caret === "number") window.requestAnimationFrame(() => {
       codeEditor.current?.focus();
       codeEditor.current?.setSelectionRange(caret, caret);
+      setCodeCaret(caret);
+    });
+  };
+  const insertHtmlSnippet = (snippet: string) => {
+    if (codeView !== "source") { toast.info("Switch to Edit Source to insert HTML"); return; }
+    const target = codeEditor.current;
+    const start = target?.selectionStart ?? html.length;
+    const end = target?.selectionEnd ?? start;
+    const lineStart = html.lastIndexOf("\n", Math.max(0, start - 1)) + 1;
+    const indentation = html.slice(lineStart, start).match(/^\s*/)?.[0] || "";
+    const prepared = snippet.split("\n").map((line, index) => index ? `${indentation}${line}` : line).join("\n");
+    updateSourceCode(`${html.slice(0, start)}${prepared}${html.slice(end)}`, start + prepared.length);
+  };
+  const validateHtmlSource = () => {
+    const diagnostics = htmlDiagnostics;
+    const errors = diagnostics.filter((item) => item.severity === "error").length;
+    const warnings = diagnostics.length - errors;
+    setShowCodeDiagnostics(true);
+    if (codeWorkspace === "live") setCodeWorkspace("split");
+    toast[errors ? "error" : warnings ? "warning" : "success"](errors || warnings ? `HTML validation: ${errors} error${errors === 1 ? "" : "s"}, ${warnings} warning${warnings === 1 ? "" : "s"}` : "HTML validation passed", { description: errors || warnings ? "Select a diagnostic to move to its exact line and column." : "Tags are balanced and the source passed the built-in LMS safety checks." });
+  };
+  const goToCodeLocation = (offset: number, length = 0) => {
+    if (codeWorkspace === "live") setCodeWorkspace("split");
+    window.requestAnimationFrame(() => {
+      const target = codeEditor.current;
+      if (!target) return;
+      target.focus();
+      target.setSelectionRange(offset, offset + length);
+      setCodeCaret(offset);
+      const line = sourcePosition(activeCode, offset).line;
+      target.scrollTop = Math.max(0, (line - 3) * 20);
+      if (codeLineNumbers.current) codeLineNumbers.current.scrollTop = target.scrollTop;
+      if (codeHighlightLayer.current) codeHighlightLayer.current.scrollTop = target.scrollTop;
     });
   };
   const handleCodeKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -618,6 +731,15 @@ export default function Home() {
         updateSourceCode(`${html.slice(0, start)}  ${html.slice(start, end)}${html.slice(end)}`, start + 2);
       }
       return;
+    }
+    if (event.key === ">" && start === end) {
+      const pendingTag = html.slice(0, start).match(/<([a-z][\w:-]*)(?:\s[^<>]*)?$/i)?.[1];
+      if (pendingTag && !HTML_VOID_ELEMENTS.has(pendingTag.toUpperCase())) {
+        event.preventDefault();
+        const insertion = `></${pendingTag}>`;
+        updateSourceCode(`${html.slice(0, start)}${insertion}${html.slice(end)}`, start + 1);
+        return;
+      }
     }
     if (event.key !== "Enter" || start !== end) return;
     event.preventDefault();
@@ -1456,6 +1578,20 @@ export default function Home() {
       toast.warning(`Located: ${location.label}`, { description: check.text });
     }, 60));
   };
+  const inspectPreviewIssue = (check: PreviewAuditCheck) => {
+    if (!check.location) return;
+    const location = check.location;
+    changeMode("visual");
+    window.requestAnimationFrame(() => window.setTimeout(() => {
+      const root = editor.current;
+      if (!root) return;
+      const target = Array.from(root.querySelectorAll<HTMLElement>(location.selector))[location.index];
+      if (!target) { toast.error("The affected preview element is no longer available", { description: "Run Preview Audit again to refresh the result." }); return; }
+      setAccessibilitySpotlight(null);
+      setAccessibilityHighlight({ location: { ...location, view: "design" }, requestId: Date.now() });
+      toast.warning(`Inspecting: ${location.label}`, { description: check.detail });
+    }, 60));
+  };
   const plainText = html.replace(/<[^>]+>/g, " ").replace(/&nbsp;|&amp;|&lt;|&gt;|&#39;|&quot;/g, " ").replace(/\s+/g, " ").trim();
   const wordCount = plainText ? plainText.split(" ").length : 0;
   const characterCount = plainText.length;
@@ -1543,6 +1679,10 @@ export default function Home() {
   const sourcePreviewDocument = `<!doctype html><html lang="${documentLanguage}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)}</title><style>${exportedPageStyles}</style></head><body><main class="ultra-page">${html}</main></body></html>`;
   const activeCode = codeView === "lms" ? formatHtmlFragment(lmsHtml) : html;
   const codeLineCount = activeCode ? activeCode.split(/\r?\n/).length : 0;
+  const htmlDiagnostics = useMemo(() => analyzeHtmlSource(activeCode), [activeCode]);
+  const htmlErrors = htmlDiagnostics.filter((item) => item.severity === "error").length;
+  const htmlWarnings = htmlDiagnostics.length - htmlErrors;
+  const htmlTagPath = useMemo(() => getHtmlTagPath(activeCode, Math.min(codeCaret, activeCode.length)), [activeCode, codeCaret]);
   const codePreviewDocument = codeView === "lms" ? finalPreviewDocument : sourcePreviewDocument;
   const previewChecksPassed = previewAuditChecks.filter((check) => check.ok).length;
   const previewChecksTotal = previewAuditChecks.length || 10;
@@ -1641,16 +1781,18 @@ export default function Home() {
               <button className="copy-code-button" onClick={copyHtml}><Copy size={14}/> Copy Code</button>
             </div>
             <div className="code-authoring-bar" role="toolbar" aria-label="HTML authoring tools">
-              <button type="button" onClick={organizeSourceHtml} disabled={codeView !== "source"} title={codeView === "source" ? "Normalize indentation and organize nested tags" : "Switch to Edit Source to organize HTML"}><Code2/> Organize Tags</button>
-              <button type="button" className={codeWrapEnabled ? "active" : ""} aria-pressed={codeWrapEnabled} onClick={() => setCodeWrapEnabled((enabled) => !enabled)}><Rows3/> Wrap Lines</button>
+              <div className="html-ribbon-group"><span className="html-ribbon-label">Code</span><button type="button" onClick={organizeSourceHtml} disabled={codeView !== "source"} title={codeView === "source" ? "Normalize indentation and organize nested tags" : "Switch to Edit Source to organize HTML"}><Code2/> Format</button><button type="button" className={codeWrapEnabled ? "active" : ""} aria-pressed={codeWrapEnabled} onClick={() => setCodeWrapEnabled((enabled) => !enabled)}><Rows3/> Wrap</button></div>
+              <div className="html-ribbon-group"><span className="html-ribbon-label">Quality</span><button type="button" className={htmlErrors ? "diagnostic-error" : htmlWarnings ? "diagnostic-warning" : "diagnostic-pass"} onClick={validateHtmlSource}><Check/> Validate <b>{htmlErrors + htmlWarnings}</b></button><button type="button" className={showCodeDiagnostics ? "active" : ""} aria-pressed={showCodeDiagnostics} onClick={() => setShowCodeDiagnostics((visible) => !visible)}><AlertTriangle/> Problems</button></div>
+              <div className="html-ribbon-group html-insert-group"><span className="html-ribbon-label">Insert accessible HTML</span><button type="button" disabled={codeView !== "source"} onClick={() => insertHtmlSnippet('<figure>\n  <img src="" alt="Descriptive alternative text">\n  <figcaption>Figure caption</figcaption>\n</figure>')}><ImagePlus/> Image</button><button type="button" disabled={codeView !== "source"} onClick={() => insertHtmlSnippet('<a href="https://">Descriptive link text</a>')}><Link2/> Link</button><button type="button" disabled={codeView !== "source"} onClick={() => insertHtmlSnippet('<table data-table-style="grid">\n  <caption>Descriptive table title</caption>\n  <thead>\n    <tr><th scope="col">Header 1</th><th scope="col">Header 2</th></tr>\n  </thead>\n  <tbody>\n    <tr><td>Data</td><td>Data</td></tr>\n  </tbody>\n</table>')}><Table2/> Table</button><button type="button" disabled={codeView !== "source"} onClick={() => insertHtmlSnippet('<!-- Add an author note here -->')}><Quote/> Comment</button></div>
               <span className="syntax-legend" aria-label="Syntax color legend"><span><i className="tag-color"/>Tags</span><span><i className="attribute-color"/>Attributes</span><span><i className="value-color"/>Values</span><span><i className="comment-color"/>Comments</span></span>
-              <span className="smart-indent-hint"><Pilcrow/> Smart indentation</span>
             </div>
+            <nav className="code-tag-navigator" aria-label="Current HTML tag path"><span>DOM</span><button type="button" onClick={() => goToCodeLocation(0)}>&lt;fragment&gt;</button>{htmlTagPath.map((item, index) => <span className="tag-crumb" key={`${item.offset}-${item.name}`}><i>/</i><button type="button" onClick={() => goToCodeLocation(item.offset, item.name.length + 2)}>&lt;{item.name}&gt;</button>{index === htmlTagPath.length - 1 && <small>current</small>}</span>)}</nav>
             <div className="dreamweaver-workspace">
-              {codeWorkspace !== "live" && <section className="code-pane" aria-label="HTML code pane"><div className="pane-label"><Code2/>Code <span>{codeView === "source" ? "Editable · Syntax colors on" : "Read only · Syntax colors on"}</span></div><div className={`code-editor-shell ${codeWrapEnabled ? "wrap-enabled" : "wrap-disabled"}`}><div ref={codeLineNumbers} className="code-line-numbers" aria-hidden="true">{Array.from({ length: Math.max(1, codeLineCount) }, (_, index) => <span key={index}>{index + 1}</span>)}</div><div className="code-editor-stack"><pre ref={codeHighlightLayer} className="code-highlight-layer" aria-hidden="true"><code>{highlightHtmlSyntax(activeCode)}{"\n"}</code></pre><Textarea ref={codeEditor} value={activeCode} readOnly={codeView === "lms"} wrap={codeWrapEnabled ? "soft" : "off"} onScroll={(event) => { if (codeLineNumbers.current) codeLineNumbers.current.scrollTop = event.currentTarget.scrollTop; if (codeHighlightLayer.current) { codeHighlightLayer.current.scrollTop = event.currentTarget.scrollTop; codeHighlightLayer.current.scrollLeft = event.currentTarget.scrollLeft; } }} onKeyDown={handleCodeKeyDown} onChange={(e) => { if (codeView === "source") updateSourceCode(e.target.value); }} className={`code-editor ${codeView === "lms" ? "compatible" : ""}`} spellCheck={false} aria-label={codeView === "lms" ? `${activeLms.label}-compatible HTML` : "Editable source HTML"} /></div></div></section>}
+              {codeWorkspace !== "live" && <section className="code-pane" aria-label="HTML code pane"><div className="pane-label"><Code2/>Code <span>{codeView === "source" ? "Editable · Syntax colors · Auto-close tags" : "Read only · Syntax colors on"}</span></div><div className={`code-editor-shell ${codeWrapEnabled ? "wrap-enabled" : "wrap-disabled"}`}><div ref={codeLineNumbers} className="code-line-numbers" aria-hidden="true">{Array.from({ length: Math.max(1, codeLineCount) }, (_, index) => <span key={index}>{index + 1}</span>)}</div><div className="code-editor-stack"><pre ref={codeHighlightLayer} className="code-highlight-layer" aria-hidden="true"><code>{highlightHtmlSyntax(activeCode)}{"\n"}</code></pre><Textarea ref={codeEditor} value={activeCode} readOnly={codeView === "lms"} wrap={codeWrapEnabled ? "soft" : "off"} onScroll={(event) => { if (codeLineNumbers.current) codeLineNumbers.current.scrollTop = event.currentTarget.scrollTop; if (codeHighlightLayer.current) { codeHighlightLayer.current.scrollTop = event.currentTarget.scrollTop; codeHighlightLayer.current.scrollLeft = event.currentTarget.scrollLeft; } }} onKeyDown={handleCodeKeyDown} onSelect={(event) => setCodeCaret(event.currentTarget.selectionStart)} onClick={(event) => setCodeCaret(event.currentTarget.selectionStart)} onChange={(e) => { if (codeView === "source") updateSourceCode(e.target.value); }} className={`code-editor ${codeView === "lms" ? "compatible" : ""}`} spellCheck={false} aria-label={codeView === "lms" ? `${activeLms.label}-compatible HTML` : "Editable source HTML"} /></div></div></section>}
               {codeWorkspace !== "code" && <section className="live-code-pane" aria-label="Live HTML preview pane"><div className="pane-label"><Eye/>Live Preview <span>{device[0].toUpperCase() + device.slice(1)}</span></div><iframe className="dreamweaver-live-frame" title={`Live preview of ${codeView === "source" ? "source HTML" : `${activeLms.label} HTML`}`} srcDoc={codePreviewDocument} sandbox="allow-scripts allow-same-origin allow-presentation"/></section>}
             </div>
-            <div className="code-status" role="status"><span>{codeLineCount} line{codeLineCount === 1 ? "" : "s"}</span><span>{activeCode.length} characters</span><span>{documentLanguage}</span><span>{codeView === "source" ? "Live synchronization enabled" : `${activeLms.shortLabel} output locked`}</span></div>
+            {showCodeDiagnostics && <section className="html-diagnostics" aria-label="HTML validation problems"><header><span><AlertTriangle/> Problems</span><strong className={htmlErrors ? "has-errors" : htmlWarnings ? "has-warnings" : "is-clean"}>{htmlErrors} errors · {htmlWarnings} warnings</strong></header>{htmlDiagnostics.length ? <ol>{htmlDiagnostics.map((item, index) => <li key={`${item.offset}-${item.message}-${index}`} className={item.severity}><button type="button" onClick={() => goToCodeLocation(item.offset, item.length)}><span>{item.severity === "error" ? <X/> : <AlertTriangle/>}</span><strong>Ln {item.line}, Col {item.column}</strong><p>{item.message}</p></button></li>)}</ol> : <div className="diagnostics-empty"><Check/><span><strong>No HTML problems detected</strong><small>Tags are balanced and built-in LMS safety checks passed.</small></span></div>}</section>}
+            <div className="code-status" role="status"><span>Ln {sourcePosition(activeCode, Math.min(codeCaret, activeCode.length)).line}, Col {sourcePosition(activeCode, Math.min(codeCaret, activeCode.length)).column}</span><span>{codeLineCount} line{codeLineCount === 1 ? "" : "s"}</span><span>{activeCode.length} characters</span><span className={htmlErrors ? "code-errors" : htmlWarnings ? "code-warnings" : "code-valid"}>{htmlErrors ? `${htmlErrors} HTML error${htmlErrors === 1 ? "" : "s"}` : htmlWarnings ? `${htmlWarnings} warning${htmlWarnings === 1 ? "" : "s"}` : "Valid HTML"}</span><span>{codeView === "source" ? "Live synchronization enabled" : `${activeLms.shortLabel} output locked`}</span></div>
             <p className="code-help">{codeView === "lms" ? `This is the same fragment used by Copy for ${activeLms.shortLabel}. Review it in Live or Split view before pasting it into the LMS HTML source editor.` : "Edit the source while Split or Live view renders every change. Return to Design without losing content."}</p>
           </TabsContent>
         </Tabs>
@@ -1659,7 +1801,7 @@ export default function Home() {
           <div className="status-cluster status-context"><button type="button" onClick={() => { setSidePanelTab("review"); setRightPanel(true); }}><Accessibility size={14}/>{accessibilityScore}% accessible · {pageChecks.filter((check) => !check.ok).length} pending</button><span>{languageLabels[documentLanguage]}</span><span>{activeLms.shortLabel}</span><span>{device[0].toUpperCase() + device.slice(1)}</span><div className="status-zoom" role="group" aria-label="Document zoom"><button type="button" onClick={() => setZoom((value) => Math.max(50, value - 10))} aria-label="Zoom out"><Minus size={13}/></button><span>{zoom}%</span><button type="button" onClick={() => setZoom((value) => Math.min(150, value + 10))} aria-label="Zoom in"><Plus size={13}/></button></div></div>
         </div>
       </section>
-      {rightPanel && <><button type="button" className="panel-backdrop" onClick={() => setRightPanel(false)} aria-label="Close auxiliary panel"/><aside id="editor-side-panel" className="right-panel" aria-label="Document insights panel"><div className="mobile-panel-heading"><strong>Document insights</strong><button type="button" onClick={() => setRightPanel(false)} aria-label="Close panel"><X size={18}/></button></div><Tabs value={sidePanelTab} onValueChange={(value) => setSidePanelTab(value as "review" | "outline" | "preview")}><TabsList className="side-tabs"><TabsTrigger value="review">Accessibility</TabsTrigger><TabsTrigger value="preview">Preview</TabsTrigger><TabsTrigger value="outline">Outline</TabsTrigger></TabsList><TabsContent value="review"><div className="score-card"><div className="score-ring">{accessibilityScore}</div><div><strong>{accessibilityScore === 100 ? "Accessibility ready" : "Review required"}</strong><span>{pageChecks.filter((check) => !check.ok).length} recommendations pending</span></div></div><button type="button" className="accessibility-repair" onClick={repairAccessibility}><Accessibility size={18}/><span><strong>Safe Fix</strong><small>Repairs structure, tables, links, and HTML without inventing descriptions.</small></span></button><div className="accessibility-location-help"><Eye/><span><strong>Element-level guidance</strong><small>Use Locate to highlight the first affected element in Design Preview.</small></span></div>{pageChecks.map((check) => <AccessibilityReviewItem key={check.text} check={check} onLocate={locateAccessibilityIssue}/>)}</TabsContent><TabsContent value="preview"><PreviewAudit checks={previewAuditChecks} deviceResults={previewDeviceResults} device={device} zoom={zoom} auditedAt={previewAuditTime} onRun={() => runPreviewAudit(true)} onSelectDevice={setDevice}/></TabsContent><TabsContent value="outline"><DocumentOutline items={documentOutline} onSelect={focusHeading}/></TabsContent></Tabs></aside></>}
+      {rightPanel && <><button type="button" className="panel-backdrop" onClick={() => setRightPanel(false)} aria-label="Close auxiliary panel"/><aside id="editor-side-panel" className="right-panel" aria-label="Document insights panel"><div className="mobile-panel-heading"><strong>Document insights</strong><button type="button" onClick={() => setRightPanel(false)} aria-label="Close panel"><X size={18}/></button></div><Tabs value={sidePanelTab} onValueChange={(value) => setSidePanelTab(value as "review" | "outline" | "preview")}><TabsList className="side-tabs"><TabsTrigger value="review">Accessibility</TabsTrigger><TabsTrigger value="preview">Preview</TabsTrigger><TabsTrigger value="outline">Outline</TabsTrigger></TabsList><TabsContent value="review"><div className="score-card"><div className="score-ring">{accessibilityScore}</div><div><strong>{accessibilityScore === 100 ? "Accessibility ready" : "Review required"}</strong><span>{pageChecks.filter((check) => !check.ok).length} recommendations pending</span></div></div><button type="button" className="accessibility-repair" onClick={repairAccessibility}><Accessibility size={18}/><span><strong>Safe Fix</strong><small>Repairs structure, tables, links, and HTML without inventing descriptions.</small></span></button><div className="accessibility-location-help"><Eye/><span><strong>Element-level guidance</strong><small>Use Locate to highlight the first affected element in Design Preview.</small></span></div>{pageChecks.map((check) => <AccessibilityReviewItem key={check.text} check={check} onLocate={locateAccessibilityIssue}/>)}</TabsContent><TabsContent value="preview"><PreviewAudit checks={previewAuditChecks} deviceResults={previewDeviceResults} device={device} zoom={zoom} auditedAt={previewAuditTime} onRun={() => runPreviewAudit(true)} onSelectDevice={setDevice} onInspect={inspectPreviewIssue}/></TabsContent><TabsContent value="outline"><DocumentOutline items={documentOutline} onSelect={focusHeading}/></TabsContent></Tabs></aside></>}
     </div>
   </main>;
 }
@@ -1698,14 +1840,14 @@ function AccessibilityReviewItem({ check, onLocate }: { check: AccessibilityChec
   return <div className={`review-item accessibility-review-item ${check.ok ? "ok" : "warn"}`}><span>{check.ok ? <Check size={15}/> : <AlertTriangle size={13}/>}</span><div className="accessibility-review-copy"><p>{check.text}</p>{!check.ok && check.location && <small><strong>Where:</strong> {check.location.label}</small>}</div>{!check.ok && check.location && <button type="button" className="accessibility-locate" onClick={() => onLocate(check)}><Eye/> Locate</button>}</div>;
 }
 
-function PreviewAudit({ checks, deviceResults, device, zoom, auditedAt, onRun, onSelectDevice }: { checks: PreviewAuditCheck[]; deviceResults: PreviewDeviceResult[]; device: "desktop" | "tablet" | "mobile"; zoom: number; auditedAt: string; onRun: () => void; onSelectDevice: (device: "desktop" | "tablet" | "mobile") => void }) {
+function PreviewAudit({ checks, deviceResults, device, zoom, auditedAt, onRun, onSelectDevice, onInspect }: { checks: PreviewAuditCheck[]; deviceResults: PreviewDeviceResult[]; device: "desktop" | "tablet" | "mobile"; zoom: number; auditedAt: string; onRun: () => void; onSelectDevice: (device: "desktop" | "tablet" | "mobile") => void; onInspect: (check: PreviewAuditCheck) => void }) {
   const passed = checks.filter((check) => check.ok).length;
   const ready = checks.length > 0 && passed === checks.length;
   return <section className="preview-audit-panel" aria-label="Design Preview audit results">
     <div className={`preview-audit-summary ${ready ? "ready" : "attention"}`}><Eye/><span><strong>{ready ? "Preview ready" : "Preview review"}</strong><small>{passed}/{checks.length || 10} checks passed · {device} at {zoom}%{auditedAt ? ` · checked ${auditedAt}` : ""}</small></span></div>
     <button type="button" className="preview-audit-run" onClick={onRun}><Eye/> Run audit again</button>
     <div className="preview-device-matrix" role="group" aria-label="Responsive device audit">{deviceResults.map((result) => <button type="button" key={result.device} className={`${result.ok ? "ok" : "warn"} ${device === result.device ? "active" : ""}`} aria-pressed={device === result.device} onClick={() => onSelectDevice(result.device)}><span>{result.device === "desktop" ? <Monitor/> : result.device === "tablet" ? <Tablet/> : <Smartphone/>}</span><strong>{result.label}</strong><small>{result.width}px · {result.ok ? "Passed" : "Review"}</small></button>)}</div>
-    <div className="preview-audit-list">{checks.map((check) => <div className={`preview-audit-item ${check.ok ? "ok" : "warn"}`} key={check.label}><span>{check.ok ? <Check/> : <AlertTriangle/>}</span><div><strong>{check.label}</strong><small>{check.detail}</small></div></div>)}</div>
+    <div className="preview-audit-list">{checks.map((check) => <div className={`preview-audit-item ${check.ok ? "ok" : "warn"}`} key={check.label}><span>{check.ok ? <Check/> : <AlertTriangle/>}</span><div><strong>{check.label}</strong><small>{check.detail}</small>{!check.ok && check.location && <small className="preview-location">Where: {check.location.label}</small>}</div>{!check.ok && check.location && <button type="button" className="preview-inspect" onClick={() => onInspect(check)}><Eye/> Inspect</button>}</div>)}</div>
     <p className="preview-audit-note">The matrix tests all three viewports during every audit. Select a device card to inspect it on the canvas. Wide tables remain keyboard-accessible through horizontal scrolling.</p>
   </section>;
 }
