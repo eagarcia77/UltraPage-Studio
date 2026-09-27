@@ -135,14 +135,37 @@
   height: 14px;
 }
 
-.code-authoring-bar>span {
-  margin-left: auto;
+.code-authoring-bar .syntax-legend,
+.code-authoring-bar .smart-indent-hint {
   display: inline-flex;
   align-items: center;
   gap: 5px;
   font-size: 9px;
   color: #8491a6;
 }
+
+.code-authoring-bar .syntax-legend {
+  margin-left: auto;
+  gap: 10px;
+}
+
+.syntax-legend>span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.syntax-legend i {
+  width: 7px;
+  height: 7px;
+  display: inline-block;
+  border-radius: 50%;
+}
+
+.syntax-legend .tag-color { background: #ff7ab2; }
+.syntax-legend .attribute-color { background: #8be9fd; }
+.syntax-legend .value-color { background: #f1fa8c; }
+.syntax-legend .comment-color { background: #72c278; }
 
 .dreamweaver-workspace {
   min-height: 0;
@@ -244,10 +267,61 @@
   overflow-wrap: anywhere;
 }
 
-.code-editor-shell.wrap-disabled .code-editor {
+.code-editor-stack {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  overflow: hidden;
+}
+
+.code-editor-stack>.code-highlight-layer,
+.code-editor-stack>.code-editor {
+  grid-area: 1 / 1;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  font: 14px/1.65 ui-monospace,Consolas,monospace !important;
+  tab-size: 2;
+}
+
+.code-highlight-layer {
+  z-index: 1;
+  overflow: hidden;
+  padding: 8px 12px;
+  border: 0;
+  background: #111620;
+  color: #d4def0;
+  pointer-events: none;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.code-editor-stack>.code-editor {
+  position: relative;
+  z-index: 2;
+  background: transparent !important;
+  color: transparent !important;
+  caret-color: #f8fbff;
+  -webkit-text-fill-color: transparent;
+}
+
+.code-editor-stack>.code-editor::selection {
+  background: rgba(101, 71, 174, .55);
+}
+
+.code-editor-shell.wrap-disabled .code-editor,
+.code-editor-shell.wrap-disabled .code-highlight-layer {
   white-space: pre;
   overflow-wrap: normal;
 }
+
+.syntax-tag-name { color: #ff7ab2; font-weight: 650; }
+.syntax-attribute { color: #8be9fd; }
+.syntax-value { color: #f1fa8c; }
+.syntax-punctuation { color: #bd93f9; }
+.syntax-text { color: #d4def0; }
+.syntax-comment { color: #72c278; font-style: italic; }
+.syntax-doctype { color: #ffb86c; }
 
 .dreamweaver-live-frame {
   width: 100%;
@@ -322,7 +396,8 @@
     overflow-x: auto;
   }
 
-  .code-authoring-bar>span {
+  .code-authoring-bar .syntax-legend,
+  .code-authoring-bar .smart-indent-hint {
     display: none;
   }
 }

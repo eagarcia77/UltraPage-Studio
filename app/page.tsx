@@ -134,6 +134,35 @@ function formatHtmlFragment(source: string) {
   return Array.from(root.childNodes).flatMap((node) => serialize(node, 0)).join("\n");
 }
 
+function highlightHtmlSyntax(source: string) {
+  const tokens = source.split(/(<!--[\s\S]*?-->|<![^>]*>|<\/?[A-Za-z][^>]*>)/g).filter((token) => token !== "");
+  return tokens.map((token, tokenIndex) => {
+    if (token.startsWith("<!--")) return <span className="syntax-comment" key={`comment-${tokenIndex}`}>{token}</span>;
+    if (token.startsWith("<!")) return <span className="syntax-doctype" key={`doctype-${tokenIndex}`}>{token}</span>;
+    if (!token.startsWith("<")) return <span className="syntax-text" key={`text-${tokenIndex}`}>{token}</span>;
+
+    const tag = token.match(/^(<\/?)([A-Za-z][\w:-]*)([\s\S]*?)(\/?>)$/);
+    if (!tag) return <span className="syntax-text" key={`fallback-${tokenIndex}`}>{token}</span>;
+    const [, opening, name, attributes, closing] = tag;
+    const attributeNodes: React.ReactNode[] = [];
+    const attributePattern = /(\s+)|([^\s=/>]+)(?:(\s*=\s*)("[^"]*"|'[^']*'|[^\s>]+))?/g;
+    let cursor = 0;
+    let match: RegExpExecArray | null;
+    while ((match = attributePattern.exec(attributes)) !== null) {
+      if (match.index > cursor) attributeNodes.push(<span key={`raw-${tokenIndex}-${cursor}`}>{attributes.slice(cursor, match.index)}</span>);
+      if (match[1]) attributeNodes.push(<span key={`space-${tokenIndex}-${match.index}`}>{match[1]}</span>);
+      else {
+        attributeNodes.push(<span className="syntax-attribute" key={`attribute-${tokenIndex}-${match.index}`}>{match[2]}</span>);
+        if (match[3]) attributeNodes.push(<span className="syntax-punctuation" key={`equals-${tokenIndex}-${match.index}`}>{match[3]}</span>);
+        if (match[4]) attributeNodes.push(<span className="syntax-value" key={`value-${tokenIndex}-${match.index}`}>{match[4]}</span>);
+      }
+      cursor = attributePattern.lastIndex;
+    }
+    if (cursor < attributes.length) attributeNodes.push(<span key={`tail-${tokenIndex}`}>{attributes.slice(cursor)}</span>);
+    return <span className="syntax-tag" key={`tag-${tokenIndex}`}><span className="syntax-punctuation">{opening}</span><span className="syntax-tag-name">{name}</span>{attributeNodes}<span className="syntax-punctuation">{closing}</span></span>;
+  });
+}
+
 function readBlobAsDataUrl(blob: Blob) {
   return new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
@@ -370,6 +399,7 @@ export default function Home() {
   const editor = useRef<HTMLDivElement>(null);
   const codeEditor = useRef<HTMLTextAreaElement>(null);
   const codeLineNumbers = useRef<HTMLDivElement>(null);
+  const codeHighlightLayer = useRef<HTMLPreElement>(null);
   const localFileInput = useRef<HTMLInputElement>(null);
   const savedSelection = useRef<Range | null>(null);
   const [html, setHtml] = useState(starterHtml);
@@ -379,7 +409,7 @@ export default function Home() {
   const [ribbonCollapsed, setRibbonCollapsed] = useState(false);
   const [codeView, setCodeView] = useState<"lms" | "source">("source");
   const [codeWorkspace, setCodeWorkspace] = useState<"code" | "split" | "live">("split");
-  const [codeWrapEnabled, setCodeWrapEnabled] = useState(true);
+  const [codeWrapEnabled, setCodeWrapEnabled] = useState(false);
   const [lmsHtml, setLmsHtml] = useState("");
   const [device, setDevice] = useState<"desktop" | "tablet" | "mobile">("desktop");
   const [zoom, setZoom] = useState(100);
@@ -1519,10 +1549,11 @@ export default function Home() {
             <div className="code-authoring-bar" role="toolbar" aria-label="HTML authoring tools">
               <button type="button" onClick={organizeSourceHtml} disabled={codeView !== "source"} title={codeView === "source" ? "Normalize indentation and organize nested tags" : "Switch to Edit Source to organize HTML"}><Code2/> Organize Tags</button>
               <button type="button" className={codeWrapEnabled ? "active" : ""} aria-pressed={codeWrapEnabled} onClick={() => setCodeWrapEnabled((enabled) => !enabled)}><Rows3/> Wrap Lines</button>
-              <span><Pilcrow/> Tab and Enter use smart indentation</span>
+              <span className="syntax-legend" aria-label="Syntax color legend"><span><i className="tag-color"/>Tags</span><span><i className="attribute-color"/>Attributes</span><span><i className="value-color"/>Values</span><span><i className="comment-color"/>Comments</span></span>
+              <span className="smart-indent-hint"><Pilcrow/> Smart indentation</span>
             </div>
             <div className="dreamweaver-workspace">
-              {codeWorkspace !== "live" && <section className="code-pane" aria-label="HTML code pane"><div className="pane-label"><Code2/>Code <span>{codeView === "source" ? "Editable" : "Read only"}</span></div><div className={`code-editor-shell ${codeWrapEnabled ? "wrap-enabled" : "wrap-disabled"}`}><div ref={codeLineNumbers} className="code-line-numbers" aria-hidden="true">{Array.from({ length: Math.max(1, codeLineCount) }, (_, index) => <span key={index}>{index + 1}</span>)}</div><Textarea ref={codeEditor} value={activeCode} readOnly={codeView === "lms"} wrap={codeWrapEnabled ? "soft" : "off"} onScroll={(event) => { if (codeLineNumbers.current) codeLineNumbers.current.scrollTop = event.currentTarget.scrollTop; }} onKeyDown={handleCodeKeyDown} onChange={(e) => { if (codeView === "source") updateSourceCode(e.target.value); }} className={`code-editor ${codeView === "lms" ? "compatible" : ""}`} spellCheck={false} aria-label={codeView === "lms" ? `${activeLms.label}-compatible HTML` : "Editable source HTML"} /></div></section>}
+              {codeWorkspace !== "live" && <section className="code-pane" aria-label="HTML code pane"><div className="pane-label"><Code2/>Code <span>{codeView === "source" ? "Editable · Syntax colors on" : "Read only · Syntax colors on"}</span></div><div className={`code-editor-shell ${codeWrapEnabled ? "wrap-enabled" : "wrap-disabled"}`}><div ref={codeLineNumbers} className="code-line-numbers" aria-hidden="true">{Array.from({ length: Math.max(1, codeLineCount) }, (_, index) => <span key={index}>{index + 1}</span>)}</div><div className="code-editor-stack"><pre ref={codeHighlightLayer} className="code-highlight-layer" aria-hidden="true"><code>{highlightHtmlSyntax(activeCode)}{"\n"}</code></pre><Textarea ref={codeEditor} value={activeCode} readOnly={codeView === "lms"} wrap={codeWrapEnabled ? "soft" : "off"} onScroll={(event) => { if (codeLineNumbers.current) codeLineNumbers.current.scrollTop = event.currentTarget.scrollTop; if (codeHighlightLayer.current) { codeHighlightLayer.current.scrollTop = event.currentTarget.scrollTop; codeHighlightLayer.current.scrollLeft = event.currentTarget.scrollLeft; } }} onKeyDown={handleCodeKeyDown} onChange={(e) => { if (codeView === "source") updateSourceCode(e.target.value); }} className={`code-editor ${codeView === "lms" ? "compatible" : ""}`} spellCheck={false} aria-label={codeView === "lms" ? `${activeLms.label}-compatible HTML` : "Editable source HTML"} /></div></div></section>}
               {codeWorkspace !== "code" && <section className="live-code-pane" aria-label="Live HTML preview pane"><div className="pane-label"><Eye/>Live Preview <span>{device[0].toUpperCase() + device.slice(1)}</span></div><iframe className="dreamweaver-live-frame" title={`Live preview of ${codeView === "source" ? "source HTML" : `${activeLms.label} HTML`}`} srcDoc={codePreviewDocument} sandbox="allow-scripts allow-same-origin allow-presentation"/></section>}
             </div>
             <div className="code-status" role="status"><span>{codeLineCount} line{codeLineCount === 1 ? "" : "s"}</span><span>{activeCode.length} characters</span><span>{documentLanguage}</span><span>{codeView === "source" ? "Live synchronization enabled" : `${activeLms.shortLabel} output locked`}</span></div>
