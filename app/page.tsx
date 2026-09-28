@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import JSZip from "jszip";
 import { Accessibility, AlertTriangle, AlignCenter, AlignJustify, AlignLeft, AlignRight, Bold, BookOpen, CalendarDays, Check, ChevronDown, ClipboardPaste, Cloud, Code2, Columns3, Copy, Download, Eraser, Eye, FileImage, FilePlus2, FileText, Folder, Heading2, Highlighter, History, ImagePlus, Italic, Keyboard, Link2, List, ListOrdered, Loader2, LockKeyhole, Maximize2, Minus, Monitor, MoreHorizontal, Palette, PanelRight, Pilcrow, PlugZap, Plus, Printer, Quote, Redo2, Rows3, Save, Scissors, Search, Sigma, Smartphone, Stamp, Strikethrough, Subscript, Superscript, Table2, Tablet, Trash2, Underline, Undo2, Unlink, Upload, Video, Volume2, X, ZoomIn, ZoomOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -34,6 +35,7 @@ type PreviewAuditCheck = { ok: boolean; label: string; detail: string; location?
 type PreviewDeviceResult = { device: "desktop" | "tablet" | "mobile"; label: string; width: number; ok: boolean; detail: string };
 type HtmlDiagnostic = { severity: "error" | "warning"; message: string; line: number; column: number; offset: number; length: number };
 type HtmlTagCrumb = { name: string; offset: number };
+type HtmlPackageResult = { bundledAssets: number; externalAssets: number; fileName: string };
 
 function parseComputedColor(value: string): [number, number, number, number] | null {
   const match = value.match(/rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)(?:\s*[,/]\s*([\d.]+))?\s*\)/i);
@@ -680,6 +682,7 @@ export default function Home() {
     const overflowingElement = overflowingElements[0];
     const overflowingIndex = overflowingElement ? Array.from(canvas.querySelectorAll<HTMLElement>(overflowingElement.tagName.toLowerCase())).indexOf(overflowingElement) : -1;
     const mediaIssueIndex = images.findIndex((image) => image.clientWidth > (image.parentElement?.clientWidth || canvas.clientWidth) + 2);
+    const packageAssetIssueIndex = images.findIndex((image) => !/^data:image\/(png|jpe?g|gif|webp|avif);base64,/i.test(image.getAttribute("src") || ""));
     const tableIssueIndex = tables.findIndex((table) => table.scrollWidth > table.clientWidth + 2 && !["auto", "scroll"].includes(getComputedStyle(table).overflowX));
     const textIssueIndex = wrappingCandidates.findIndex((element) => element.scrollWidth > element.clientWidth + 2 && !["auto", "scroll"].includes(getComputedStyle(element).overflowX));
     const textIssue = textIssueIndex >= 0 ? wrappingCandidates[textIssueIndex] : null;
@@ -716,6 +719,7 @@ export default function Home() {
       { ok: Boolean(canvas.textContent?.trim() || images.length || tables.length), label: "Content renders", detail: "The editable canvas contains visible content." },
       { ok: !pageOverflow, label: "No page overflow", detail: pageOverflow ? "An element extends beyond the simulated device width." : "Content remains inside the simulated viewport.", location: overflowingElement ? { selector: overflowingElement.tagName.toLowerCase(), index: Math.max(0, overflowingIndex), label: `Overflowing ${overflowingElement.tagName.toLowerCase()} element` } : undefined },
       { ok: mediaContained, label: "Responsive images", detail: images.length ? `${images.length} image${images.length === 1 ? " fits" : "s fit"} the content area.` : "No images require responsive testing.", location: mediaIssueIndex >= 0 ? { selector: "img", index: mediaIssueIndex, label: `Image ${mediaIssueIndex + 1}` } : undefined },
+      { ok: packageAssetIssueIndex < 0, label: "HTML package assets", detail: packageAssetIssueIndex < 0 ? "Images are embedded and can be extracted into the ZIP package." : "An external image will be downloaded during export; if its server blocks access, it will remain listed in manifest.json.", location: packageAssetIssueIndex >= 0 ? { selector: "img", index: packageAssetIssueIndex, label: `External image ${packageAssetIssueIndex + 1}` } : undefined },
       { ok: tablesScrollable, label: "Responsive tables", detail: tables.length ? `${tables.length} table${tables.length === 1 ? " remains contained or scrolls" : "s remain contained or scroll"} horizontally.` : "No tables require responsive testing.", location: tableIssueIndex >= 0 ? { selector: "table", index: tableIssueIndex, label: `Table ${tableIssueIndex + 1}` } : undefined },
       { ok: matrixReady, label: "Responsive device matrix", detail: matrixReady ? "Desktop, Tablet, and Mobile passed simultaneously." : "At least one simulated viewport requires review." },
       { ok: headings.length === 0 || headings[0].tagName === "H1", label: "Preview structure", detail: headings.length ? `${headings.length} heading${headings.length === 1 ? "" : "s"} detected; the first is ${headings[0].tagName}.` : "No headings are present yet.", location: headings.length && headings[0].tagName !== "H1" ? { selector: "h1,h2,h3,h4", index: 0, label: "First heading" } : undefined },
@@ -1467,15 +1471,71 @@ export default function Home() {
     if (editor.current) editor.current.innerHTML = content;
     toast.success("New document created");
   };
-  const downloadDocument = () => {
+  const downloadDocument = async (): Promise<HtmlPackageResult> => {
     const currentHtml = normalizeAutomaticIndentationHtml(mode === "visual" ? editor.current?.innerHTML || html : html, documentLanguage);
     const safeTitle = escapeHtml(title);
     const safeAuthor = escapeHtml(documentAuthor.trim());
     const safeDescription = escapeHtml(documentDescription.trim());
-    const fileContent = documentFileName.toLowerCase().endsWith(".txt") ? currentHtml.replace(/<[^>]+>/g, "") : `<!doctype html><html lang="${documentLanguage}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="color-scheme" content="light"><meta name="generator" content="UltraPage Studio"><meta name="ultrapage-lms-profile" content="${lmsProfile}"><title>${safeTitle}</title>${safeAuthor ? `<meta name="author" content="${safeAuthor}">` : ""}${safeDescription ? `<meta name="description" content="${safeDescription}">` : ""}<style>${exportedPageStyles}</style></head><body><main class="ultra-page">${currentHtml}</main></body></html>`;
-    const blob = new Blob([fileContent], { type: documentFileName.toLowerCase().endsWith(".txt") ? "text/plain;charset=utf-8" : "text/html;charset=utf-8" });
-    const downloadUrl = URL.createObjectURL(blob); const link = document.createElement("a"); link.href = downloadUrl; link.download = documentFileName; link.click(); URL.revokeObjectURL(downloadUrl);
-    toast.success("File downloaded to your computer");
+    const zip = new JSZip();
+    const parsed = new DOMParser().parseFromString(`<main id="ultrapage-package-root" class="ultra-page">${currentHtml}</main>`, "text/html");
+    const root = parsed.querySelector<HTMLElement>("#ultrapage-package-root");
+    if (!root) throw new Error("The HTML package could not be prepared.");
+    const assets: Array<{ file: string | null; type: string; status: "bundled" | "external"; source: string; alt: string }> = [];
+    const packagedSources = new Map<string, string>();
+    let bundledAssets = 0;
+    let externalAssets = 0;
+    const extensionFor = (mimeType: string, source: string) => {
+      const mime = mimeType.toLowerCase().split(";", 1)[0];
+      const byMime: Record<string, string> = { "image/png": "png", "image/jpeg": "jpg", "image/gif": "gif", "image/webp": "webp", "image/avif": "avif" };
+      if (byMime[mime]) return byMime[mime];
+      return source.match(/\.([a-z0-9]{2,5})(?:[?#]|$)/i)?.[1]?.toLowerCase().replace("jpeg", "jpg") || "img";
+    };
+    for (const image of Array.from(root.querySelectorAll<HTMLImageElement>("img"))) {
+      const source = image.getAttribute("src")?.trim() || "";
+      const webDavSource = image.getAttribute("data-ultrapage-webdav-src")?.trim() || "";
+      const sourceLabel = webDavSource || (/^data:/i.test(source) ? "embedded-image" : source || "missing-source");
+      image.removeAttribute("data-ultrapage-webdav-src");
+      if (!source) {
+        externalAssets += 1;
+        assets.push({ file: null, type: "missing", status: "external", source: sourceLabel, alt: image.alt || "" });
+        continue;
+      }
+      const previousPath = packagedSources.get(source);
+      if (previousPath) { image.setAttribute("src", previousPath); continue; }
+      try {
+        const response = await fetch(source, { credentials: "omit", cache: "no-store" });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const blob = await response.blob();
+        const mimeType = blob.type.toLowerCase().split(";", 1)[0];
+        if (!/^image\/(png|jpeg|gif|webp|avif)$/.test(mimeType)) throw new Error("Unsupported image type");
+        if (!blob.size || blob.size > 25 * 1024 * 1024) throw new Error("Image exceeds 25 MB");
+        bundledAssets += 1;
+        const assetPath = `images/image-${String(bundledAssets).padStart(3, "0")}.${extensionFor(mimeType, source)}`;
+        zip.file(assetPath, blob);
+        packagedSources.set(source, assetPath);
+        image.setAttribute("src", assetPath);
+        image.removeAttribute("loading");
+        assets.push({ file: assetPath, type: mimeType, status: "bundled", source: sourceLabel, alt: image.alt || "" });
+      } catch {
+        externalAssets += 1;
+        assets.push({ file: null, type: "remote-reference", status: "external", source: sourceLabel, alt: image.alt || "" });
+      }
+    }
+    const packagedHtml = root.innerHTML;
+    const fileContent = `<!doctype html><html lang="${documentLanguage}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="color-scheme" content="light"><meta name="generator" content="UltraPage Studio"><meta name="ultrapage-lms-profile" content="${lmsProfile}"><title>${safeTitle}</title>${safeAuthor ? `<meta name="author" content="${safeAuthor}">` : ""}${safeDescription ? `<meta name="description" content="${safeDescription}">` : ""}<style>${exportedPageStyles}</style></head><body><main class="ultra-page">${packagedHtml}</main></body></html>`;
+    const lmsFragment = buildLmsHtml(packagedHtml, documentLanguage, lmsProfile);
+    const accessibilityChecks = accessibilityReport(packagedHtml, title, documentLanguage);
+    const generatedAt = new Date().toISOString();
+    zip.file("index.html", fileContent);
+    zip.file("lms-fragment.html", `<!-- Generated for ${lmsProfiles[lmsProfile].label} by UltraPage Studio -->\n${lmsFragment}`);
+    zip.file("styles/ultrapage.css", exportedPageStyles.trim());
+    zip.file("accessibility-report.txt", [`UltraPage Studio Accessibility Report`, `Generated: ${generatedAt}`, `Document: ${title}`, `Language: ${documentLanguage}`, `Target LMS: ${lmsProfiles[lmsProfile].label}`, "", ...accessibilityChecks.map((check) => `${check.ok ? "PASS" : "REVIEW"}: ${check.text}`)].join("\n"));
+    zip.file("manifest.json", JSON.stringify({ format: "ultrapage-html-package", version: 1, generatedAt, title, language: documentLanguage, lmsProfile, author: documentAuthor, description: documentDescription, entryPoint: "index.html", lmsFragment: "lms-fragment.html", styleReference: "styles/ultrapage.css", assets, summary: { bundledAssets, externalAssets } }, null, 2));
+    zip.file("README.txt", [`UltraPage Studio HTML Package`, `=============================`, "", `Open index.html to view the responsive page.`, `Use lms-fragment.html when pasting source code into ${lmsProfiles[lmsProfile].label}.`, `The images folder contains resources that could be packaged safely.`, `manifest.json lists every image and identifies any external reference that could not be downloaded because of server access or CORS restrictions.`, `accessibility-report.txt contains the automated accessibility results at export time.`, "", `Keep index.html and the images folder together when uploading this package to a web server or LMS file area.`].join("\n"));
+    const packageBlob = await zip.generateAsync({ type: "blob", compression: "DEFLATE", compressionOptions: { level: 6 }, mimeType: "application/zip" });
+    const fileName = exportFileName(title, "html-package.zip");
+    downloadBlob(packageBlob, fileName);
+    return { bundledAssets, externalAssets, fileName };
   };
   useEffect(() => {
     const warnBeforeLeaving = (event: BeforeUnloadEvent) => {
@@ -1805,7 +1865,7 @@ export default function Home() {
   const htmlTagPath = useMemo(() => getHtmlTagPath(activeCode, Math.min(codeCaret, activeCode.length)), [activeCode, codeCaret]);
   const codePreviewDocument = codeView === "lms" ? finalPreviewDocument : sourcePreviewDocument;
   const previewChecksPassed = previewAuditChecks.filter((check) => check.ok).length;
-  const previewChecksTotal = previewAuditChecks.length || 14;
+  const previewChecksTotal = previewAuditChecks.length || 15;
 
   return <main className={`min-h-screen bg-[#f4f6f9] text-[#172033] ${focusMode ? "focus-mode" : ""}`}>
     <Toaster position="bottom-right" richColors />
@@ -1966,7 +2026,7 @@ function PreviewAudit({ checks, deviceResults, device, zoom, auditedAt, onRun, o
   const passed = checks.filter((check) => check.ok).length;
   const ready = checks.length > 0 && passed === checks.length;
   return <section className="preview-audit-panel" aria-label="Design Preview audit results">
-    <div className={`preview-audit-summary ${ready ? "ready" : "attention"}`}><Eye/><span><strong>{ready ? "Preview ready" : "Preview review"}</strong><small>{passed}/{checks.length || 14} checks passed · {device} at {zoom}%{auditedAt ? ` · checked ${auditedAt}` : ""}</small></span></div>
+    <div className={`preview-audit-summary ${ready ? "ready" : "attention"}`}><Eye/><span><strong>{ready ? "Preview ready" : "Preview review"}</strong><small>{passed}/{checks.length || 15} checks passed · {device} at {zoom}%{auditedAt ? ` · checked ${auditedAt}` : ""}</small></span></div>
     <button type="button" className="preview-audit-run" onClick={onRun}><Eye/> Run audit again</button>
     <div className="preview-device-matrix" role="group" aria-label="Responsive device audit">{deviceResults.map((result) => <button type="button" key={result.device} className={`${result.ok ? "ok" : "warn"} ${device === result.device ? "active" : ""}`} aria-pressed={device === result.device} onClick={() => onSelectDevice(result.device)}><span>{result.device === "desktop" ? <Monitor/> : result.device === "tablet" ? <Tablet/> : <Smartphone/>}</span><strong>{result.label}</strong><small>{result.width}px · {result.ok ? "Passed" : "Review"}</small></button>)}</div>
     <div className="preview-audit-list">{checks.map((check) => <div className={`preview-audit-item ${check.ok ? "ok" : "warn"}`} key={check.label}><span>{check.ok ? <Check/> : <AlertTriangle/>}</span><div><strong>{check.label}</strong><small>{check.detail}</small>{!check.ok && check.location && <small className="preview-location">Where: {check.location.label}</small>}</div>{!check.ok && check.location && <button type="button" className="preview-inspect" onClick={() => onInspect(check)}><Eye/> Inspect</button>}</div>)}</div>
@@ -2097,9 +2157,9 @@ function arrayBufferToBase64(buffer: ArrayBuffer) {
   return btoa(binary);
 }
 
-function ExportDialog({ html, title, language, lmsProfile, author, description, downloadHtml, ribbon = false }: { html: string; title: string; language: DocumentLanguage; lmsProfile: LmsProfile; author: string; description: string; downloadHtml: () => void; ribbon?: boolean }) {
+function ExportDialog({ html, title, language, lmsProfile, author, description, downloadHtml, ribbon = false }: { html: string; title: string; language: DocumentLanguage; lmsProfile: LmsProfile; author: string; description: string; downloadHtml: () => Promise<HtmlPackageResult>; ribbon?: boolean }) {
   const [open, setOpen] = useState(false);
-  const [exporting, setExporting] = useState<"docx" | "pdf" | "">("");
+  const [exporting, setExporting] = useState<"docx" | "pdf" | "html" | "">("");
   const portableHtml = normalizeAutomaticIndentationHtml(html, language);
   const checks = accessibilityReport(portableHtml, title, language);
   const warnings = checks.filter((check) => !check.ok).length;
@@ -2132,7 +2192,17 @@ function ExportDialog({ html, title, language, lmsProfile, author, description, 
       toast.error("Export failed", { description: problem instanceof Error ? problem.message : "Try again." });
     } finally { setExporting(""); }
   };
-  return <Dialog open={open} onOpenChange={setOpen}><DialogTrigger asChild>{ribbon ? <button type="button" className="ribbon-command"><Download/><span>Export</span></button> : <Button variant="outline" className="publish-button"><Download size={16}/> Export</Button>}</DialogTrigger><DialogContent className="export-dialog"><DialogHeader><DialogTitle>Export Accessible Document</DialogTitle><DialogDescription>Download as Word, PDF, HTML, or an editable UltraPage project. Target profile: {lmsProfiles[lmsProfile].label}.</DialogDescription></DialogHeader><div className={`export-summary ${warnings ? "has-warnings" : "ready"}`}><span>{warnings ? <AlertTriangle size={20}/> : <Check size={20}/>}</span><div><strong>{warnings ? `${warnings} accessibility recommendation${warnings === 1 ? "" : "s"}` : "Ready to export"}</strong><small>{warnings ? "You may export now, but correcting them first is recommended." : "The content passed the automated checks."}</small></div></div><div className="export-checks" aria-label="Accessibility results">{checks.map((check) => <ReviewItem key={check.text} ok={check.ok} text={check.text}/>)}</div><div className="export-options"><button onClick={() => exportDocument("docx")} disabled={Boolean(exporting)}><FileText/><span><strong>Microsoft Word</strong><small>.docx structured and editable</small></span>{exporting === "docx" ? <Loader2 className="spin"/> : <Download/>}</button><button onClick={() => exportDocument("pdf")} disabled={Boolean(exporting)}><FileText/><span><strong>Accessible PDF</strong><small>Tagged PDF/UA with language and metadata</small></span>{exporting === "pdf" ? <Loader2 className="spin"/> : <Download/>}</button><button onClick={() => { downloadHtml(); setOpen(false); }} disabled={Boolean(exporting)}><Code2/><span><strong>Responsive HTML Page</strong><small>Standalone HTML for any modern LMS or web server</small></span><Download/></button><button onClick={exportProject} disabled={Boolean(exporting)}><Save/><span><strong>UltraPage Project</strong><small>Editable backup with content, metadata, and LMS profile</small></span><Download/></button></div><p className="export-note"><Accessibility size={15}/> Use Copy for {lmsProfiles[lmsProfile].shortLabel} when pasting into an LMS editor. Automated review helps, but institutional content should also be checked in the destination LMS.</p></DialogContent></Dialog>;
+  const exportHtmlPackage = async () => {
+    setExporting("html");
+    try {
+      const result = await downloadHtml();
+      toast.success("HTML package downloaded", { description: `${result.bundledAssets} image${result.bundledAssets === 1 ? "" : "s"} bundled${result.externalAssets ? ` · ${result.externalAssets} external reference${result.externalAssets === 1 ? "" : "s"} listed in the manifest` : ""}.` });
+      setOpen(false);
+    } catch (problem) {
+      toast.error("HTML package export failed", { description: problem instanceof Error ? problem.message : "Try again." });
+    } finally { setExporting(""); }
+  };
+  return <Dialog open={open} onOpenChange={setOpen}><DialogTrigger asChild>{ribbon ? <button type="button" className="ribbon-command"><Download/><span>Export</span></button> : <Button variant="outline" className="publish-button"><Download size={16}/> Export</Button>}</DialogTrigger><DialogContent className="export-dialog"><DialogHeader><DialogTitle>Export Accessible Document</DialogTitle><DialogDescription>Download as Word, PDF, a complete HTML package, or an editable UltraPage project. Target profile: {lmsProfiles[lmsProfile].label}.</DialogDescription></DialogHeader><div className={`export-summary ${warnings ? "has-warnings" : "ready"}`}><span>{warnings ? <AlertTriangle size={20}/> : <Check size={20}/>}</span><div><strong>{warnings ? `${warnings} accessibility recommendation${warnings === 1 ? "" : "s"}` : "Ready to export"}</strong><small>{warnings ? "You may export now, but correcting them first is recommended." : "The content passed the automated checks."}</small></div></div><div className="export-checks" aria-label="Accessibility results">{checks.map((check) => <ReviewItem key={check.text} ok={check.ok} text={check.text}/>)}</div><div className="export-options"><button onClick={() => exportDocument("docx")} disabled={Boolean(exporting)}><FileText/><span><strong>Microsoft Word</strong><small>.docx structured and editable</small></span>{exporting === "docx" ? <Loader2 className="spin"/> : <Download/>}</button><button onClick={() => exportDocument("pdf")} disabled={Boolean(exporting)}><FileText/><span><strong>Accessible PDF</strong><small>Tagged PDF/UA with language and metadata</small></span>{exporting === "pdf" ? <Loader2 className="spin"/> : <Download/>}</button><button onClick={exportHtmlPackage} disabled={Boolean(exporting)}><Code2/><span><strong>Complete HTML Package</strong><small>.zip with HTML, LMS fragment, images, styles, manifest, and accessibility report</small></span>{exporting === "html" ? <Loader2 className="spin"/> : <Download/>}</button><button onClick={exportProject} disabled={Boolean(exporting)}><Save/><span><strong>UltraPage Project</strong><small>Editable backup with content, metadata, and LMS profile</small></span><Download/></button></div><p className="export-note"><Accessibility size={15}/> The HTML package preserves embedded and WebDAV images whenever they are available. Remote servers that block downloading remain listed in manifest.json for review.</p></DialogContent></Dialog>;
 }
 
 function DocumentPropertiesDialog({ author, description, setAuthor, setDescription, ribbon = false }: { author: string; description: string; setAuthor: (value: string) => void; setDescription: (value: string) => void; ribbon?: boolean }) {
