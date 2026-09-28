@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Accessibility, AlertTriangle, AlignCenter, AlignJustify, AlignLeft, AlignRight, Bold, BookOpen, CalendarDays, Check, ChevronDown, ClipboardPaste, Cloud, Code2, Columns3, Copy, Download, Eraser, Eye, FileImage, FilePlus2, FileText, Folder, Heading2, Highlighter, History, ImagePlus, Italic, Keyboard, Link2, List, ListOrdered, Loader2, LockKeyhole, Minus, Monitor, MoreHorizontal, Palette, PanelRight, Pilcrow, PlugZap, Plus, Printer, Quote, Redo2, Rows3, Save, Scissors, Search, Sigma, Smartphone, Stamp, Strikethrough, Subscript, Superscript, Table2, Tablet, Trash2, Underline, Undo2, Unlink, Upload, Video, X, ZoomIn, ZoomOut } from "lucide-react";
+import { Accessibility, AlertTriangle, AlignCenter, AlignJustify, AlignLeft, AlignRight, Bold, BookOpen, CalendarDays, Check, ChevronDown, ClipboardPaste, Cloud, Code2, Columns3, Copy, Download, Eraser, Eye, FileImage, FilePlus2, FileText, Folder, Heading2, Highlighter, History, ImagePlus, Italic, Keyboard, Link2, List, ListOrdered, Loader2, LockKeyhole, Maximize2, Minus, Monitor, MoreHorizontal, Palette, PanelRight, Pilcrow, PlugZap, Plus, Printer, Quote, Redo2, Rows3, Save, Scissors, Search, Sigma, Smartphone, Stamp, Strikethrough, Subscript, Superscript, Table2, Tablet, Trash2, Underline, Undo2, Unlink, Upload, Video, Volume2, X, ZoomIn, ZoomOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -527,6 +527,9 @@ export default function Home() {
   const [showMarginGuides, setShowMarginGuides] = useState(true);
   const [showFormattingMarks, setShowFormattingMarks] = useState(false);
   const [showSemanticMap, setShowSemanticMap] = useState(false);
+  const [focusMode, setFocusMode] = useState(false);
+  const [readingAloud, setReadingAloud] = useState(false);
+  const [previewCompareOpen, setPreviewCompareOpen] = useState(false);
   const [accessibilityIssueCursor, setAccessibilityIssueCursor] = useState(-1);
   const [rightPanel, setRightPanel] = useState(false);
   const [sidePanelTab, setSidePanelTab] = useState<"review" | "outline" | "preview">("review");
@@ -693,6 +696,15 @@ export default function Home() {
     const contrastIssue = contrastIssueIndex >= 0 ? contrastCandidates[contrastIssueIndex] : null;
     const contrastSelector = contrastIssue?.tagName.toLowerCase() || "p";
     const contrastSelectorIndex = contrastIssue ? Array.from(canvas.querySelectorAll<HTMLElement>(contrastSelector)).indexOf(contrastIssue) : 0;
+    const smallTextCandidates = Array.from(canvas.querySelectorAll<HTMLElement>("p,li,a,td,th,figcaption,blockquote")).filter((element) => Boolean(element.textContent?.trim()));
+    const smallTextIssueIndex = smallTextCandidates.findIndex((element) => (Number.parseFloat(getComputedStyle(element).fontSize) || 16) < 12);
+    const smallTextIssue = smallTextIssueIndex >= 0 ? smallTextCandidates[smallTextIssueIndex] : null;
+    const smallTextSelector = smallTextIssue?.tagName.toLowerCase() || "p";
+    const smallTextSelectorIndex = smallTextIssue ? Array.from(canvas.querySelectorAll<HTMLElement>(smallTextSelector)).indexOf(smallTextIssue) : 0;
+    const emptyStructureCandidates = Array.from(canvas.querySelectorAll<HTMLElement>("h1,h2,h3,h4,a,li,th,caption,figcaption")).filter((element) => !element.textContent?.trim() && !element.querySelector("img,svg,video,iframe"));
+    const emptyStructureIssue = emptyStructureCandidates[0] || null;
+    const emptyStructureSelector = emptyStructureIssue?.tagName.toLowerCase() || "h1";
+    const emptyStructureSelectorIndex = emptyStructureIssue ? Array.from(canvas.querySelectorAll<HTMLElement>(emptyStructureSelector)).indexOf(emptyStructureIssue) : 0;
     const lmsAuditOutput = buildLmsHtml(canvas.innerHTML, documentLanguage, lmsProfile);
     const lmsAuditDocument = new DOMParser().parseFromString(lmsAuditOutput, "text/html");
     const normalizeAuditText = (value: string | null | undefined) => (value || "").replace(/\s+/g, " ").trim();
@@ -711,6 +723,8 @@ export default function Home() {
       { ok: sourceSynchronized, label: "Design and HTML synchronized", detail: sourceSynchronized ? "The Design canvas matches the current editable HTML source." : "Refresh the Design canvas before publishing." },
       { ok: textWraps, label: "Text and links wrap", detail: textWraps ? "Paragraphs, headings, list items, and links remain inside the content area." : "A long text or link requires wrapping review.", location: !textWraps ? { selector: textIssueSelector, index: Math.max(0, textIssueSelectorIndex), label: `Non-wrapping ${textIssueSelector} element` } : undefined },
       { ok: contrastIssueIndex < 0, label: "Readable color contrast", detail: contrastIssue ? `${contrastSelector.toUpperCase()} text does not meet the WCAG contrast threshold.` : "Visible text meets WCAG AA contrast thresholds.", location: contrastIssue ? { selector: contrastSelector, index: Math.max(0, contrastSelectorIndex), label: `Low-contrast ${contrastSelector} element` } : undefined },
+      { ok: smallTextIssueIndex < 0, label: "Readable text size", detail: smallTextIssue ? `${smallTextSelector.toUpperCase()} text is smaller than 12 px.` : "Body text remains at or above the 12 px minimum.", location: smallTextIssue ? { selector: smallTextSelector, index: Math.max(0, smallTextSelectorIndex), label: `Small ${smallTextSelector} text` } : undefined },
+      { ok: emptyStructureCandidates.length === 0, label: "No empty semantic elements", detail: emptyStructureIssue ? `An empty ${emptyStructureSelector.toUpperCase()} can create confusing navigation or reading pauses.` : "Headings, links, list items, and labels contain meaningful content.", location: emptyStructureIssue ? { selector: emptyStructureSelector, index: Math.max(0, emptyStructureSelectorIndex), label: `Empty ${emptyStructureSelector} element` } : undefined },
       { ok: lmsParityReady, label: "LMS content parity", detail: lmsParityReady ? `Text and semantic elements are preserved in ${lmsProfiles[lmsProfile].shortLabel} HTML.` : `The ${lmsProfiles[lmsProfile].shortLabel} conversion changes visible text or removes a semantic element.` },
       { ok: Boolean(lmsAuditOutput.trim()), label: `${lmsProfiles[lmsProfile].shortLabel} output`, detail: "The current design produces portable LMS HTML." },
     ];
@@ -1474,6 +1488,7 @@ export default function Home() {
   }, [saved]);
   useEffect(() => {
     const shortcuts = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && focusMode) { setFocusMode(false); return; }
       if (event.key === "Escape" && rightPanel && window.matchMedia("(max-width: 1040px)").matches) { setRightPanel(false); return; }
       const modifier = event.ctrlKey || event.metaKey;
       if (modifier && event.key.toLowerCase() === "s") { event.preventDefault(); save(); return; }
@@ -1484,7 +1499,10 @@ export default function Home() {
     };
     window.addEventListener("keydown", shortcuts);
     return () => window.removeEventListener("keydown", shortcuts);
-  }, [mode, html, title, documentFileName, documentLanguage, lmsProfile, documentAuthor, documentDescription, rightPanel]);
+  }, [mode, html, title, documentFileName, documentLanguage, lmsProfile, documentAuthor, documentDescription, rightPanel, focusMode]);
+  useEffect(() => () => {
+    if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+  }, []);
 
   const repairAccessibility = () => {
     const parsed = new DOMParser().parseFromString(`<div id="accessibility-repair-root">${html}</div>`, "text/html");
@@ -1688,6 +1706,34 @@ export default function Home() {
     setZoom(fittedZoom);
     toast.success(`Page width fitted to ${fittedZoom}%`);
   };
+  const toggleReadAloud = () => {
+    if (!("speechSynthesis" in window)) { toast.error("Read Aloud is not supported by this browser"); return; }
+    if (readingAloud) {
+      window.speechSynthesis.cancel();
+      setReadingAloud(false);
+      toast.info("Read Aloud stopped");
+      return;
+    }
+    const text = editor.current?.innerText.trim() || new DOMParser().parseFromString(html, "text/html").body.textContent?.trim() || "";
+    if (!text) { toast.info("Add content before using Read Aloud"); return; }
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = documentLanguage;
+    utterance.rate = 1;
+    utterance.onend = () => setReadingAloud(false);
+    utterance.onerror = () => setReadingAloud(false);
+    window.speechSynthesis.speak(utterance);
+    setReadingAloud(true);
+    toast.success("Read Aloud started", { description: "Select Read Aloud again to stop." });
+  };
+  const toggleFocusMode = () => {
+    setFocusMode((active) => {
+      const next = !active;
+      if (next) { setRightPanel(false); setRibbonCollapsed(false); }
+      toast.success(next ? "Focus Mode enabled" : "Focus Mode disabled");
+      return next;
+    });
+  };
   const resetPreview = () => {
     setDevice("desktop");
     setZoom(100);
@@ -1737,6 +1783,8 @@ export default function Home() {
       "show rulers": () => setShowRulers(true), "hide rulers": () => setShowRulers(false), "show margin guides": () => setShowMarginGuides(true), "hide margin guides": () => setShowMarginGuides(false),
       "show formatting marks": () => setShowFormattingMarks(true), "hide formatting marks": () => setShowFormattingMarks(false),
       "show structure map": () => setShowSemanticMap(true), "hide structure map": () => setShowSemanticMap(false),
+      "compare previews": () => setPreviewCompareOpen(true), "read aloud": toggleReadAloud, "stop reading": toggleReadAloud,
+      "focus mode": () => { if (!focusMode) toggleFocusMode(); }, "exit focus mode": () => { if (focusMode) toggleFocusMode(); },
       "page width": fitPageWidth, "reset view": resetPreview,
       "table of contents": generateTableOfContents, "clear formatting": clearFormatting, "copy": () => command("copy"), "cut": () => command("cut"), "paste plain text": pastePlainText, "format painter": useFormatPainter,
     };
@@ -1757,9 +1805,9 @@ export default function Home() {
   const htmlTagPath = useMemo(() => getHtmlTagPath(activeCode, Math.min(codeCaret, activeCode.length)), [activeCode, codeCaret]);
   const codePreviewDocument = codeView === "lms" ? finalPreviewDocument : sourcePreviewDocument;
   const previewChecksPassed = previewAuditChecks.filter((check) => check.ok).length;
-  const previewChecksTotal = previewAuditChecks.length || 12;
+  const previewChecksTotal = previewAuditChecks.length || 14;
 
-  return <main className="min-h-screen bg-[#f4f6f9] text-[#172033]">
+  return <main className={`min-h-screen bg-[#f4f6f9] text-[#172033] ${focusMode ? "focus-mode" : ""}`}>
     <Toaster position="bottom-right" richColors />
     <input ref={localFileInput} className="sr-only" type="file" accept=".html,.htm,.txt,.docx,.ultrapage.json,.json,text/html,text/plain,application/json,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onChange={(event) => importLocalDocument(event.target.files?.[0])} aria-label="Open an HTML, TXT, Word, or UltraPage project file"/>
     <header className="topbar">
@@ -1778,7 +1826,7 @@ export default function Home() {
               {mode === "visual" && <div className="ribbon-tabs" role="tablist" aria-label="Editor ribbon">
                 {availableRibbonTabs.map((tab) => <button key={tab} id={`ribbon-tab-${tab}`} type="button" role="tab" data-ribbon-tab={tab} data-contextual={tab === "table" || tab === "picture" || tab === "link" ? tab : undefined} aria-controls="ribbon-panel" aria-selected={ribbonTab === tab} tabIndex={ribbonTab === tab ? 0 : -1} className={`${ribbonTab === tab ? "active" : ""} ${tab === "table" || tab === "picture" || tab === "link" ? `contextual ${tab}` : ""}`.trim()} onKeyDown={handleRibbonKeyDown} onClick={() => { setRibbonTab(tab); setRibbonCollapsed(false); }}>{tab[0].toUpperCase() + tab.slice(1)}{(tab === "table" || tab === "picture" || tab === "link") && <span className="sr-only"> contextual tools</span>}</button>)}
               </div>}
-              {mode === "visual" && <form className="ribbon-command-search" onSubmit={executeRibbonCommand} role="search"><Search aria-hidden="true"/><label className="sr-only" htmlFor="ribbon-command-input">Search ribbon commands</label><input id="ribbon-command-input" list="ribbon-command-options" value={ribbonCommand} onChange={(event) => setRibbonCommand(event.target.value)} placeholder="Search commands" autoComplete="off"/><datalist id="ribbon-command-options">{["New document","Open document","Save document","Home tools","Insert content","Page layout","References","Review","View","Native tools","Table tools","Picture tools","Link tools","Accessibility review","Preview audit","Document outline","Final preview","HTML editor","Desktop preview","Tablet preview","Mobile preview","Page width","Reset view","Show rulers","Hide rulers","Show margin guides","Hide margin guides","Show formatting marks","Hide formatting marks","Show structure map","Hide structure map","Table of contents","Copy","Cut","Paste plain text","Format painter","Clear formatting"].map((item) => <option key={item} value={item}/>)}</datalist></form>}
+              {mode === "visual" && <form className="ribbon-command-search" onSubmit={executeRibbonCommand} role="search"><Search aria-hidden="true"/><label className="sr-only" htmlFor="ribbon-command-input">Search ribbon commands</label><input id="ribbon-command-input" list="ribbon-command-options" value={ribbonCommand} onChange={(event) => setRibbonCommand(event.target.value)} placeholder="Search commands" autoComplete="off"/><datalist id="ribbon-command-options">{["New document","Open document","Save document","Home tools","Insert content","Page layout","References","Review","View","Native tools","Table tools","Picture tools","Link tools","Accessibility review","Preview audit","Document outline","Final preview","HTML editor","Desktop preview","Tablet preview","Mobile preview","Compare previews","Read aloud","Stop reading","Focus mode","Exit focus mode","Page width","Reset view","Show rulers","Hide rulers","Show margin guides","Hide margin guides","Show formatting marks","Hide formatting marks","Show structure map","Hide structure map","Table of contents","Copy","Cut","Paste plain text","Format painter","Clear formatting"].map((item) => <option key={item} value={item}/>)}</datalist></form>}
               {mode === "visual" && <div className="ribbon-quick" role="group" aria-label="Quick access"><button type="button" onClick={() => command("undo")} aria-label="Undo" title="Undo"><Undo2 /></button><button type="button" onClick={() => command("redo")} aria-label="Redo" title="Redo"><Redo2 /></button><button type="button" className={ribbonCollapsed ? "collapsed" : ""} aria-expanded={!ribbonCollapsed} aria-controls="ribbon-panel" onClick={() => setRibbonCollapsed((collapsed) => !collapsed)} aria-label={ribbonCollapsed ? "Expand ribbon" : "Collapse ribbon"} title={ribbonCollapsed ? "Expand ribbon" : "Collapse ribbon"}><ChevronDown /></button></div>}
             </div>
             {mode === "visual" && !ribbonCollapsed && <div id="ribbon-panel" className="ribbon-panel" role="tabpanel" aria-labelledby={`ribbon-tab-${ribbonTab}`}>
@@ -1811,15 +1859,15 @@ export default function Home() {
               </>}
               {ribbonTab === "review" && <>
                 <div className="ribbon-group ribbon-review-score"><div className="ribbon-group-body"><button type="button" className="ribbon-score-button" onClick={() => { setSidePanelTab("review"); setRightPanel(true); }}><span>{accessibilityScore}</span><strong>Accessibility</strong><small>{accessibilityIssueCount} issue{accessibilityIssueCount === 1 ? "" : "s"}</small></button></div><span className="ribbon-group-label">Review</span></div>
-                <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row"><button type="button" className="ribbon-command" onClick={repairAccessibility}><Accessibility/><span>Safe Fix</span></button><button type="button" className={`ribbon-command ${spellCheckEnabled ? "is-active" : ""}`} aria-pressed={spellCheckEnabled} onClick={() => setSpellCheckEnabled((enabled) => !enabled)}><Check/><span>Spelling</span></button></div><span className="ribbon-group-label">Proofing</span></div>
+                <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row"><button type="button" className="ribbon-command" onClick={repairAccessibility}><Accessibility/><span>Safe Fix</span></button><button type="button" className={`ribbon-command ${spellCheckEnabled ? "is-active" : ""}`} aria-pressed={spellCheckEnabled} onClick={() => setSpellCheckEnabled((enabled) => !enabled)}><Check/><span>Spelling</span></button><button type="button" className={`ribbon-command ${readingAloud ? "is-active" : ""}`} aria-pressed={readingAloud} onClick={toggleReadAloud}><Volume2/><span>{readingAloud ? "Stop Reading" : "Read Aloud"}</span></button></div><span className="ribbon-group-label">Proofing</span></div>
                 <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row"><button type="button" className="ribbon-command" disabled={!accessibilityIssueMap.length} onClick={() => navigateAccessibilityIssue(-1)}><ChevronDown className="issue-previous"/><span>Previous</span></button><button type="button" className="ribbon-command" disabled={!accessibilityIssueMap.length} onClick={() => navigateAccessibilityIssue(1)}><ChevronDown/><span>Next Issue</span></button><button type="button" className="ribbon-command" onClick={() => { setSidePanelTab("review"); setRightPanel(true); }}><Eye/><span>Issue Map</span></button></div><span className="ribbon-group-label">Accessibility Navigation</span></div>
               </>}
               {ribbonTab === "view" && <>
                 <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row"><button type="button" className={`ribbon-command ${device === "desktop" ? "is-active" : ""}`} aria-pressed={device === "desktop"} onClick={() => setDevice("desktop")}><Monitor/><span>Desktop</span></button><button type="button" className={`ribbon-command ${device === "tablet" ? "is-active" : ""}`} aria-pressed={device === "tablet"} onClick={() => setDevice("tablet")}><Tablet/><span>Tablet</span></button><button type="button" className={`ribbon-command ${device === "mobile" ? "is-active" : ""}`} aria-pressed={device === "mobile"} onClick={() => setDevice("mobile")}><Smartphone/><span>Mobile</span></button></div><span className="ribbon-group-label">Responsive Preview</span></div>
                 <div className="ribbon-group"><div className="ribbon-group-body ribbon-zoom-controls"><button type="button" onClick={() => setZoom((value) => Math.max(50, value - 10))} aria-label="Zoom out"><ZoomOut/></button><label><span className="sr-only">Document zoom</span><select value={zoom} onChange={(event) => setZoom(Number(event.target.value))} aria-label="Document zoom"><option value="50">50%</option><option value="75">75%</option><option value="90">90%</option><option value="100">100%</option><option value="110">110%</option><option value="125">125%</option><option value="150">150%</option></select></label><button type="button" onClick={() => setZoom((value) => Math.min(150, value + 10))} aria-label="Zoom in"><ZoomIn/></button><button type="button" onClick={() => setZoom(100)}>100%</button><button type="button" className="fit-width-button" onClick={fitPageWidth}>Page Width</button><button type="button" className="reset-view-button" onClick={resetPreview}>Reset</button></div><span className="ribbon-group-label">Zoom</span></div>
                 <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row"><button type="button" className={`ribbon-command ${showRulers ? "is-active" : ""}`} aria-pressed={showRulers} onClick={() => setShowRulers((visible) => !visible)}><Columns3/><span>Rulers</span></button><button type="button" className={`ribbon-command ${showMarginGuides ? "is-active" : ""}`} aria-pressed={showMarginGuides} onClick={() => setShowMarginGuides((visible) => !visible)}><Rows3/><span>Margins</span></button><button type="button" className={`ribbon-command ${showFormattingMarks ? "is-active" : ""}`} aria-pressed={showFormattingMarks} onClick={() => setShowFormattingMarks((visible) => !visible)}><Pilcrow/><span>Marks</span></button><button type="button" className={`ribbon-command ${showSemanticMap ? "is-active" : ""}`} aria-pressed={showSemanticMap} onClick={() => setShowSemanticMap((visible) => !visible)}><Eye/><span>Structure</span></button><button type="button" className="ribbon-command" onClick={() => setRulerUnit((current) => current === "in" ? "cm" : "in")}><Columns3/><span>{rulerUnit === "in" ? "Inches" : "Centimeters"}</span></button></div><span className="ribbon-group-label">Show</span></div>
-                <div className="ribbon-group ribbon-preview-quality"><div className="ribbon-group-body"><button type="button" className={`ribbon-preview-score ${previewAuditChecks.length > 0 && previewChecksPassed === previewChecksTotal ? "ready" : "attention"}`} onClick={() => runPreviewAudit(true)} aria-label={`Run Preview Audit. ${previewChecksPassed} of ${previewChecksTotal} checks passed`}><span>{previewChecksPassed}/{previewChecksTotal}</span><strong>Preview Audit</strong><small>{previewAuditChecks.length ? "Quality gate" : "Run quality gate"}</small></button></div><span className="ribbon-group-label">Preview Quality</span></div>
-                <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row"><button type="button" className={`ribbon-command ${rightPanel ? "is-active" : ""}`} aria-pressed={rightPanel} onClick={() => setRightPanel((visible) => !visible)}><PanelRight/><span>Insights</span></button><button type="button" className="ribbon-command" onClick={() => { setSidePanelTab("outline"); setRightPanel(true); }}><Heading2/><span>Outline</span></button><KeyboardShortcutsDialog ribbon/></div><span className="ribbon-group-label">Workspace</span></div>
+                <div className="ribbon-group ribbon-preview-quality"><div className="ribbon-group-body ribbon-command-row"><button type="button" className={`ribbon-preview-score ${previewAuditChecks.length > 0 && previewChecksPassed === previewChecksTotal ? "ready" : "attention"}`} onClick={() => runPreviewAudit(true)} aria-label={`Run Preview Audit. ${previewChecksPassed} of ${previewChecksTotal} checks passed`}><span>{previewChecksPassed}/{previewChecksTotal}</span><strong>Preview Audit</strong><small>{previewAuditChecks.length ? "Quality gate" : "Run quality gate"}</small></button><PreviewCompareDialog open={previewCompareOpen} onOpenChange={setPreviewCompareOpen} sourceDocument={sourcePreviewDocument} lmsDocument={finalPreviewDocument} lmsLabel={activeLms.label}/></div><span className="ribbon-group-label">Preview Quality</span></div>
+                <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row"><button type="button" className={`ribbon-command ${rightPanel ? "is-active" : ""}`} aria-pressed={rightPanel} onClick={() => setRightPanel((visible) => !visible)}><PanelRight/><span>Insights</span></button><button type="button" className="ribbon-command" onClick={() => { setSidePanelTab("outline"); setRightPanel(true); }}><Heading2/><span>Outline</span></button><button type="button" className={`ribbon-command ${focusMode ? "is-active" : ""}`} aria-pressed={focusMode} onClick={toggleFocusMode}><Maximize2/><span>{focusMode ? "Exit Focus" : "Focus"}</span></button><KeyboardShortcutsDialog ribbon/></div><span className="ribbon-group-label">Workspace</span></div>
               </>}
               {ribbonTab === "tools" && <>
                 <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row ribbon-native-tools"><a className="ribbon-command" href="/tools#apa"><BookOpen/><span>EstiloAPA</span></a><a className="ribbon-command" href="/tools#txt"><FileText/><span>TXT Tests</span></a><a className="ribbon-command" href="/tools#qti"><Table2/><span>QTI 2.1</span></a></div><span className="ribbon-group-label">Native UltraPage Tools</span></div>
@@ -1918,12 +1966,17 @@ function PreviewAudit({ checks, deviceResults, device, zoom, auditedAt, onRun, o
   const passed = checks.filter((check) => check.ok).length;
   const ready = checks.length > 0 && passed === checks.length;
   return <section className="preview-audit-panel" aria-label="Design Preview audit results">
-    <div className={`preview-audit-summary ${ready ? "ready" : "attention"}`}><Eye/><span><strong>{ready ? "Preview ready" : "Preview review"}</strong><small>{passed}/{checks.length || 12} checks passed · {device} at {zoom}%{auditedAt ? ` · checked ${auditedAt}` : ""}</small></span></div>
+    <div className={`preview-audit-summary ${ready ? "ready" : "attention"}`}><Eye/><span><strong>{ready ? "Preview ready" : "Preview review"}</strong><small>{passed}/{checks.length || 14} checks passed · {device} at {zoom}%{auditedAt ? ` · checked ${auditedAt}` : ""}</small></span></div>
     <button type="button" className="preview-audit-run" onClick={onRun}><Eye/> Run audit again</button>
     <div className="preview-device-matrix" role="group" aria-label="Responsive device audit">{deviceResults.map((result) => <button type="button" key={result.device} className={`${result.ok ? "ok" : "warn"} ${device === result.device ? "active" : ""}`} aria-pressed={device === result.device} onClick={() => onSelectDevice(result.device)}><span>{result.device === "desktop" ? <Monitor/> : result.device === "tablet" ? <Tablet/> : <Smartphone/>}</span><strong>{result.label}</strong><small>{result.width}px · {result.ok ? "Passed" : "Review"}</small></button>)}</div>
     <div className="preview-audit-list">{checks.map((check) => <div className={`preview-audit-item ${check.ok ? "ok" : "warn"}`} key={check.label}><span>{check.ok ? <Check/> : <AlertTriangle/>}</span><div><strong>{check.label}</strong><small>{check.detail}</small>{!check.ok && check.location && <small className="preview-location">Where: {check.location.label}</small>}</div>{!check.ok && check.location && <button type="button" className="preview-inspect" onClick={() => onInspect(check)}><Eye/> Inspect</button>}</div>)}</div>
     <p className="preview-audit-note">The matrix tests all three viewports during every audit. Select a device card to inspect it on the canvas. Wide tables remain keyboard-accessible through horizontal scrolling.</p>
   </section>;
+}
+
+function PreviewCompareDialog({ open, onOpenChange, sourceDocument, lmsDocument, lmsLabel }: { open: boolean; onOpenChange: (open: boolean) => void; sourceDocument: string; lmsDocument: string; lmsLabel: string }) {
+  const [compareDevice, setCompareDevice] = useState<"desktop" | "tablet" | "mobile">("desktop");
+  return <Dialog open={open} onOpenChange={onOpenChange}><DialogTrigger asChild><button type="button" className="ribbon-command"><Columns3/><span>Compare</span></button></DialogTrigger><DialogContent className="preview-compare-dialog"><DialogHeader><DialogTitle>Design and LMS Visual Comparison</DialogTitle><DialogDescription>Compare the responsive standalone design with the exact HTML generated for {lmsLabel}. Differences remain visible without changing the document.</DialogDescription></DialogHeader><div className="preview-compare-devices" role="group" aria-label="Comparison viewport"><button type="button" className={compareDevice === "desktop" ? "active" : ""} aria-pressed={compareDevice === "desktop"} onClick={() => setCompareDevice("desktop")}><Monitor/>Desktop</button><button type="button" className={compareDevice === "tablet" ? "active" : ""} aria-pressed={compareDevice === "tablet"} onClick={() => setCompareDevice("tablet")}><Tablet/>Tablet</button><button type="button" className={compareDevice === "mobile" ? "active" : ""} aria-pressed={compareDevice === "mobile"} onClick={() => setCompareDevice("mobile")}><Smartphone/>Mobile</button></div><div className={`preview-compare-grid compare-device-${compareDevice}`}><section><header><strong>Responsive Design</strong><span>Downloaded HTML appearance</span></header><div className="preview-compare-stage"><iframe className="preview-compare-viewport" title={`Responsive Design comparison at ${compareDevice} width`} srcDoc={sourceDocument} sandbox="allow-same-origin"/></div></section><section><header><strong>{lmsLabel} Output</strong><span>Exact Copy for LMS appearance</span></header><div className="preview-compare-stage"><iframe className="preview-compare-viewport" title={`${lmsLabel} comparison at ${compareDevice} width`} srcDoc={lmsDocument} sandbox="allow-same-origin"/></div></section></div><p className="preview-compare-note"><Eye/> Typography may be normalized by the destination LMS. Content, hierarchy, lists, tables, links, images, spacing, and responsive behavior should remain recognizable in both panes.</p></DialogContent></Dialog>;
 }
 
 function DocumentOutline({ items, onSelect }: { items: Array<{ level: number; text: string; index: number }>; onSelect: (index: number) => void }) {

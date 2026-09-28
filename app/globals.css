@@ -30,6 +30,146 @@
   gap: 9px;
 }
 
+/* Focus Mode keeps the Word-style Ribbon available while removing surrounding chrome. */
+.focus-mode .topbar,
+.focus-mode .leftbar,
+.focus-mode .document-head {
+  display: none;
+}
+
+.focus-mode .workspace,
+.focus-mode .workspace.panel-open {
+  height: 100vh;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.focus-mode .editor-shell {
+  height: 100vh;
+  overflow: auto;
+}
+
+.focus-mode .editor-tabs {
+  min-height: calc(100vh - 48px);
+  margin: 0;
+  border-radius: 0;
+  border-top: 0;
+}
+
+.focus-mode .editor-status-bar {
+  margin: 0;
+  border-radius: 0;
+}
+
+/* Side-by-side verification closes the gap between Design and destination LMS output. */
+.preview-compare-dialog {
+  width: min(96vw, 1500px) !important;
+  max-width: min(96vw, 1500px) !important;
+  max-height: 94vh;
+  overflow: auto;
+}
+
+.preview-compare-devices {
+  display: flex;
+  gap: 5px;
+  padding: 4px;
+  border-radius: 9px;
+  background: #eef0f4;
+  width: max-content;
+}
+
+.preview-compare-devices button {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 7px;
+  color: #596477;
+  background: transparent;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.preview-compare-devices button.active,
+.preview-compare-devices button:hover,
+.preview-compare-devices button:focus-visible {
+  color: #5526a8;
+  background: #fff;
+  box-shadow: 0 1px 5px rgba(42, 30, 66, .12);
+  outline: 2px solid transparent;
+}
+
+.preview-compare-devices svg {
+  width: 15px;
+}
+
+.preview-compare-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  min-height: 590px;
+}
+
+.preview-compare-grid > section {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #dce1e9;
+  border-radius: 11px;
+  overflow: hidden;
+  background: #f0f2f6;
+}
+
+.preview-compare-grid > section > header {
+  min-height: 48px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 7px 11px;
+  border-bottom: 1px solid #dce1e9;
+  color: #31394b;
+  background: #fff;
+}
+
+.preview-compare-grid header strong { font-size: 12px; }
+.preview-compare-grid header span { color: #778194; font-size: 9px; }
+.preview-compare-stage { flex: 1; overflow: auto; padding: 10px; }
+
+.preview-compare-viewport {
+  display: block;
+  width: 860px;
+  max-width: 100%;
+  height: 520px;
+  margin: 0 auto;
+  border: 1px solid #cfd5df;
+  border-radius: 5px;
+  background: #fff;
+}
+
+.compare-device-tablet .preview-compare-viewport { width: 720px; }
+.compare-device-mobile .preview-compare-viewport { width: 390px; height: 620px; }
+
+.preview-compare-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  margin: 0;
+  padding: 9px 10px;
+  border-radius: 8px;
+  color: #5f697b;
+  background: #f3f5f8;
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.preview-compare-note svg { width: 15px; flex: none; }
+
+@media (max-width: 900px) {
+  .preview-compare-grid { grid-template-columns: 1fr; }
+}
+
 .code-header {
   align-items: center;
   gap: 12px;
