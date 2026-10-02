@@ -27,6 +27,22 @@ Editor visual para crear contenido accesible y portátil entre Blackboard Ultra,
 - Revisión previa de título, encabezados, texto alternativo, enlaces descriptivos y tablas.
 - Copia de HTML adaptada al LMS seleccionado y perfil universal conservador para otras plataformas.
 - Herramientas de evaluación identificadas por alcance: TXT Test Generator exporta Blackboard Ultra TXT y Moodle GIFT; QTI 2.1 conserva su perfil específico para Blackboard Ultra.
+- Consola de auditoría en `/tools` para verificar las copias nativas de EstiloAPA, TXT Test Generator y QTI 2.1 Blackboard.
+
+## Auditoría de herramientas nativas
+
+La auditoría revisa las copias nativas ubicadas en `public/native-tools/` sin modificar los repositorios originales. El objetivo es confirmar que el Ribbon compartido, los comandos accesibles y los puntos de entrada de cada herramienta respondan correctamente.
+
+```bash
+npm run audit:native-tools
+npm run check
+```
+
+La documentación de auditoría está en:
+
+```text
+docs/NATIVE_TOOLS_AUDIT_2026-10-02.md
+```
 
 ## Desarrollo local
 
