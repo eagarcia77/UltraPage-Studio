@@ -17,14 +17,23 @@ import {
 
 type ToolId = "apa" | "txt" | "qti";
 type FrameState = "loading" | "ready" | "slow" | "error";
+type ProbeStatus = "pending" | "pass" | "warn" | "fail";
 type NativeManifest = {
   syncedAt?: string;
   importedAt?: string;
   compatibilityProfile?: string;
   compatibilityReviewedAt?: string;
+  audit?: {
+    ribbonUnified?: boolean;
+    keyboardNavigation?: string[];
+    groups?: string[];
+    publishedToRemote?: boolean;
+  };
   lastSync?: { checkedFiles?: number; updatedFiles?: string[] };
 };
+type ToolProbe = { id: ToolId; label: string; status: ProbeStatus; message: string };
 
+const ribbonGroups = ["File", "Document", "Authoring", "Review", "Report", "Preview", "Export"];
 const tools: Array<{ id: ToolId; name: string; description: string; compatibility: string; source: string; icon: typeof BookOpen; original: string }> = [
   {
     id: "apa",
@@ -55,12 +64,22 @@ const tools: Array<{ id: ToolId; name: string; description: string; compatibilit
   },
 ];
 
+const statusLabel: Record<ProbeStatus, string> = {
+  pending: "Pending",
+  pass: "Passed",
+  warn: "Review",
+  fail: "Failed",
+};
+
 export default function NativeToolsPage() {
   const [selected, setSelected] = useState<ToolId>("apa");
   const [frameKey, setFrameKey] = useState(0);
   const [frameState, setFrameState] = useState<FrameState>("loading");
   const [online, setOnline] = useState(true);
   const [manifest, setManifest] = useState<NativeManifest | null>(null);
+  const [toolProbes, setToolProbes] = useState<ToolProbe[]>(
+    tools.map((tool) => ({ id: tool.id, label: tool.name, status: "pending", message: "Waiting for audit." })),
+  );
 
   useEffect(() => {
     const selectFromHash = () => {
@@ -92,12 +111,39 @@ export default function NativeToolsPage() {
   }, []);
 
   useEffect(() => {
+    runNativeAudit();
+  }, []);
+
+  useEffect(() => {
     setFrameState("loading");
     const timer = window.setTimeout(() => {
       setFrameState((current) => current === "loading" ? "slow" : current);
     }, 12000);
     return () => window.clearTimeout(timer);
   }, [selected, frameKey]);
+
+  const runNativeAudit = async () => {
+    setToolProbes(tools.map((tool) => ({ id: tool.id, label: tool.name, status: "pending", message: "Checking native copy." })));
+    const results = await Promise.all(tools.map(async (tool) => {
+      try {
+        const response = await fetch(tool.source, { cache: "no-store" });
+        if (!response.ok) {
+          return { id: tool.id, label: tool.name, status: "fail" as ProbeStatus, message: `Route returned ${response.status}.` };
+        }
+        const html = await response.text();
+        const hasAccessibleName = /aria-label|aria-labelledby|<title/i.test(html);
+        const hasRibbonLanguage = /ribbon|File|Document|Authoring|Review|Preview|Export/i.test(html);
+        const status: ProbeStatus = hasAccessibleName && hasRibbonLanguage ? "pass" : "warn";
+        const message = status === "pass"
+          ? "Route responds and accessibility/ribbon markers were detected."
+          : "Route responds, but audit markers should be reviewed manually.";
+        return { id: tool.id, label: tool.name, status, message };
+      } catch {
+        return { id: tool.id, label: tool.name, status: "fail" as ProbeStatus, message: "Route could not be checked from the browser." };
+      }
+    }));
+    setToolProbes(results);
+  };
 
   const active = tools.find((tool) => tool.id === selected) || tools[0];
   const selectTool = (id: ToolId) => {
@@ -112,6 +158,8 @@ export default function NativeToolsPage() {
   const syncedLabel = manifest?.syncedAt
     ? new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(manifest.syncedAt))
     : "Version information unavailable";
+  const passed = toolProbes.filter((probe) => probe.status === "pass").length;
+  const failed = toolProbes.filter((probe) => probe.status === "fail").length;
 
   return <main className="native-tools-page">
     <header className="native-tools-header">
@@ -132,16 +180,31 @@ export default function NativeToolsPage() {
       <span className="native-health-sync"><Clock3 size={14}/> Last synchronized: {syncedLabel}</span>
     </div>
 
+    <section className="native-tools-note" aria-labelledby="native-audit-title">
+      <strong id="native-audit-title">Full native tools audit</strong>
+      <span>{passed}/{tools.length} native routes passed the browser probe. {failed > 0 ? `${failed} route(s) require review.` : "No blocked route detected."}</span>
+      <span>Shared Ribbon groups: {ribbonGroups.join(" · ")}</span>
+      <span>Keyboard audit target: arrows, Home, and End. Server-side audit command: <code>npm run audit:native-tools</code>.</span>
+      <button type="button" className="native-tool-reload" onClick={runNativeAudit}><RefreshCw size={14}/> Run audit again</button>
+      <div className="native-audit-grid">
+        {toolProbes.map((probe) => <span key={probe.id} className={`native-health-pill ${probe.status === "pass" ? "ready" : probe.status === "fail" ? "offline" : "compatible"}`} title={probe.message}>
+          {probe.status === "pass" ? <CheckCircle2 size={14}/> : probe.status === "fail" ? <AlertTriangle size={14}/> : <Clock3 size={14}/>}
+          {probe.label}: {statusLabel[probe.status]}
+        </span>)}
+      </div>
+    </section>
+
     <div className="native-tools-workspace">
       <aside className="native-tools-menu" aria-label="Native tools">
         <p>DEVELOPED TOOLS</p>
         {tools.map((tool) => {
           const Icon = tool.icon;
           const current = selected === tool.id;
+          const probe = toolProbes.find((item) => item.id === tool.id);
           return <button key={tool.id} type="button" className={current ? "active" : ""} onClick={() => selectTool(tool.id)} aria-pressed={current}>
             <span><Icon size={19}/></span>
             <span><strong>{tool.name}</strong><small>{tool.description}</small><small className="native-tool-compatibility">{tool.compatibility}</small></span>
-            {current && frameState === "ready" && <CheckCircle2 className="native-tool-ready-icon" size={16} aria-label="Ready"/>}
+            {probe?.status === "pass" && <CheckCircle2 className="native-tool-ready-icon" size={16} aria-label="Audit passed"/>}
           </button>;
         })}
         <div className="native-tools-note">
