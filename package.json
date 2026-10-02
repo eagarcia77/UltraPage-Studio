@@ -1,6 +1,6 @@
 {
   "name": "ultrapage-studio",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "engines": {
     "node": ">=22.0.0"
@@ -8,7 +8,9 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start -H 0.0.0.0 -p $PORT"
+    "start": "next start -H 0.0.0.0 -p $PORT",
+    "audit:native-tools": "node scripts/audit-native-tools.mjs",
+    "check": "npm run audit:native-tools && npm run build"
   },
   "dependencies": {
     "@fontsource/dejavu-sans": "^5.3.0",
