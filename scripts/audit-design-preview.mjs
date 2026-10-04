@@ -49,6 +49,7 @@ requireSource("Inspect HTML", "Design-to-Code Ribbon command");
 requireSource("Open Split", "direct Split workspace command");
 requireSource("Design selection located in HTML", "Design-to-HTML location announcement");
 requireSource("current.selectedText ? findTextWithinElement", "selection remapping after source reformatting");
+requireSource('root.querySelectorAll("[data-ultrapage-selected],[data-ultrapage-live-selected]")', "export cleanup for temporary selection markers");
 requireSource("PREVIEW_AUDIT_CHECK_COUNT = 23", "current Preview Audit check count");
 requireSource("Keyboard-scrollable tables", "keyboard-scrollable table audit");
 requireSource("applyPreviewKeyboardSemantics", "keyboard table semantics normalization");
