@@ -1,8 +1,11 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
   <head>
     <meta content="text/html; charset=UTF-8" http-equiv="content-type">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; img-src 'self' data:; font-src 'self' data:; connect-src 'none'; media-src 'none'; object-src 'none'; base-uri 'self'; form-action 'none'; upgrade-insecure-requests;">
+    <meta name="referrer" content="no-referrer">
+    <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=(), payment=(), usb=()">
     <!-- <p>Creado por El Dr. Eduardo Augusto García Rodríguez</p> -->
     <!-- <p>Desarrollador Curricular - Coordinador de Proyecto</p> -->
     <!-- <p>Developing Postbacc and Postgrad Curriculum Program</p> -->
@@ -106,8 +109,13 @@
     }
   </style>
     <link rel="stylesheet" href="../ultrapage-native-theme.css" data-ultrapage-native-theme>
+    <link rel="stylesheet" href="../ultrapage-native-ribbon.css" data-ultrapage-native-ribbon-style>
+    <script defer src="../ultrapage-native-ribbon.js" data-ultrapage-native-ribbon></script>
+    <script defer src="../ultrapage-native-recovery.js" data-ultrapage-native-recovery></script>
+    <script defer src="../ultrapage-assessment-bridge.js" data-ultrapage-assessment-bridge></script>
+    <script defer src="canvas-qti.js" data-ultrapage-canvas-qti></script>
 </head>
-  <body>
+  <body data-native-draft-tool="txt-test-generator">
     <nav class="navbar navbar-dark justify-content-center">
       <div class="text-center">
         <img 
@@ -122,10 +130,10 @@
       <div class="container">
         <h1><img style="width: 114px; height: 114px;" alt="Logo UCAN" src="img/ucan-logo.png">Assessment
           Converter</h1>
-        <p class="mb-0">Converts readable question banks to Blackboard Ultra TXT or Moodle GIFT.</p>
+        <p class="mb-0">Converts readable question banks to Blackboard Ultra TXT, Moodle GIFT, or Canvas QTI.</p>
         <p class="mb-0"><br>
         </p>
-        <p class="mb-0"><span><a target="_blank" title="Guide Blackboard Test Generator"
+        <p class="mb-0"><span><a target="_blank" rel="noopener noreferrer" title="Guide Blackboard Test Generator"
 
               href="Guía_Generador_Exámenes_Blackboard_Ultra_Simplificada.pdf">Download
               converter guide</a></span></p>
@@ -158,7 +166,11 @@
                     <code class="inline-sample">MA</code>, <code class="inline-sample">TF</code>,
                     <code class="inline-sample">ESS</code>, <code class="inline-sample">MAT</code>,
                     <code class="inline-sample">FIB</code>, <code class="inline-sample">NUM</code>,
-                    and <code class="inline-sample">SR</code>. Unsupported legacy types are blocked before download.</div>
+                    and <code class="inline-sample">SR</code>.<br><strong>Canvas QTI:</strong>
+                    <code class="inline-sample">MC</code>, <code class="inline-sample">MA</code>,
+                    <code class="inline-sample">TF</code>, <code class="inline-sample">ESS</code>,
+                    <code class="inline-sample">FIB</code>, and <code class="inline-sample">SR</code>.
+                    Unsupported types are blocked before download.</div>
                 </div>
               </div>
             </div>
@@ -187,17 +199,18 @@
             <div class="section-title">Input</div>
             <div class="card-body">
               <div class="row g-3 mb-3">
-                <div class="col-md-4"> <label class="form-label fw-semibold" for="quizName">File
+                <div class="col-lg-3 col-md-6"> <label class="form-label fw-semibold" for="quizName">File
                     name</label> <input class="form-control" id="quizName"
 
                     placeholder="Banco_Preguntas_Ultra" type="text"> </div>
-                <div class="col-md-4"> <label class="form-label fw-semibold" for="targetFormat">Target LMS</label>
+                <div class="col-lg-3 col-md-6"> <label class="form-label fw-semibold" for="targetFormat">Target LMS</label>
                   <select class="form-select" id="targetFormat">
                     <option value="blackboard">Blackboard Ultra TXT</option>
                     <option value="moodle">Moodle GIFT</option>
+                    <option value="canvas">Canvas QTI 1.2 ZIP</option>
                   </select>
                 </div>
-                <div class="col-md-4"> <label class="form-label fw-semibold" for="templateType">Insert
+                <div class="col-lg-3 col-md-6"> <label class="form-label fw-semibold" for="templateType">Insert
                     template</label>
                   <select class="form-select" id="templateType">
                     <option value="MC">Multiple choice</option>
@@ -208,24 +221,23 @@
                     <option value="MAT">Matching</option>
                     <option value="FIB_PLUS">Fill in multiple blanks</option>
                     <option value="NUM">Numeric answer</option>
-                    <option value="SR">Short answer (Moodle GIFT)</option>
+                    <option value="SR">Short answer (Moodle / Canvas)</option>
                   </select>
                 </div>
+                <div class="col-lg-3 col-md-6"> <label class="form-label fw-semibold" for="defaultPoints">Default points</label>
+                  <input class="form-control" id="defaultPoints" type="number" min="0.01" max="1000" step="0.01" value="1" inputmode="decimal" aria-describedby="pointsHelp">
+                  <div id="pointsHelp" class="form-text">Applied to Canvas QTI questions.</div>
+                </div>
               </div>
-              <textarea id="quizContent" class="form-control" placeholder="Paste questions here, separating each one with a blank line."></textarea>
-              <div class="d-flex flex-wrap gap-2 mt-3"> <button class="btn btn-primary"
-
-                  id="sampleBtn">Insert template</button> <button class="btn btn-outline-primary"
-
-                  id="verifyBtn">Verify</button> <button class="btn btn-success"
-
-                  id="convertBtn">Convert</button> <button class="btn btn-success"
-
-                  id="downloadBtn">Download TXT</button> <button class="btn btn-outline-secondary"
-
-                  id="copyBtn">Copy output</button> <button class="btn btn-outline-danger"
-
-                  id="clearBtn">Clear</button> </div>
+              <label class="form-label fw-semibold" for="quizContent">Question bank content</label>
+              <textarea id="quizContent" class="form-control" placeholder="Paste questions here, separating each one with a blank line." aria-describedby="formatHelp"></textarea>
+              <input class="visually-hidden" id="questionFileInput" type="file" accept=".txt,.md,text/plain,text/markdown" aria-label="Open a TXT or Markdown question bank">
+              <div class="native-action-ribbon mt-3" role="toolbar" aria-label="Assessment converter commands" data-native-ribbon>
+                <div class="native-ribbon-group" role="group" aria-label="File"><div class="native-ribbon-actions"><button class="btn btn-outline-secondary" type="button" id="openFileBtn">Open file</button><button class="btn btn-outline-danger" type="button" id="clearBtn">Clear</button></div><span class="native-ribbon-label">File</span></div>
+                <div class="native-ribbon-group" role="group" aria-label="Authoring"><div class="native-ribbon-actions"><button class="btn btn-primary" type="button" id="sampleBtn">Insert template</button><button class="btn btn-outline-primary" type="button" id="verifyBtn">Verify</button><button class="btn btn-success" type="button" id="convertBtn">Convert</button></div><span class="native-ribbon-label">Authoring</span></div>
+                <div class="native-ribbon-group native-lms-group" role="group" aria-label="LMS readiness"><div class="native-ribbon-actions"><button class="btn btn-outline-primary" type="button" id="compareLmsBtn">Compare LMS compatibility</button></div><span class="native-ribbon-label">LMS Readiness</span></div>
+                <div class="native-ribbon-group" role="group" aria-label="Export"><div class="native-ribbon-actions"><button class="btn btn-success" type="button" id="downloadBtn">Download TXT</button><button class="btn btn-outline-secondary" type="button" id="copyBtn">Copy output</button><button class="btn btn-outline-secondary" type="button" id="downloadReportBtn">Download report</button></div><span class="native-ribbon-label">Export</span></div>
+              </div>
               <div class="form-text mt-2" id="formatHelp">Each question must be a separate block. Blackboard recommends no more than 250 records per file. <a href="https://help.anthology.com/blackboard/instructor/en/assessments/questions/reuse-questions/upload-or-import-questions.html" target="_blank" rel="noopener noreferrer">Official Blackboard specification</a>.</div>
             </div>
           </div>
@@ -234,7 +246,7 @@
           <div class="card overflow-hidden h-100">
             <div class="section-title">Validation result</div>
             <div class="card-body">
-              <div class="preview" id="resultBox">No content has been processed yet.</div>
+              <div class="preview" id="resultBox" role="status" aria-live="polite">No content has been processed yet.</div>
             </div>
           </div>
         </div>
@@ -242,7 +254,7 @@
           <div class="card overflow-hidden">
             <div class="section-title" id="previewTitle">Blackboard Ultra TXT preview</div>
             <div class="card-body">
-              <div class="preview" id="previewBox">Converted content will appear here.</div>
+              <div class="preview" id="previewBox" role="region" aria-label="Converted assessment output" tabindex="0">Converted content will appear here.</div>
             </div>
           </div>
         </div>
@@ -261,10 +273,10 @@
       <div class="modal-dialog modal-xl modal-dialog-scrollable">
         <div class="modal-content">
           <div class="modal-header text-white">
-            <h5 class="modal-title" id="helpModalLabel">Ejemplos de entrada</h5>
+            <h5 class="modal-title" id="helpModalLabel">Input examples</h5>
             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
 
-              aria-label="Cerrar"></button> </div>
+              aria-label="Close"></button> </div>
           <div class="modal-body">
             <div class="preview">1. Which of the following is a prime number?
 a) 4
@@ -305,6 +317,13 @@ numeric 1. What is 2 + 2?
         </div>
       </div>
     </div>
+    <dialog id="lmsComparisonDialog" class="native-lms-dialog" aria-labelledby="lmsComparisonTitle">
+      <div class="native-lms-dialog-head"><div><p class="eyebrow">Assessment portability</p><h2 id="lmsComparisonTitle">LMS compatibility matrix</h2></div><button id="closeLmsComparisonBtn" type="button" aria-label="Close LMS compatibility matrix">×</button></div>
+      <div id="lmsComparisonSummary" class="native-lms-summary" role="status" aria-live="polite"></div>
+      <div class="table-responsive px-4"><table class="table table-sm align-middle" id="lmsComparisonTable"><caption class="visually-hidden">Compatibility results for Blackboard Ultra, Moodle, and Canvas</caption><thead><tr><th scope="col">LMS</th><th scope="col">Format</th><th scope="col">Status</th><th scope="col">Errors</th><th scope="col">Warnings</th></tr></thead><tbody></tbody></table></div>
+      <div id="lmsComparisonFindings" class="native-lms-findings" aria-label="Exact compatibility findings"></div>
+      <div class="native-lms-dialog-actions"><button id="downloadLmsComparisonBtn" type="button">Download comparison report</button> <button id="closeLmsComparisonFooterBtn" type="button">Close</button></div>
+    </dialog>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
     const quizContentEl = document.getElementById('quizContent');
@@ -319,9 +338,17 @@ numeric 1. What is 2 + 2?
     const formatHelpEl = document.getElementById('formatHelp');
     const previewTitleEl = document.getElementById('previewTitle');
     const downloadBtnEl = document.getElementById('downloadBtn');
+    const questionFileInputEl = document.getElementById('questionFileInput');
+    const defaultPointsEl = document.getElementById('defaultPoints');
     const MAX_RECORDS = 250;
     const BLACKBOARD_UNSUPPORTED_TYPES = ['ORD', 'FIL', 'SR', 'OP', 'JUMBLED_SENTENCE', 'QUIZ_BOWL'];
     const MOODLE_GIFT_TYPES = ['MC', 'MA', 'TF', 'ESS', 'FIB', 'MAT', 'NUM', 'SR'];
+    const CANVAS_QTI_TYPES = ['MC', 'MA', 'TF', 'ESS', 'FIB', 'SR'];
+    const TARGET_DETAILS = {
+      blackboard: { label: 'Blackboard Ultra', format: 'Tab-delimited TXT' },
+      moodle: { label: 'Moodle', format: 'GIFT UTF-8' },
+      canvas: { label: 'Canvas', format: 'QTI 1.2 ZIP' }
+    };
 
     const templates = {
       MC: `1. Which of the following is a prime number?\na) 4\n*b) 5\nc) 6`,
@@ -355,11 +382,12 @@ numeric 1. What is 2 + 2?
     }
 
     function sanitizeFileName(name) {
-      return (name || 'blackboard_ultra_questions')
+      const cleaned = (name || 'blackboard_ultra_questions')
         .trim()
         .replace(/[\\/:*?"<>|]+/g, '')
         .replace(/\s+/g, '_')
         .replace(/_+/g, '_');
+      return cleaned || 'assessment_questions';
     }
 
     function stripQuestionText(line) {
@@ -514,6 +542,7 @@ numeric 1. What is 2 + 2?
 
       if (type === 'FIB_PLUS') {
         const fields = ['FIB_PLUS', question];
+        const variables = [];
         if (!rest.length) errors.push(`Block ${index + 1}: Fill in multiple blanks requires variables and answers.`);
         rest.forEach((line, i) => {
           const raw = parseOptionText(line).text;
@@ -528,8 +557,10 @@ numeric 1. What is 2 + 2?
             return;
           }
           fields.push(variablePart.trim(), ...answers);
+          variables.push({ name: variablePart.trim(), answers });
           if (i < rest.length - 1) fields.push('');
         });
+        data = { variables };
         output = fields;
       }
 
@@ -588,7 +619,7 @@ numeric 1. What is 2 + 2?
     }
 
     function escapeGift(value) {
-      return String(value || '').replace(/\\/g, '\\\\').replace(/([~=#{}:])/g, '\\$1');
+      return String(value || '').replace(/\\/g, '\\\\').replace(/([~=#{}:%])/g, '\\$1');
     }
 
     function buildGiftQuestion(item, index) {
@@ -625,22 +656,57 @@ numeric 1. What is 2 + 2?
       return '';
     }
 
-    function processContent() {
-      const target = targetFormatEl.value;
+    function processContent(targetOverride = targetFormatEl.value) {
+      const target = targetOverride;
       const blocks = splitBlocks(quizContentEl.value);
       const parsed = blocks.map((block, index) => parseBlock(block, index));
       const errors = parsed.flatMap(item => item.errors || []);
+      const warnings = [];
+
+      blocks.forEach((block, index) => {
+        if (/\t/.test(block)) errors.push(`Block ${index + 1}: Remove tab characters from the readable source; tabs are reserved as Blackboard output delimiters.`);
+        if (/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/.test(block)) errors.push(`Block ${index + 1}: Remove unsupported control characters.`);
+      });
+
+      parsed.forEach((item, index) => {
+        const answerValues = item.type === 'MAT'
+          ? (item.data?.pairs || []).flat()
+          : item.type === 'FIB_PLUS'
+            ? (item.data?.variables || []).flatMap(variable => [variable.name, ...variable.answers])
+            : item.type === 'MC' || item.type === 'MA'
+              ? (item.data?.options || []).map(option => option.text)
+              : (item.data?.answers || []);
+        const normalized = answerValues.map(value => String(value).toLocaleLowerCase().replace(/\s+/g, ' ').trim()).filter(Boolean);
+        const duplicateAnswers = normalized.filter((value, position) => normalized.indexOf(value) !== position);
+        if (duplicateAnswers.length) warnings.push(`Block ${index + 1}: Duplicate answer text detected (${[...new Set(duplicateAnswers)].join(', ')}).`);
+        if (answerValues.length > 100) errors.push(`Block ${index + 1}: More than 100 answer fields were detected; split or simplify the question.`);
+        if (item.type === 'FIB_PLUS' && (item.data?.variables || []).length > 10) errors.push(`Block ${index + 1}: Blackboard allows a maximum of 10 FIB_PLUS variables.`);
+        if (item.type === 'MAT') {
+          const pairs = item.data?.pairs || [];
+          const left = pairs.map(pair => pair[0].toLocaleLowerCase());
+          const right = pairs.map(pair => pair[1].toLocaleLowerCase());
+          if (new Set(left).size !== left.length || new Set(right).size !== right.length) errors.push(`Block ${index + 1}: Matching requires a one-to-one relationship; repeated terms or matches were found.`);
+        }
+      });
+
       if (target === 'blackboard') {
         parsed.forEach((item, index) => {
           if (BLACKBOARD_UNSUPPORTED_TYPES.includes(item.type)) errors.push(`Block ${index + 1}: ${item.type} is not supported by the current Blackboard Ultra TXT specification. Use MC, MA, TF, ESS, MAT, FIB, FIB_PLUS, or NUM.`);
         });
-        if (blocks.length > MAX_RECORDS) errors.unshift(`This file contains ${blocks.length} questions. Blackboard recommends no more than ${MAX_RECORDS} records per file; split the bank before downloading.`);
-      } else {
+        if (blocks.length > MAX_RECORDS) warnings.unshift(`This bank contains ${blocks.length} questions. Download will create an ordered ZIP with batches of no more than ${MAX_RECORDS} records.`);
+      } else if (target === 'moodle') {
         parsed.forEach((item, index) => {
           if (item.type && !MOODLE_GIFT_TYPES.includes(item.type)) errors.push(`Block ${index + 1}: ${item.type} cannot be exported safely as Moodle GIFT. Use MC, MA, TF, ESS, FIB, MAT, NUM, or SR.`);
           if (item.type === 'NUM' && !/^-?\d+(?:\.\d+)?$/.test(String(item.data?.answer || ''))) errors.push(`Block ${index + 1}: Moodle GIFT requires a numeric answer for NUM.`);
           if (item.type === 'NUM' && item.data?.tolerance && !/^\d+(?:\.\d+)?$/.test(String(item.data.tolerance))) errors.push(`Block ${index + 1}: Moodle GIFT requires a non-negative numeric tolerance for NUM.`);
         });
+      } else if (target === 'canvas') {
+        parsed.forEach((item, index) => {
+          if (item.type && !CANVAS_QTI_TYPES.includes(item.type)) errors.push(`Block ${index + 1}: ${item.type} is not supported by the Canvas QTI exporter. Use MC, MA, TF, ESS, FIB, or SR.`);
+        });
+        const points = Number(defaultPointsEl.value);
+        if (!Number.isFinite(points) || points <= 0 || points > 1000) errors.push('Canvas default points must be between 0.01 and 1000.');
+        warnings.push('After importing the QTI ZIP, review question scoring and behavior in the destination Canvas quiz or item bank.');
       }
       const questionPositions = new Map();
       parsed.forEach((item, index) => {
@@ -650,13 +716,15 @@ numeric 1. What is 2 + 2?
         positions.push(index + 1);
         questionPositions.set(key, positions);
       });
-      const warnings = [...questionPositions.values()]
+      warnings.push(...[...questionPositions.values()]
         .filter(positions => positions.length > 1)
-        .map(positions => `Possible duplicate question in blocks ${positions.join(', ')}. Review duplicates before importing.`);
+        .map(positions => `Possible duplicate question in blocks ${positions.join(', ')}. Review duplicates before importing.`));
       const lines = target === 'blackboard'
         ? parsed.filter(item => item.line).map(item => item.line)
-        : parsed.filter(item => MOODLE_GIFT_TYPES.includes(item.type)).map(buildGiftQuestion);
-      return { target, blocks, parsed, errors, warnings, lines };
+        : target === 'moodle'
+          ? parsed.filter(item => MOODLE_GIFT_TYPES.includes(item.type)).map(buildGiftQuestion)
+          : [];
+      return { target, blocks, parsed, errors: [...new Set(errors)], warnings: [...new Set(warnings)], lines };
     }
 
     function showResult(messages, ok) {
@@ -704,16 +772,37 @@ numeric 1. What is 2 + 2?
         return null;
       }
 
-      const output = lines.join(target === 'moodle' ? '\r\n\r\n' : '\r\n');
+      let output;
+      if (target === 'canvas') {
+        if (!window.UltraPageCanvasQti) {
+          showResult(['Canvas QTI module is unavailable. Reload the page and try again.'], false);
+          return null;
+        }
+        output = window.UltraPageCanvasQti.buildPreview(processContent('canvas').parsed, quizNameEl.value || 'Canvas Assessment', Number(defaultPointsEl.value));
+      } else {
+        output = lines.join(target === 'moodle' ? '\r\n\r\n' : '\r\n');
+      }
       previewBoxEl.className = 'preview ok';
       previewBoxEl.textContent = output;
-      showResult([`Conversion completed for ${blocks.length} question(s) using ${target === 'moodle' ? 'Moodle GIFT' : 'Blackboard Ultra TXT'}.`, ...warnings], true);
+      showResult([`Conversion completed for ${blocks.length} question(s) using ${TARGET_DETAILS[target].format}.`, ...warnings], true);
       return output;
     }
 
     function downloadTxt() {
+      const result = processContent();
+      if (result.target === 'canvas') {
+        if (!verifyContent() || !window.UltraPageCanvasQti) return;
+        window.UltraPageCanvasQti.downloadPackage(result.parsed, quizNameEl.value || 'Canvas Assessment', Number(defaultPointsEl.value));
+        showResult([`Canvas QTI ZIP downloaded with ${result.blocks.length} question(s). Import it with Canvas Course Import or into a compatible item-bank workflow.`, ...result.warnings], true);
+        return;
+      }
       const output = convertContent();
       if (!output) return;
+      if (result.target === 'blackboard' && result.lines.length > MAX_RECORDS) {
+        window.UltraPageCanvasQti.downloadTextBatchZip(result.lines, quizNameEl.value || 'blackboard_ultra_questions', MAX_RECORDS);
+        showResult([`Blackboard batch ZIP downloaded with ${Math.ceil(result.lines.length / MAX_RECORDS)} ordered TXT file(s).`, ...result.warnings], true);
+        return;
+      }
       const blob = new Blob([output], { type: 'text/plain;charset=utf-8' });
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
@@ -723,7 +812,58 @@ numeric 1. What is 2 + 2?
       document.body.appendChild(link);
       link.click();
       link.remove();
-      URL.revokeObjectURL(link.href);
+      window.setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+    }
+
+    async function loadQuestionFile() {
+      const file = questionFileInputEl.files?.[0];
+      if (!file) return;
+      if (file.size > 1024 * 1024) {
+        showResult(['The selected file is larger than 1 MB. Split the question bank into smaller files.'], false);
+        questionFileInputEl.value = '';
+        return;
+      }
+      try {
+        quizContentEl.value = await file.text();
+        if (!quizNameEl.value.trim()) quizNameEl.value = file.name.replace(/\.[^.]+$/, '');
+        verifyContent();
+        quizContentEl.focus();
+      } catch (error) {
+        showResult(['The selected file could not be read. Use a UTF-8 TXT or Markdown file.'], false);
+      } finally {
+        questionFileInputEl.value = '';
+      }
+    }
+
+    function downloadValidationReport() {
+      const { target, blocks, errors, warnings } = processContent();
+      questionCountEl.textContent = blocks.length;
+      errorCountEl.textContent = errors.length;
+      statusLabelEl.textContent = errors.length ? 'Errors' : 'Verified';
+      const targetLabel = `${TARGET_DETAILS[target].label} — ${TARGET_DETAILS[target].format}`;
+      const lines = [
+        'ULTRAPAGE STUDIO - ASSESSMENT CONVERTER REPORT',
+        `Generated: ${new Date().toISOString()}`,
+        `Target: ${targetLabel}`,
+        `Questions detected: ${blocks.length}`,
+        `Errors: ${errors.length}`,
+        `Warnings: ${warnings.length}`,
+        '',
+        'ERRORS',
+        ...(errors.length ? errors.map((item) => `- ${item}`) : ['- None']),
+        '',
+        'WARNINGS',
+        ...(warnings.length ? warnings.map((item) => `- ${item}`) : ['- None']),
+      ];
+      const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `${sanitizeFileName(quizNameEl.value || 'assessment')}_validation_report.txt`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+      showResult([`Validation report downloaded for ${blocks.length} question(s).`, ...errors, ...warnings], !errors.length);
     }
 
     async function copyTxt() {
@@ -731,7 +871,8 @@ numeric 1. What is 2 + 2?
       if (!output) return;
       try {
         await navigator.clipboard.writeText(output);
-        showResult([`${targetFormatEl.value === 'moodle' ? 'Moodle GIFT' : 'Blackboard Ultra TXT'} content was copied to the clipboard.`], true);
+        const target = targetFormatEl.value;
+        showResult([`${target === 'canvas' ? 'Canvas QTI package preview' : TARGET_DETAILS[target].format} was copied to the clipboard.`], true);
       } catch (error) {
         showResult(['The content could not be copied automatically. Check the browser permissions.'], false);
       }
@@ -757,15 +898,19 @@ numeric 1. What is 2 + 2?
 
     function updateTargetUi() {
       const isMoodle = targetFormatEl.value === 'moodle';
-      previewTitleEl.textContent = isMoodle ? 'Moodle GIFT preview' : 'Blackboard Ultra TXT preview';
-      downloadBtnEl.textContent = isMoodle ? 'Download GIFT' : 'Download TXT';
-      formatHelpEl.innerHTML = isMoodle
-        ? 'Questions are exported in UTF-8 GIFT format and separated by a blank line. Review the <a href="https://docs.moodle.org/en/GIFT_format" target="_blank" rel="noopener noreferrer">official Moodle GIFT specification</a> before importing.'
-        : 'Each question must be a separate block. Blackboard recommends no more than 250 records per file. Review the <a href="https://help.anthology.com/blackboard/instructor/en/assessments/questions/reuse-questions/upload-or-import-questions.html" target="_blank" rel="noopener noreferrer">official Blackboard specification</a> before importing.';
+      const isCanvas = targetFormatEl.value === 'canvas';
+      previewTitleEl.textContent = isCanvas ? 'Canvas QTI package preview' : isMoodle ? 'Moodle GIFT preview' : 'Blackboard Ultra TXT preview';
+      downloadBtnEl.textContent = isCanvas ? 'Download QTI ZIP' : isMoodle ? 'Download GIFT' : 'Download TXT';
+      defaultPointsEl.disabled = !isCanvas;
+      formatHelpEl.innerHTML = isCanvas
+        ? 'Canvas imports assessments through a QTI ZIP package. This exporter creates QTI 1.2 and requires a final review after import. See the <a href="https://developerdocs.instructure.com/services/canvas/resources/content_migrations" target="_blank" rel="noopener noreferrer">official Canvas content migration documentation</a>.'
+        : isMoodle
+          ? 'Questions are exported in UTF-8 GIFT format and separated by a blank line. Review the <a href="https://docs.moodle.org/en/GIFT_format" target="_blank" rel="noopener noreferrer">official Moodle GIFT specification</a> before importing.'
+          : 'Each question becomes one tab-delimited row with no blank lines. Banks over 250 questions download as ordered batches. Review the <a href="https://help.anthology.com/blackboard/instructor/en/assessments/questions/reuse-questions/upload-or-import-questions.html" target="_blank" rel="noopener noreferrer">official Blackboard specification</a> before importing.';
 
-      const fibPlusOption = templateTypeEl.querySelector('option[value="FIB_PLUS"]');
-      if (fibPlusOption) fibPlusOption.disabled = isMoodle;
-      if (isMoodle && templateTypeEl.value === 'FIB_PLUS') templateTypeEl.value = 'MC';
+      const allowedTemplates = isCanvas ? CANVAS_QTI_TYPES : isMoodle ? MOODLE_GIFT_TYPES : ['MC', 'MA', 'TF', 'ESS', 'FIB', 'MAT', 'FIB_PLUS', 'NUM'];
+      [...templateTypeEl.options].forEach(option => { option.disabled = !allowedTemplates.includes(option.value); });
+      if (!allowedTemplates.includes(templateTypeEl.value)) templateTypeEl.value = 'MC';
 
       resultBoxEl.className = 'preview';
       previewBoxEl.className = 'preview';
@@ -776,13 +921,117 @@ numeric 1. What is 2 + 2?
       statusLabelEl.textContent = 'Ready';
     }
 
+    let lastLmsComparison = null;
+
+    function buildLmsComparison() {
+      const results = ['blackboard', 'moodle', 'canvas'].map(target => {
+        const result = processContent(target);
+        return { ...result, detail: TARGET_DETAILS[target] };
+      });
+      lastLmsComparison = { generatedAt: new Date(), results };
+      return lastLmsComparison;
+    }
+
+    function comparisonReportText(comparison) {
+      const lines = [
+        'ULTRAPAGE STUDIO - CROSS-LMS ASSESSMENT COMPATIBILITY',
+        `Generated: ${comparison.generatedAt.toISOString()}`,
+        `Question bank: ${quizNameEl.value.trim() || 'Untitled assessment'}`,
+        ''
+      ];
+      comparison.results.forEach(result => {
+        lines.push(`${result.detail.label.toUpperCase()} — ${result.detail.format}`);
+        lines.push(`Status: ${result.errors.length ? 'BLOCKED' : 'READY'}`);
+        lines.push(`Questions: ${result.blocks.length}`);
+        lines.push(`Errors: ${result.errors.length}`);
+        lines.push(`Warnings: ${result.warnings.length}`);
+        lines.push('ERRORS');
+        lines.push(...(result.errors.length ? result.errors.map(item => `- ${item}`) : ['- None']));
+        lines.push('WARNINGS');
+        lines.push(...(result.warnings.length ? result.warnings.map(item => `- ${item}`) : ['- None']));
+        lines.push('');
+      });
+      lines.push('A successful automated preflight does not replace a final import and learner-view test in the destination LMS.');
+      return lines.join('\n');
+    }
+
+    function renderLmsComparison(comparison) {
+      const ready = comparison.results.filter(result => !result.errors.length).length;
+      const summary = document.getElementById('lmsComparisonSummary');
+      summary.textContent = `${ready} of 3 LMS targets are ready for export. Select a blocked row below to review exact block-level findings.`;
+      const tableBody = document.querySelector('#lmsComparisonTable tbody');
+      tableBody.replaceChildren(...comparison.results.map(result => {
+        const row = document.createElement('tr');
+        const values = [result.detail.label, result.detail.format, result.errors.length ? 'Blocked' : 'Ready', String(result.errors.length), String(result.warnings.length)];
+        values.forEach((value, index) => {
+          const cell = document.createElement(index === 0 ? 'th' : 'td');
+          if (index === 0) cell.scope = 'row';
+          cell.textContent = value;
+          if (index === 2) cell.className = result.errors.length ? 'text-danger fw-semibold' : 'text-success fw-semibold';
+          row.append(cell);
+        });
+        return row;
+      }));
+      const findings = document.getElementById('lmsComparisonFindings');
+      findings.replaceChildren(...comparison.results.map(result => {
+        const section = document.createElement('section');
+        const heading = document.createElement('h3');
+        heading.textContent = result.detail.label;
+        const list = document.createElement('ul');
+        const messages = [
+          ...result.errors.map(message => ({ level: 'error', message })),
+          ...result.warnings.map(message => ({ level: 'warning', message }))
+        ];
+        if (!messages.length) messages.push({ level: 'pass', message: 'No errors or warnings detected.' });
+        messages.forEach(finding => {
+          const item = document.createElement('li');
+          item.dataset.level = finding.level;
+          item.textContent = `${finding.level === 'error' ? 'Error' : finding.level === 'warning' ? 'Warning' : 'Pass'}: ${finding.message}`;
+          list.append(item);
+        });
+        section.append(heading, list);
+        return section;
+      }));
+    }
+
+    function compareLmsCompatibility() {
+      const comparison = buildLmsComparison();
+      renderLmsComparison(comparison);
+      document.getElementById('lmsComparisonDialog').showModal();
+    }
+
+    function downloadLmsComparison() {
+      const comparison = lastLmsComparison || buildLmsComparison();
+      const blob = new Blob([comparisonReportText(comparison)], { type: 'text/plain;charset=utf-8' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `${sanitizeFileName(quizNameEl.value || 'assessment')}_cross_lms_report.txt`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+    }
+
     document.getElementById('sampleBtn').addEventListener('click', insertTemplate);
+    document.getElementById('openFileBtn').addEventListener('click', () => questionFileInputEl.click());
+    questionFileInputEl.addEventListener('change', loadQuestionFile);
     document.getElementById('verifyBtn').addEventListener('click', verifyContent);
     document.getElementById('convertBtn').addEventListener('click', convertContent);
     document.getElementById('downloadBtn').addEventListener('click', downloadTxt);
     document.getElementById('copyBtn').addEventListener('click', copyTxt);
+    document.getElementById('downloadReportBtn').addEventListener('click', downloadValidationReport);
     document.getElementById('clearBtn').addEventListener('click', clearAll);
+    document.getElementById('compareLmsBtn').addEventListener('click', compareLmsCompatibility);
+    document.getElementById('downloadLmsComparisonBtn').addEventListener('click', downloadLmsComparison);
+    document.getElementById('closeLmsComparisonBtn').addEventListener('click', () => document.getElementById('lmsComparisonDialog').close());
+    document.getElementById('closeLmsComparisonFooterBtn').addEventListener('click', () => document.getElementById('lmsComparisonDialog').close());
+    document.getElementById('lmsComparisonDialog').addEventListener('click', event => {
+      if (event.target === document.getElementById('lmsComparisonDialog')) event.currentTarget.close();
+    });
     targetFormatEl.addEventListener('change', updateTargetUi);
+    defaultPointsEl.addEventListener('change', () => {
+      if (targetFormatEl.value === 'canvas' && quizContentEl.value.trim()) verifyContent();
+    });
     updateTargetUi();
   </script>
   </body>

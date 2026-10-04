@@ -8,8 +8,8 @@
     "themeReappliedAfterSync": true
   },
   "importedAt": "2026-09-24T00:00:00Z",
-  "compatibilityProfile": "Blackboard Ultra",
-  "compatibilityReviewedAt": "2026-09-25T00:00:00Z",
+  "compatibilityProfile": "Native integration",
+  "compatibilityReviewedAt": "2026-10-03T00:00:00Z",
   "tools": [
     {
       "id": "estiloapa",
@@ -22,8 +22,29 @@
       },
       "destination": "public/native-tools/estiloapa/",
       "route": "/tools#apa",
-      "assetCount": 21,
-      "theme": "ultrapage-theme.css"
+      "assetCount": 22,
+      "theme": "ultrapage-theme.css",
+      "nativeAssets": ["../ultrapage-native-ribbon.css", "../ultrapage-native-ribbon.js", "../ultrapage-native-recovery.js", "lms-export.js"],
+      "audit": {
+        "status": "reviewed",
+        "reviewedAt": "2026-10-03",
+        "language": "English interface; Spanish and English document content",
+        "formats": ["DOCX", "Tagged PDF", "HTML", "Blackboard Ultra HTML", "Moodle HTML", "Canvas HTML", "Universal LMS HTML", "APA 7 audit"],
+        "checks": [
+          "Labeled file upload and editable preview",
+          "Live status and audit score announcements",
+          "Grouped Ribbon commands with arrow, Home, and End navigation",
+          "Word-style command search with Alt+Q and full keyboard execution",
+          "Responsive preview and DOCX, tagged PDF, and HTML exports",
+          "Private AutoSave, Ctrl/Command+S, latest-draft recovery, and five-version local history",
+          "Validated portable workspace backup and restore without server upload",
+          "Profile-based Blackboard Ultra, Moodle, Canvas, and Universal LMS safe HTML export",
+          "Blackboard Ultra Document HTML-block readiness with alternate-domain and role-permission guidance",
+          "Exact LMS portability findings, blocking accessibility checks, automatic sanitization, and downloadable compatibility report",
+          "Copy-ready HTML fragment with inline responsive APA formatting and a standalone LMS HTML download",
+          "Confirmed destructive actions with a Before replace recovery snapshot"
+        ]
+      }
     },
     {
       "id": "txt-test-generator",
@@ -36,8 +57,31 @@
       },
       "destination": "public/native-tools/txt-test-generator/index.html",
       "route": "/tools#txt",
-      "assetCount": 4,
-      "theme": "../ultrapage-native-theme.css"
+      "assetCount": 5,
+      "theme": "../ultrapage-native-theme.css",
+      "nativeAssets": ["../ultrapage-native-ribbon.css", "../ultrapage-native-ribbon.js", "../ultrapage-native-recovery.js", "../ultrapage-assessment-bridge.js", "canvas-qti.js"],
+      "audit": {
+        "status": "reviewed",
+        "reviewedAt": "2026-10-03",
+        "language": "English",
+        "formats": ["Blackboard Ultra TXT", "Blackboard batch ZIP", "Moodle GIFT", "Canvas QTI 1.2 ZIP"],
+        "checks": [
+          "TXT and Markdown file opening plus question validation before conversion",
+          "Grouped Ribbon commands, accessible status, and keyboard navigation",
+          "Word-style command search with Alt+Q and full keyboard execution",
+          "Unsupported question types blocked before download",
+          "Downloadable validation report, UTF-8 export, and responsive native theme",
+          "Private AutoSave, Ctrl/Command+S, latest-bank recovery, and five-version local history",
+          "Validated portable workspace backup and restore without server upload",
+          "Local editable-bank transfer to QTI 2.1 with explicit import and target revalidation",
+          "Canvas QTI 1.2 ZIP package with manifest, scoring metadata, and explicit response cardinality",
+          "Cross-LMS Blackboard, Moodle, and Canvas compatibility matrix with exact block-level findings",
+          "Automatic Blackboard 250-record batching with ordered UTF-8 TXT files in a ZIP",
+          "Limits for answers, FIB_PLUS variables, one-to-one matching, duplicate choices, reserved characters, and Canvas points",
+          "Restrictive content security, permissions, and referrer policies with local-only bank processing",
+          "Confirmed destructive actions with a Before replace recovery snapshot"
+        ]
+      }
     },
     {
       "id": "qti-blackboard",
@@ -51,7 +95,31 @@
       "destination": "public/native-tools/qti-blackboard/index.html",
       "route": "/tools#qti",
       "assetCount": 2,
-      "theme": "../ultrapage-native-theme.css"
+      "theme": "../ultrapage-native-theme.css",
+      "nativeAssets": ["../ultrapage-native-ribbon.css", "../ultrapage-native-ribbon.js", "../ultrapage-native-recovery.js", "../ultrapage-assessment-bridge.js", "../txt-test-generator/canvas-qti.js"],
+      "audit": {
+        "status": "reviewed",
+        "reviewedAt": "2026-10-03",
+        "language": "English",
+        "formats": ["Blackboard QTI 2.1 ZIP", "Moodle GIFT", "Canvas QTI 1.2 ZIP"],
+        "checks": [
+          "TXT and Markdown file opening with exact preflight findings",
+          "Grouped Ribbon commands, accessible live messages, and keyboard navigation",
+          "Word-style command search with Alt+Q and full keyboard execution",
+          "Local browser processing with sanitized filenames",
+          "Downloadable preflight report, import-ready ZIP structure, and responsive native theme",
+          "Current Blackboard support for MC, MA, TF, FIB, and Essay with multiple-response cardinality",
+          "Blackboard-safe response declarations without optional QTI responseProcessing that would cause skipped items",
+          "Generated XML, manifest resource, referenced-file, namespace, and identifier integrity checks",
+          "Target-specific Blackboard QTI 2.1, Moodle GIFT, and Canvas QTI 1.2 downloads",
+          "Configurable points metadata and cross-LMS compatibility matrix",
+          "Copy-ready six-step post-import verification checklist for sandbox validation",
+          "Private AutoSave, Ctrl/Command+S, latest-bank recovery, and five-version local history",
+          "Validated portable workspace backup and restore without server upload",
+          "Local editable-bank transfer to TXT with explicit import and target revalidation",
+          "Confirmed destructive actions with a Before replace recovery snapshot"
+        ]
+      }
     }
   ],
   "syncedAt": "2026-09-25T01:32:08Z",

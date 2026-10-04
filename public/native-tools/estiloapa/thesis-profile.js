@@ -11,7 +11,7 @@ function thesisProfileEnabled() {
 }
 
 function thesisDegreeLabel() {
-  return thesisProfileValue() === THESIS_DOCTORAL ? "Disertación doctoral" : "Tesis de maestría";
+  return thesisProfileValue() === THESIS_DOCTORAL ? "Doctoral dissertation" : "Master’s thesis";
 }
 
 function thesisText(value) {
@@ -216,19 +216,19 @@ function thesisAudit(preview) {
   const requiredDoctoral = ["Página de aprobación", "Certificación de autoría", "Capítulo II", "Capítulo III", "Capítulo IV", "Capítulo V"];
 
   if (structure.mode === "module-like") {
-    findings.push("El archivo parece ser un módulo académico, no una tesis/disertación. No se aplicará numeración romana a todo el documento; el DOCX se tratará como cuerpo académico con numeración arábiga desde 1.");
+    findings.push("The file appears to be an academic module, not a thesis/dissertation. Roman numbering will not be applied to the entire document; DOCX export will treat it as academic body content with Arabic numbering starting at 1.");
   } else if (structure.chapterIndex < 0 && structure.firstPrelimIndex < 0) {
-    findings.push("No se detectaron preliminares ni Capítulo I. El DOCX se exportará como cuerpo académico y comenzará en página 1 arábiga.");
+    findings.push("Neither preliminary pages nor Chapter I were detected. DOCX export will treat it as academic body content and begin with Arabic page 1.");
   } else if (structure.chapterIndex < 0) {
-    findings.push("Se detectaron páginas preliminares, pero no Capítulo I. Solo los preliminares usarán números romanos hasta que el documento incluya el cuerpo de la tesis.");
+    findings.push("Preliminary pages were detected, but Chapter I was not. Only preliminary pages will use Roman numerals until the thesis body is present.");
   }
 
   for (const label of requiredCommon) {
-    if (!new RegExp(label.replace(" ", "\\s+"), "i").test(text)) findings.push(`Falta o no se detectó: ${label}.`);
+    if (!new RegExp(label.replace(" ", "\\s+"), "i").test(text)) findings.push(`Missing or not detected: ${label}.`);
   }
   if (doctoral) {
-    for (const label of requiredDoctoral) if (!new RegExp(label.replace(" ", "\\s+"), "i").test(text)) findings.push(`Perfil doctoral: falta o no se detectó ${label}.`);
-    if (!/3\.7\s+Consideraciones Éticas/i.test(text)) findings.push("Perfil doctoral: no se detectó la sección 3.7 Consideraciones Éticas indicada por la plantilla.");
+    for (const label of requiredDoctoral) if (!new RegExp(label.replace(" ", "\\s+"), "i").test(text)) findings.push(`Doctoral profile: ${label} is missing or was not detected.`);
+    if (!/3\.7\s+Consideraciones Éticas/i.test(text)) findings.push("Doctoral profile: template section 3.7 Consideraciones Éticas was not detected.");
   }
 
   const headings = [...preview.querySelectorAll(".thesis-major-heading,.thesis-section-heading")].length;
@@ -247,13 +247,13 @@ function appendThesisAudit() {
   summary.dataset.thesisAudit = "true";
   summary.className = result.findings.length ? "warn" : "ok";
   const modeLabels = {
-    "full-thesis": "tesis completa",
-    "body-with-chapter": "cuerpo con capítulos",
-    "prelim-only": "solo preliminares",
-    "body-only": "cuerpo académico",
-    "module-like": "módulo académico detectado",
+    "full-thesis": "complete thesis",
+    "body-with-chapter": "body with chapters",
+    "prelim-only": "preliminary pages only",
+    "body-only": "academic body content",
+    "module-like": "academic module detected",
   };
-  summary.textContent = `${thesisDegreeLabel()}: ${result.headings} encabezado(s), ${result.refs} referencia(s). Estructura: ${modeLabels[result.structure.mode] || result.structure.mode}.`;
+  summary.textContent = `${thesisDegreeLabel()}: ${result.headings} heading(s), ${result.refs} reference(s). Structure: ${modeLabels[result.structure.mode] || result.structure.mode}.`;
   list.append(summary);
   for (const finding of result.findings.slice(0, 10)) {
     const li = document.createElement("li");
@@ -290,9 +290,9 @@ function applyThesisProfile({ announce = false } = {}) {
     const status = document.querySelector("#status");
     if (status) {
       const special = structure.mode === "module-like"
-        ? " Se detectó contenido de módulo; se conservará como cuerpo académico y no como preliminares."
-        : (structure.chapterIndex < 0 && structure.firstPrelimIndex < 0 ? " No se detectó Capítulo I ni preliminares; la exportación iniciará en página 1 arábiga." : "");
-      status.textContent = `${thesisDegreeLabel()} — perfil institucional v${THESIS_PROFILE_VERSION} aplicado: TNR 12, doble espacio, margen izquierdo 1.5\", demás 1\".${special}`;
+        ? " Module content was detected; it will remain academic body content rather than preliminary pages."
+        : (structure.chapterIndex < 0 && structure.firstPrelimIndex < 0 ? " Neither Chapter I nor preliminary pages were detected; export will begin with Arabic page 1." : "");
+      status.textContent = `${thesisDegreeLabel()} — institutional profile v${THESIS_PROFILE_VERSION} applied: TNR 12, double spacing, 1.5-inch left margin, 1-inch remaining margins.${special}`;
       status.className = structure.mode === "module-like" ? "status error" : "status success";
     }
   }

@@ -406,11 +406,11 @@ function updateOriginalMediaAudit() {
   li.dataset.pdfOriginalMediaAudit = "true";
   li.className = review.length ? "warn" : "ok";
   const parts = [];
-  if (banners.length) parts.push(`${banners.length} banner(es) de módulo conservado(s) sin numeración de figura`);
-  if (selfCaptioned.length) parts.push(`${selfCaptioned.length} figura(s) original(es) con rótulo/título integrados preservada(s) sin duplicar el caption`);
-  if (otherFigures.length) parts.push(`${otherFigures.length} imagen(es) adicional(es) del cuerpo`);
-  if (review.length) parts.push(`${review.length} requiere(n) clasificación manual`);
-  li.textContent = `Medios originales PDF v${PDF_ORIGINAL_MEDIA_VERSION}: ${parts.join("; ")}.`;
+  if (banners.length) parts.push(`${banners.length} module banner(s) preserved without figure numbering`);
+  if (selfCaptioned.length) parts.push(`${selfCaptioned.length} original figure(s) with embedded labels/titles preserved without duplicate captions`);
+  if (otherFigures.length) parts.push(`${otherFigures.length} additional body image(s)`);
+  if (review.length) parts.push(`${review.length} require manual classification`);
+  li.textContent = `Original PDF media v${PDF_ORIGINAL_MEDIA_VERSION}: ${parts.join("; ")}.`;
   list.append(li);
 }
 
@@ -440,7 +440,7 @@ async function preserveOriginalPdfMedia() {
       preview.dispatchEvent(new Event("input", { bubbles: true }));
       const status = document.querySelector("#status");
       if (status) {
-        status.textContent = `PDF v${PDF_ORIGINAL_MEDIA_VERSION}: ${inserted} imagen(es) original(es) preservada(s). El banner del módulo no se numera; las figuras auto-captionadas conservan su numeración sin duplicar título.`;
+        status.textContent = `PDF v${PDF_ORIGINAL_MEDIA_VERSION}: ${inserted} original image(s) preserved. The module banner is not numbered; self-captioned figures retain their numbering without a duplicate title.`;
         status.className = "status success";
       }
     }
@@ -490,11 +490,11 @@ function updateVersionUi() {
   const badge = document.querySelector(".badge");
   if (badge) {
     badge.textContent = "v3.4";
-    badge.setAttribute("aria-label", "Versión 3.4");
+    badge.setAttribute("aria-label", "Version 3.4");
   }
   const footer = document.querySelector("footer p");
   if (footer) {
-    footer.textContent = "APA7 Academic Formatter v3.4 · Banner de módulo sin numeración · Figuras originales preservadas · Tablas APA 7 · Listas numeradas · Auditoría de referencias.";
+    footer.textContent = "APA7 Academic Formatter v3.4 · Unnumbered module banner · Original figures preserved · APA 7 tables · Numbered lists · Reference audit.";
   }
 }
 
@@ -526,7 +526,7 @@ function initializeOriginalPdfMedia() {
 
   // Run after the generic table/figure normalizer but before DOCX/HTML exporters.
   document.addEventListener("click", (event) => {
-    if (!event.target?.closest?.("#downloadDocxBtn,#downloadHtmlBtn")) return;
+    if (!event.target?.closest?.("#downloadDocxBtn,#downloadHtmlBtn,#downloadPdfBtn")) return;
     repairMediaRoles(preview);
 
     // The existing DOCX exporter only emits images carrying apa-figure-image.

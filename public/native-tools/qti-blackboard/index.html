@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -13,7 +13,7 @@
   <!-- University Center for Advancing and Nurturing Postbacc Quality (UCAN) -->
   <!-- Title V PPOHA #P031M230038 -->
 
-  <title>QTI 2.1 Studio PRO para Blackboard Ultra</title>
+  <title>QTI 2.1 Package Builder | UltraPage Studio</title>
   <style>
     :root {
       --green: #007B5F;
@@ -98,7 +98,7 @@
     h2 { color: var(--green); margin-top: 0; letter-spacing: -.02em; }
     h3 { margin-bottom: 6px; color: var(--green-dark); }
 
-    textarea, input {
+    textarea, input, select {
       width: 100%;
       border: 1px solid var(--border);
       border-radius: 16px;
@@ -109,7 +109,7 @@
       outline: none;
     }
 
-    textarea:focus, input:focus { border-color: var(--green); box-shadow: 0 0 0 4px rgba(0,123,95,.10); }
+    textarea:focus, input:focus, select:focus { border-color: var(--green); box-shadow: 0 0 0 4px rgba(0,123,95,.10); }
     textarea { min-height: 470px; resize: vertical; }
     .output { min-height: 470px; }
 
@@ -195,6 +195,15 @@
 
     label { font-weight: 800; color: var(--green-dark); }
 
+    .field-grid { display:grid; grid-template-columns:2fr 1fr 1fr; gap:10px; }
+    .compatibility-table { width:100%; border-collapse:collapse; margin-top:12px; background:#fff; }
+    .compatibility-table caption { text-align:left; font-weight:800; margin-bottom:8px; color:var(--green-dark); }
+    .compatibility-table th,.compatibility-table td { border:1px solid var(--border); padding:10px; text-align:left; vertical-align:top; }
+    .compatibility-table th { background:#e9f6f1; color:var(--green-dark); }
+    .compatibility-table tr.active td { background:#fff9df; }
+    .target-status { display:flex; align-items:center; gap:8px; margin-top:10px; padding:10px 12px; border:1px solid var(--border); border-radius:14px; background:#f8fafc; }
+    .target-status strong { color:var(--green-dark); }
+
 
 
     .validation-grid {
@@ -254,31 +263,36 @@
       font-size: .9rem;
     }
 
-    @media (max-width: 950px) { main { grid-template-columns: 1fr; } }
+    @media (max-width: 950px) { main { grid-template-columns: 1fr; } .field-grid { grid-template-columns:1fr; } .compatibility-table { display:block; overflow-x:auto; } }
   </style>
   <link rel="stylesheet" href="../ultrapage-native-theme.css" data-ultrapage-native-theme>
+  <link rel="stylesheet" href="../ultrapage-native-ribbon.css" data-ultrapage-native-ribbon-style>
+  <script defer src="../ultrapage-native-ribbon.js" data-ultrapage-native-ribbon></script>
+  <script defer src="../ultrapage-native-recovery.js" data-ultrapage-native-recovery></script>
+  <script defer src="../ultrapage-assessment-bridge.js" data-ultrapage-assessment-bridge></script>
+  <script defer src="../txt-test-generator/canvas-qti.js" data-ultrapage-canvas-qti></script>
 </head>
-<body>
+<body data-native-draft-tool="qti-blackboard">
   <header>
     <img src="img/LOGO-INTER-SG-HORIZONTAL_sticker.png" alt="Logo Inter San Germán" class="header-logo" loading="eager">
     <h1>QTI 2.1 Blackboard</h1>
-    <p>Generador estable de paquetes ZIP QTI 2.1 para Blackboard Ultra. Convierte bancos de preguntas en texto a un paquete importable desde <strong>Manage Banks</strong>, sin crear manualmente el ZIP.</p>
+    <p>Build stable QTI 2.1 ZIP packages for Blackboard Ultra, then reuse the same validated bank for Moodle or Canvas. Convert readable questions without assembling exchange files manually.</p>
   </header>
 
   <main>
     <section class="card full">
-      <h2>Tipos de preguntas compatibles</h2>
+      <h2>Supported question types</h2>
       <div class="chips">
-        <span class="chip green">MC: Selección múltiple</span>
-        <span class="chip green">TF: Cierto/Falso</span>
-        <span class="chip green">FIB: Llenar blanco</span>
-        <span class="chip green">ESSAY: Ensayo</span>
-        <span class="chip red">MA: Desactivado</span>
-        <span class="chip red">MATCH: Desactivado</span>
-        <span class="chip red">SA: No admitido en QTI de Ultra</span>
+        <span class="chip green">MC: Multiple choice</span>
+        <span class="chip green">TF: True / False</span>
+        <span class="chip green">FIB: Fill in the blank</span>
+        <span class="chip green">ESSAY: Essay</span>
+        <span class="chip green">MA: Multiple answer</span>
+        <span class="chip red">MATCH: Disabled</span>
+        <span class="chip red">SA: Not supported by Ultra QTI</span>
       </div>
-      <p class="note"><strong>Formato recomendado:</strong> escribe el tipo al inicio de cada pregunta. Usa <code>*</code> para marcar la respuesta correcta o las respuestas aceptadas. Deja una línea en blanco entre preguntas. Esta versión admite únicamente los tipos que Blackboard documenta para paquetes QTI: <code>MC</code>, <code>TF</code>, <code>FIB</code> y <code>ESSAY</code>.</p>
-      <pre><b><u>Puede copiar estos ejemplos a Microsoft Word y adaptarlos a sus preguntas de examen que necesite.</u></b>
+      <p class="note"><strong>Recommended format:</strong> begin each question with its type. Use <code>*</code> to mark the correct answer or accepted responses. Leave one blank line between questions. This version supports the Blackboard-documented QTI types <code>MC</code>, <code>MA</code>, <code>TF</code>, <code>FIB</code>, and <code>ESSAY</code>.</p>
+      <pre><b><u>Copy these examples into Microsoft Word and adapt them to your assessment.</u></b>
         
 MC 1. ¿Cuál es la mejor definición de inteligencia artificial en educación?
 A. Uso de computadoras sin interacción humana
@@ -286,88 +300,117 @@ A. Uso de computadoras sin interacción humana
 C. Uso exclusivo de robots en el aula
 D. Sustitución total del docente
 
-TF 2. La inteligencia artificial permite personalizar el aprendizaje según las necesidades del estudiante.
+MA 2. Seleccione dos usos responsables de la IA educativa.
+*A. Personalizar apoyos de aprendizaje
+*B. Revisar sesgos y resultados
+C. Publicar datos privados del estudiante
+D. Sustituir toda decisión docente
+
+TF 3. La inteligencia artificial permite personalizar el aprendizaje según las necesidades del estudiante.
 *A. Verdadero
 B. Falso
 
-FIB 3. La inteligencia artificial permite ______ el aprendizaje.
+FIB 4. La inteligencia artificial permite ______ el aprendizaje.
 *personalizar
 *adaptar
 
-ESSAY 4. Explique dos implicaciones éticas del uso de la IA en la educación.</pre>
+ESSAY 5. Explique dos implicaciones éticas del uso de la IA en la educación.</pre>
       <div class="security-note" role="note">
-        <strong>Nota de seguridad:</strong> esta herramienta procesa el contenido localmente en el navegador. No escriba contraseñas, información personal sensible ni datos confidenciales de estudiantes. Revise siempre el paquete generado antes de importarlo a Blackboard.
+        <strong>Security note:</strong> this tool processes content locally in your browser. Do not enter passwords, sensitive personal information, or confidential student data. Always review the generated file in a sandbox course before using it with students.
       </div>
     </section>
 
     <section class="card">
-      <h2>Banco de preguntas</h2>
-      <div class="field-row">
-        <label for="packageName">Nombre del paquete ZIP</label>
-        <input id="packageName" type="text" value="UCAN_QTI21_Blackboard" maxlength="50" autocomplete="off">
+      <h2>Question bank</h2>
+      <div class="field-grid">
+        <div class="field-row">
+          <label for="packageName">Package name</label>
+          <input id="packageName" type="text" value="UCAN_QTI21_Blackboard" maxlength="50" autocomplete="off">
+        </div>
+        <div class="field-row">
+          <label for="targetLms">Target LMS</label>
+          <select id="targetLms"><option value="blackboard">Blackboard Ultra · QTI 2.1</option><option value="moodle">Moodle · GIFT</option><option value="canvas">Canvas · QTI 1.2</option></select>
+        </div>
+        <div class="field-row">
+          <label for="defaultPoints">Points per question</label>
+          <input id="defaultPoints" type="number" min="0.01" max="1000" step="0.25" value="1" inputmode="decimal">
+        </div>
       </div>
       <div class="field-row">
-        <label for="inputText">Contenido del banco</label>
-        <textarea id="inputText" spellcheck="false" placeholder="Pega aquí tu banco de preguntas..."></textarea>
+        <label for="inputText">Question bank content</label>
+        <textarea id="inputText" spellcheck="false" placeholder="Paste your question bank here..."></textarea>
       </div>
-      <div class="toolbar">
-        <button class="primary" id="btnDownloadZip" type="button">Descargar ZIP QTI 2.1</button>
-        <button class="purple" id="btnLoadExample" type="button">Cargar ejemplo</button>
-        <button class="ghost" id="btnClear" type="button">Limpiar Contenido</button>
+      <input class="visually-hidden" id="qtiFileInput" type="file" accept=".txt,.md,text/plain,text/markdown" aria-label="Open a TXT or Markdown question bank">
+      <div class="toolbar native-action-ribbon" role="toolbar" aria-label="QTI package commands" data-native-ribbon>
+        <div class="native-ribbon-group" role="group" aria-label="File"><div class="native-ribbon-actions"><button class="ghost" id="btnOpenFile" type="button">Open file</button><button class="purple" id="btnLoadExample" type="button">Load example</button><button class="ghost" id="btnClear" type="button">Clear content</button></div><span class="native-ribbon-label">File</span></div>
+        <div class="native-ribbon-group" role="group" aria-label="Export"><div class="native-ribbon-actions"><button class="primary" id="btnDownloadZip" type="button">Download QTI 2.1 ZIP</button><button class="blue" id="btnDownloadTarget" type="button">Download for target LMS</button></div><span class="native-ribbon-label">Export</span></div>
+        <div class="native-ribbon-group" role="group" aria-label="Compatibility"><div class="native-ribbon-actions"><button class="purple" id="btnCompareLms" type="button">Compare LMS formats</button><button class="ghost" id="btnCopyImportChecklist" type="button">Copy import checklist</button></div><span class="native-ribbon-label">Compatibility</span></div>
       </div>
-      <p class="small-muted">El botón de descarga verifica el contenido y prepara el paquete automáticamente.</p>
+      <p class="small-muted">Download validates the content and prepares the package automatically.</p>
+      <div class="target-status" id="targetStatus" role="status"><strong>Blackboard Ultra</strong><span>QTI 2.1 ZIP · MC, MA, TF, FIB, and Essay</span></div>
       <div id="message" aria-live="polite"></div>
     </section>
 
     <section class="card">
-      <h2>Verificación del contenido pegado</h2>
-      <p class="small-muted">Use esta parte antes de generar el ZIP. La herramienta revisa si las preguntas tienen el tipo correcto, si las opciones están bien escritas, si existe una respuesta marcada con <code>*</code> y si hay tipos no compatibles.</p>
-      <div class="toolbar">
-        <button class="primary" id="btnRunCheck" type="button">Verificar contenido</button>
-        <button class="ghost" id="btnCopyReport" type="button">Copiar reporte</button>
+      <h2>Question preflight</h2>
+      <p class="small-muted">Run this check before generating the ZIP. It verifies question types, option syntax, answers marked with <code>*</code>, and unsupported types.</p>
+      <div class="toolbar native-action-ribbon" role="toolbar" aria-label="Question preflight commands" data-native-ribbon>
+        <div class="native-ribbon-group" role="group" aria-label="Review"><div class="native-ribbon-actions"><button class="primary" id="btnRunCheck" type="button">Run preflight</button></div><span class="native-ribbon-label">Review</span></div>
+        <div class="native-ribbon-group" role="group" aria-label="Report"><div class="native-ribbon-actions"><button class="ghost" id="btnCopyReport" type="button">Copy report</button><button class="ghost" id="btnDownloadReport" type="button">Download report</button></div><span class="native-ribbon-label">Report</span></div>
       </div>
       <div class="validation-grid" aria-live="polite">
-        <div class="validation-box"><strong id="validOkCount">0</strong>Correctas</div>
-        <div class="validation-box"><strong id="validWarnCount">0</strong>Advertencias</div>
-        <div class="validation-box"><strong id="validErrorCount">0</strong>Errores</div>
-        <div class="validation-box"><strong id="validDetectedCount">0</strong>Preguntas detectadas</div>
+        <div class="validation-box"><strong id="validOkCount">0</strong>Passed</div>
+        <div class="validation-box"><strong id="validWarnCount">0</strong>Warnings</div>
+        <div class="validation-box"><strong id="validErrorCount">0</strong>Errors</div>
+        <div class="validation-box"><strong id="validDetectedCount">0</strong>Questions detected</div>
       </div>
       <div id="validationResults" class="validation-list">
-        <div class="validation-item warn"><strong>Sin verificar todavía</strong>Pegue o escriba el banco de preguntas y presione “Verificar contenido”.</div>
+        <div class="validation-item warn"><strong>Not checked yet</strong>Paste or enter a question bank, then select “Run preflight.”</div>
       </div>
     </section>
 
     <section class="card full">
-      <h2>Vista previa del paquete</h2>
-      <textarea id="outputPreview" class="output" spellcheck="false" readonly></textarea>
-      <div class="toolbar">
-        <button class="secondary" id="btnCopyPreview" type="button">Copiar vista previa</button>
-        <button class="ghost" id="btnValidate" type="button">Verificar banco</button>
+      <h2>Package preview</h2>
+      <label class="visually-hidden" for="outputPreview">Generated QTI package preview</label>
+      <textarea id="outputPreview" class="output" spellcheck="false" readonly aria-describedby="packagePreviewHelp"></textarea>
+      <p id="packagePreviewHelp" class="small-muted">Read-only preview of the manifest and first generated item.</p>
+      <div class="toolbar native-action-ribbon" role="toolbar" aria-label="Package preview commands" data-native-ribbon>
+        <div class="native-ribbon-group" role="group" aria-label="Preview"><div class="native-ribbon-actions"><button class="secondary" id="btnCopyPreview" type="button">Copy preview</button></div><span class="native-ribbon-label">Preview</span></div>
       </div>
       <div class="stats">
         <div class="stat"><strong id="countQuestions">0</strong>Total</div>
         <div class="stat"><strong id="countMC">0</strong>MC</div>
+        <div class="stat"><strong id="countMA">0</strong>MA</div>
         <div class="stat"><strong id="countTF">0</strong>TF</div>
         <div class="stat"><strong id="countFIB">0</strong>FIB</div>
-        <div class="stat"><strong id="countESSAY">0</strong>Ensayo</div>
+        <div class="stat"><strong id="countESSAY">0</strong>Essay</div>
       </div>
     </section>
 
     <section class="card full">
-      <h2>Notas de compatibilidad</h2>
-      <p>Esta versión genera un paquete <strong>QTI 2.1</strong> con la estructura que Blackboard Ultra aceptó en las pruebas realizadas: <code>imsmanifest.xml</code> en la raíz del ZIP y los ítems dentro de la carpeta <code>items/</code>.</p>
-      <p>Para importar: descarga el archivo <code>.zip</code> generado por esta página y súbelo en Blackboard Ultra desde <strong>Manage Banks</strong> usando la opción de importar paquete QTI. No cambies manualmente la extensión del archivo y no comprimas el XML por separado.</p>
-      <p><strong>Importante:</strong> <code>MA</code>, <code>MATCH</code> y <code>SA</code> se bloquean porque no figuran entre los tipos admitidos actualmente por Blackboard para importación QTI. Las preguntas <code>TF</code> se importan como Multiple Choice conservando Verdadero/Falso.</p>
-      <p><a href="https://help.anthology.com/blackboard/instructor/en/assessments/questions/reuse-questions/qti-packages.html" target="_blank" rel="noopener noreferrer">Consultar la documentación oficial de QTI en Blackboard</a>.</p>
+      <h2>Compatibility notes</h2>
+      <p>This version generates a <strong>QTI 2.1</strong> package using the structure accepted in Blackboard Ultra testing: <code>imsmanifest.xml</code> at the ZIP root and item files inside <code>items/</code>.</p>
+      <p>To import, download the generated <code>.zip</code> file and upload it in Blackboard Ultra from <strong>Manage Banks</strong> using the QTI package import option. Do not rename the extension or compress the XML files separately.</p>
+      <p><strong>Important:</strong> <code>MATCH</code> and <code>SA</code> remain blocked in the Blackboard QTI 2.1 profile. <code>MA</code> is generated with multiple-response cardinality. <code>TF</code> questions preserve their True/False options. Optional QTI <code>responseProcessing</code> is intentionally omitted because Blackboard skips items that include it.</p>
+      <table class="compatibility-table" id="lmsCompatibilityTable" tabindex="0"><caption>Recommended assessment exchange format</caption><thead><tr><th scope="col">LMS</th><th scope="col">Generated format</th><th scope="col">Supported workflow</th><th scope="col">Important review</th></tr></thead><tbody><tr data-profile="blackboard" class="active"><td>Blackboard Ultra</td><td>QTI 2.1 ZIP</td><td>MC, MA, TF, FIB, Essay</td><td>Import through Manage Banks and review converted questions.</td></tr><tr data-profile="moodle"><td>Moodle</td><td>GIFT UTF-8</td><td>Question bank import</td><td>GIFT is selected for broad Moodle portability; review essay and accepted-answer behavior.</td></tr><tr data-profile="canvas"><td>Canvas</td><td>QTI 1.2 ZIP</td><td>Classic/New Quizzes import workflow</td><td>Import into a sandbox course first and verify item-bank conversion.</td></tr></tbody></table>
+      <h3>Post-import verification</h3>
+      <ol id="postImportChecklist">
+        <li>Import into a sandbox course and wait for the LMS processing result.</li>
+        <li>Compare the imported question count and question types with the preflight report.</li>
+        <li>Open every item type and verify prompts, choices, accepted answers, and correct-answer settings.</li>
+        <li>Confirm points, multiple-answer behavior, Spanish accents, symbols, and line breaks.</li>
+        <li>Review any import warning or removed-item detail supplied by the LMS.</li>
+        <li>Complete the assessment in Student Preview before releasing it to students.</li>
+      </ol>
+      <p><a href="https://help.anthology.com/blackboard/instructor/en/assessments/questions/reuse-questions/qti-packages.html" target="_blank" rel="noopener noreferrer">Read the official Blackboard QTI documentation</a>.</p>
     </section>
   </main>
 
-  <footer>UCAN QTI 2.1 | Generador local: no envía datos a internet.</footer>
+  <footer>UCAN QTI 2.1 | Local generator: content is not sent over the internet.</footer>
 
   <script>
-    const POINTS_PER_QUESTION = 1;
-    const SUPPORTED_TYPES = ['MC', 'TF', 'FIB', 'ESSAY'];
-    const BLOCKED_TYPES = ['MA', 'MATCH', 'SA'];
+    const SUPPORTED_TYPES = ['MC', 'MA', 'TF', 'FIB', 'ESSAY'];
+    const BLOCKED_TYPES = ['MATCH', 'SA'];
     const MAX_CHARS = 50000;
     let currentPackage = null;
 
@@ -390,6 +433,12 @@ ESSAY 4. Explique dos implicaciones éticas del uso de la IA en la educación.</
     }
 
     function normalizeLine(line) { return line.replace(/\r/g, '').trim(); }
+
+    function getDefaultPoints() {
+      const points = Number(document.getElementById('defaultPoints').value);
+      if (!Number.isFinite(points) || points < 0.01 || points > 1000) throw new Error('Points per question must be between 0.01 and 1000.');
+      return points;
+    }
 
     function splitBlocks(text) {
       return text.replace(/\r\n/g, '\n').split(/\n\s*\n+/).map(b => b.trim()).filter(Boolean);
@@ -416,13 +465,13 @@ ESSAY 4. Explique dos implicaciones éticas del uso de la IA en la educación.</
         question = typeMatch[2].trim();
       }
       if (BLOCKED_TYPES.includes(type)) {
-        throw new Error(`Pregunta ${index + 1}: el tipo ${type} no está admitido para importación QTI en Blackboard Ultra. Use MC, TF, FIB o ESSAY.`);
+        throw new Error(`Question ${index + 1}: ${type} is not supported in this stable exchange workflow. Use MC, MA, TF, FIB, or ESSAY.`);
       }
       if (!SUPPORTED_TYPES.includes(type)) {
-        throw new Error(`Pregunta ${index + 1}: tipo no compatible (${type}). Use MC, TF, FIB o ESSAY.`);
+        throw new Error(`Question ${index + 1}: unsupported type (${type}). Use MC, MA, TF, FIB, or ESSAY.`);
       }
       question = question.replace(/^\d+\.\s*/, '').trim();
-      if (!question) throw new Error(`Pregunta ${index + 1}: el enunciado está vacío.`);
+      if (!question) throw new Error(`Question ${index + 1}: the prompt is empty.`);
       return { type, question };
     }
 
@@ -434,20 +483,21 @@ ESSAY 4. Explique dos implicaciones éticas del uso de la IA en la educación.</
         working = working.slice(1).trim();
       }
       const match = working.match(/^([A-Z])\.\s*(.+)$/i);
-      if (!match) throw new Error(`Pregunta ${qIndex + 1}: la opción "${line}" debe usar formato A. Texto.`);
+      if (!match) throw new Error(`Question ${qIndex + 1}: option "${line}" must use the format A. Text.`);
       return { ident: match[1].toUpperCase(), text: match[2].trim(), isCorrect };
     }
 
     function parseChoiceQuestion(lines, type, qIndex) {
       const options = lines.map(line => parseOptionLine(line, qIndex));
-      if (options.length < 2) throw new Error(`Pregunta ${qIndex + 1}: debe incluir al menos dos opciones.`);
+      if (options.length < 2) throw new Error(`Question ${qIndex + 1}: include at least two options.`);
       const correct = options.filter(o => o.isCorrect);
-      if (correct.length !== 1) throw new Error(`Pregunta ${qIndex + 1}: ${type} requiere exactamente una respuesta correcta marcada con *.`);
+      if (type === 'MA' && correct.length < 2) throw new Error(`Question ${qIndex + 1}: MA requires at least two correct answers marked with *.`);
+      if (type !== 'MA' && correct.length !== 1) throw new Error(`Question ${qIndex + 1}: ${type} requires exactly one correct answer marked with *.`);
 
       if (type === 'TF') {
         const labels = options.map(o => o.text.toLowerCase());
         const valid = labels.some(t => ['verdadero','true','cierto'].includes(t)) && labels.some(t => ['falso','false'].includes(t));
-        if (!valid) throw new Error(`Pregunta ${qIndex + 1}: TF debe tener opciones Verdadero/Falso o True/False.`);
+        if (!valid) throw new Error(`Question ${qIndex + 1}: TF must include True/False or Verdadero/Falso options.`);
       }
       return options;
     }
@@ -455,18 +505,18 @@ ESSAY 4. Explique dos implicaciones éticas del uso de la IA en la educación.</
     function parseTextAnswers(lines, type, qIndex) {
       const answers = lines.map(l => l.trim()).filter(Boolean).map(l => l.startsWith('*') ? l.slice(1).trim() : l.trim()).filter(Boolean);
       if (type === 'FIB' && answers.length < 1) {
-        throw new Error(`Pregunta ${qIndex + 1}: FIB requiere al menos una respuesta aceptada debajo de la pregunta.`);
+        throw new Error(`Question ${qIndex + 1}: FIB requires at least one accepted answer below the prompt.`);
       }
       return answers;
     }
 
     function parseQuestionBlock(block, index) {
       const rawLines = block.split('\n').map(normalizeLine).filter(Boolean);
-      if (rawLines.length < 1) throw new Error(`Pregunta ${index + 1}: bloque vacío.`);
+      if (rawLines.length < 1) throw new Error(`Question ${index + 1}: empty block.`);
       const { type, question } = parseHeader(rawLines[0], index);
       const body = rawLines.slice(1);
 
-      if (['MC', 'TF'].includes(type)) {
+      if (['MC', 'MA', 'TF'].includes(type)) {
         return { number: index + 1, type, question, options: parseChoiceQuestion(body, type, index) };
       }
       if (type === 'FIB') {
@@ -475,16 +525,17 @@ ESSAY 4. Explique dos implicaciones éticas del uso de la IA en la educación.</
       if (type === 'ESSAY') {
         return { number: index + 1, type, question, answers: [] };
       }
-      throw new Error(`Pregunta ${index + 1}: tipo no procesable.`);
+      throw new Error(`Question ${index + 1}: the question type cannot be processed.`);
     }
 
     function getItems() {
       const input = document.getElementById('inputText').value.trim();
-      if (!input) throw new Error('Pega primero las preguntas en el área de texto.');
-      if (input.length > MAX_CHARS) throw new Error('El banco es demasiado extenso. Divida las preguntas en partes más pequeñas.');
+      if (!input) throw new Error('Paste questions into the text area first.');
+      if (input.length > MAX_CHARS) throw new Error('The bank is too large. Divide the questions into smaller groups.');
       const blocks = splitBlocks(input);
-      if (!blocks.length) throw new Error('No se detectaron preguntas. Verifique que haya una línea en blanco entre cada pregunta.');
-      return blocks.map(parseQuestionBlock);
+      if (!blocks.length) throw new Error('No questions were detected. Verify that each question is separated by a blank line.');
+      const points = getDefaultPoints();
+      return blocks.map(parseQuestionBlock).map(item => ({ ...item, points }));
     }
 
     function choiceIdentifier(letter) {
@@ -493,25 +544,26 @@ ESSAY 4. Explique dos implicaciones éticas del uso de la IA en la educación.</
 
     function buildChoiceItem(item) {
       const itemId = `item${item.number}`;
-      const correct = item.options.find(o => o.isCorrect);
+      const correct = item.options.filter(o => o.isCorrect);
+      const multiple = item.type === 'MA';
       const choicesXML = item.options.map(option => `      <simpleChoice identifier="${choiceIdentifier(option.ident)}">${escapeXML(option.text)}</simpleChoice>`).join('\n');
+      const correctXML = correct.map(option => `      <value>${choiceIdentifier(option.ident)}</value>`).join('\n');
       return `<?xml version="1.0" encoding="UTF-8"?>
-<assessmentItem xmlns="http://www.imsglobal.org/xsd/imsqti_v2p1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.imsglobal.org/xsd/imsqti_v2p1 http://www.imsglobal.org/xsd/qti/qtiv2p1/imsqti_v2p1.xsd" identifier="${itemId}" title="Pregunta ${item.number} - ${item.type}" adaptive="false" timeDependent="false">
-  <responseDeclaration identifier="RESPONSE" cardinality="single" baseType="identifier">
+<assessmentItem xmlns="http://www.imsglobal.org/xsd/imsqti_v2p1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.imsglobal.org/xsd/imsqti_v2p1 http://www.imsglobal.org/xsd/qti/qtiv2p1/imsqti_v2p1.xsd" identifier="${itemId}" title="Question ${item.number} - ${item.type}" adaptive="false" timeDependent="false">
+  <responseDeclaration identifier="RESPONSE" cardinality="${multiple ? 'multiple' : 'single'}" baseType="identifier">
     <correctResponse>
-      <value>${choiceIdentifier(correct.ident)}</value>
+${correctXML}
     </correctResponse>
   </responseDeclaration>
-  <outcomeDeclaration identifier="SCORE" cardinality="single" baseType="float">
+  <outcomeDeclaration identifier="SCORE" cardinality="single" baseType="float" normalMaximum="${item.points}">
     <defaultValue><value>0</value></defaultValue>
   </outcomeDeclaration>
   <itemBody>
     <p>${escapeXML(item.question)}</p>
-    <choiceInteraction responseIdentifier="RESPONSE" shuffle="false" maxChoices="1">
+    <choiceInteraction responseIdentifier="RESPONSE" shuffle="false" maxChoices="${multiple ? correct.length : 1}">
 ${choicesXML}
     </choiceInteraction>
   </itemBody>
-  <responseProcessing template="http://www.imsglobal.org/question/qti_v2p1/rptemplates/match_correct" />
 </assessmentItem>`;
     }
 
@@ -530,19 +582,18 @@ ${choicesXML}
       const itemId = `item${item.number}`;
       const correctValues = item.answers.map(answer => `      <value>${escapeXML(answer)}</value>`).join('\n');
       return `<?xml version="1.0" encoding="UTF-8"?>
-<assessmentItem xmlns="http://www.imsglobal.org/xsd/imsqti_v2p1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.imsglobal.org/xsd/imsqti_v2p1 http://www.imsglobal.org/xsd/qti/qtiv2p1/imsqti_v2p1.xsd" identifier="${itemId}" title="Pregunta ${item.number} - FIB" adaptive="false" timeDependent="false">
+<assessmentItem xmlns="http://www.imsglobal.org/xsd/imsqti_v2p1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.imsglobal.org/xsd/imsqti_v2p1 http://www.imsglobal.org/xsd/qti/qtiv2p1/imsqti_v2p1.xsd" identifier="${itemId}" title="Question ${item.number} - FIB" adaptive="false" timeDependent="false">
   <responseDeclaration identifier="RESPONSE" cardinality="single" baseType="string">
     <correctResponse>
 ${correctValues}
     </correctResponse>
   </responseDeclaration>
-  <outcomeDeclaration identifier="SCORE" cardinality="single" baseType="float">
+  <outcomeDeclaration identifier="SCORE" cardinality="single" baseType="float" normalMaximum="${item.points}">
     <defaultValue><value>0</value></defaultValue>
   </outcomeDeclaration>
   <itemBody>
     <p>${buildFibBody(item.question)}</p>
   </itemBody>
-  <responseProcessing template="http://www.imsglobal.org/question/qti_v2p1/rptemplates/match_correct" />
 </assessmentItem>`;
     }
 
@@ -550,9 +601,9 @@ ${correctValues}
       const itemId = `item${item.number}`;
       const expectedLines = 12;
       return `<?xml version="1.0" encoding="UTF-8"?>
-<assessmentItem xmlns="http://www.imsglobal.org/xsd/imsqti_v2p1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.imsglobal.org/xsd/imsqti_v2p1 http://www.imsglobal.org/xsd/qti/qtiv2p1/imsqti_v2p1.xsd" identifier="${itemId}" title="Pregunta ${item.number} - ${item.type}" adaptive="false" timeDependent="false">
+<assessmentItem xmlns="http://www.imsglobal.org/xsd/imsqti_v2p1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.imsglobal.org/xsd/imsqti_v2p1 http://www.imsglobal.org/xsd/qti/qtiv2p1/imsqti_v2p1.xsd" identifier="${itemId}" title="Question ${item.number} - ${item.type}" adaptive="false" timeDependent="false">
   <responseDeclaration identifier="RESPONSE" cardinality="single" baseType="string" />
-  <outcomeDeclaration identifier="SCORE" cardinality="single" baseType="float">
+  <outcomeDeclaration identifier="SCORE" cardinality="single" baseType="float" normalMaximum="${item.points}">
     <defaultValue><value>0</value></defaultValue>
   </outcomeDeclaration>
   <itemBody>
@@ -563,10 +614,10 @@ ${correctValues}
     }
 
     function buildQTIItem(item) {
-      if (item.type === 'MC' || item.type === 'TF') return buildChoiceItem(item);
+      if (item.type === 'MC' || item.type === 'MA' || item.type === 'TF') return buildChoiceItem(item);
       if (item.type === 'FIB') return buildFibItem(item);
       if (item.type === 'ESSAY') return buildEssayItem(item);
-      throw new Error(`Tipo no soportado: ${item.type}`);
+      throw new Error(`Unsupported type: ${item.type}`);
     }
 
     function buildManifest(items) {
@@ -595,10 +646,115 @@ ${resources}
       return files;
     }
 
+    function parseXmlOrThrow(source, fileName) {
+      const xml = new DOMParser().parseFromString(source, 'application/xml');
+      const problem = xml.querySelector('parsererror');
+      if (problem) throw new Error(`${fileName}: generated XML is not well formed.`);
+      return xml;
+    }
+
+    function validatePackage(files, items) {
+      const manifestSource = files['imsmanifest.xml'];
+      if (!manifestSource) throw new Error('Package integrity: imsmanifest.xml is missing.');
+      const manifest = parseXmlOrThrow(manifestSource, 'imsmanifest.xml');
+      const resources = Array.from(manifest.getElementsByTagNameNS('*', 'resource'));
+      if (resources.length !== items.length) throw new Error(`Package integrity: expected ${items.length} manifest resources but found ${resources.length}.`);
+      const identifiers = new Set();
+      resources.forEach(resource => {
+        const identifier = resource.getAttribute('identifier') || '';
+        const href = resource.getAttribute('href') || '';
+        if (!identifier || identifiers.has(identifier)) throw new Error('Package integrity: resource identifiers must be present and unique.');
+        identifiers.add(identifier);
+        if (!files[href]) throw new Error(`Package integrity: manifest references missing file ${href || '(empty href)'}.`);
+      });
+      items.forEach(item => {
+        const fileName = `items/item${item.number}.xml`;
+        const document = parseXmlOrThrow(files[fileName], fileName);
+        const root = document.documentElement;
+        if (root.localName !== 'assessmentItem' || root.namespaceURI !== 'http://www.imsglobal.org/xsd/imsqti_v2p1') throw new Error(`${fileName}: expected a QTI 2.1 assessmentItem root.`);
+        if (!root.getAttribute('identifier')) throw new Error(`${fileName}: assessment item identifier is missing.`);
+        if (document.getElementsByTagNameNS('*', 'responseProcessing').length) throw new Error(`${fileName}: Blackboard-safe items must omit optional QTI responseProcessing.`);
+      });
+      return { resources: resources.length, files: Object.keys(files).length, valid: true };
+    }
+
+    function escapeGift(value) {
+      return String(value).replace(/([~=#{}:\\])/g, '\\$1').replace(/\r?\n/g, ' ');
+    }
+
+    function buildMoodleGift(items) {
+      return items.map(item => {
+        const title = `::Question ${item.number} - ${item.type}::`;
+        const prompt = escapeGift(item.question);
+        if (item.type === 'TF') {
+          const correct = item.options.find(option => option.isCorrect)?.text.toLowerCase() || '';
+          return `${title}${prompt}{${['verdadero', 'true', 'cierto'].includes(correct) ? 'TRUE' : 'FALSE'}}`;
+        }
+        if (item.type === 'MC') return `${title}${prompt}{${item.options.map(option => `${option.isCorrect ? '=' : '~'}${escapeGift(option.text)}`).join('')}}`;
+        if (item.type === 'MA') {
+          const correct = item.options.filter(option => option.isCorrect);
+          const incorrect = item.options.filter(option => !option.isCorrect);
+          const positive = 100 / correct.length;
+          const negative = incorrect.length ? -100 / incorrect.length : 0;
+          const answers = [...correct.map(option => `~%${positive.toFixed(5)}%${escapeGift(option.text)}`), ...incorrect.map(option => `~%${negative.toFixed(5)}%${escapeGift(option.text)}`)].join('');
+          return `${title}${prompt}{${answers}}`;
+        }
+        if (item.type === 'FIB') return `${title}${prompt}{${item.answers.map(answer => `=${escapeGift(answer)}`).join('')}}`;
+        return `${title}${prompt}{}`;
+      }).join('\n\n');
+    }
+
+    function toCanvasItems(items) {
+      return items.map(item => {
+        if (item.type === 'MC' || item.type === 'MA') return { type: item.type, question: item.question, data: { options: item.options.map(option => ({ text: option.text, correct: option.isCorrect })) } };
+        if (item.type === 'TF') {
+          const correct = item.options.find(option => option.isCorrect)?.text.toLowerCase() || '';
+          return { type: 'TF', question: item.question, data: { value: ['verdadero', 'true', 'cierto'].includes(correct) ? 'true' : 'false' } };
+        }
+        if (item.type === 'FIB') return { type: 'FIB', question: item.question, data: { answers: item.answers } };
+        return { type: 'ESS', question: item.question, data: {} };
+      });
+    }
+
+    function updateTargetUi() {
+      const target = document.getElementById('targetLms').value;
+      const profiles = {
+        blackboard: ['Blackboard Ultra', 'QTI 2.1 ZIP · MC, MA, TF, FIB, and Essay', 'Download QTI 2.1 ZIP'],
+        moodle: ['Moodle', 'GIFT UTF-8 · portable question-bank text', 'Download Moodle GIFT'],
+        canvas: ['Canvas', 'QTI 1.2 ZIP · scoring metadata and cardinality', 'Download Canvas QTI 1.2']
+      };
+      const status = document.getElementById('targetStatus');
+      status.querySelector('strong').textContent = profiles[target][0];
+      status.querySelector('span').textContent = profiles[target][1];
+      document.getElementById('btnDownloadTarget').textContent = profiles[target][2];
+      document.querySelectorAll('#lmsCompatibilityTable tbody tr').forEach(row => row.classList.toggle('active', row.dataset.profile === target));
+    }
+
+    function downloadTargetPackage() {
+      const target = document.getElementById('targetLms').value;
+      if (target === 'blackboard') { downloadZipPackage(); return; }
+      const report = runValidationReport(false);
+      if (report.errors.length) { setMessage('error', `The target export was not generated because the content has ${report.errors.length} error(s).`); return; }
+      try {
+        const items = getItems();
+        const name = document.getElementById('packageName').value;
+        if (target === 'moodle') {
+          const filename = sanitizeFileName(`${name || 'question_bank'}_moodle`, 'gift.txt');
+          downloadFile(filename, `// $CATEGORY: UltraPage/${escapeGift(name || 'Question Bank')}\n\n${buildMoodleGift(items)}\n`, 'text/plain;charset=utf-8');
+          setMessage('success', `${filename} downloaded. In Moodle, choose the GIFT import format.`);
+          return;
+        }
+        const api = window.UltraPageCanvasQti;
+        if (!api) throw new Error('Canvas QTI converter is not available. Reload the tool and try again.');
+        api.downloadPackage(toCanvasItems(items), name, getDefaultPoints());
+        setMessage('success', 'Canvas QTI 1.2 ZIP downloaded. Import it into a sandbox course and verify the converted quiz or item bank.');
+      } catch (error) { setMessage('error', error.message); }
+    }
+
     function buildPreview(files, items) {
       const fileList = Object.keys(files).map(name => `- ${name}`).join('\n');
       const firstItem = files['items/item1.xml'] || '';
-      return `PAQUETE QTI 2.1 GENERADO\n\nTotal de preguntas: ${items.length}\n\nArchivos incluidos:\n${fileList}\n\n--- imsmanifest.xml ---\n${files['imsmanifest.xml']}\n\n--- Vista previa del primer ítem ---\n${firstItem}`;
+      return `QTI 2.1 PACKAGE GENERATED\n\nTotal questions: ${items.length}\n\nIncluded files:\n${fileList}\n\n--- imsmanifest.xml ---\n${files['imsmanifest.xml']}\n\n--- First item preview ---\n${firstItem}`;
     }
 
 
@@ -617,7 +773,7 @@ ${resources}
       const blockNumber = index + 1;
 
       if (!rawLines.length) {
-        addReportMessage(report, 'errors', `Bloque ${blockNumber}: vacío`, 'Elimine espacios o líneas vacías innecesarias.', blockNumber);
+        addReportMessage(report, 'errors', `Block ${blockNumber}: empty`, 'Remove unnecessary spaces or blank lines.', blockNumber);
         return;
       }
 
@@ -627,51 +783,51 @@ ${resources}
       const nestedHeaders = rawLines.slice(1).filter(line => /^(MC|TF|MA|FIB|SA|ESSAY|MATCH)\s+\d+\./i.test(line));
 
       if (nestedHeaders.length) {
-        addReportMessage(report, 'warnings', `Pregunta ${blockNumber}: posible falta de línea en blanco`, 'Se detectó otra pregunta dentro del mismo bloque. Deje una línea en blanco entre cada pregunta.', blockNumber);
+        addReportMessage(report, 'warnings', `Question ${blockNumber}: possible missing blank line`, 'Another question was detected in the same block. Leave one blank line between questions.', blockNumber);
       }
 
       if (!explicitType) {
         if (weakType && !SUPPORTED_TYPES.includes(weakType[1].toUpperCase()) && !BLOCKED_TYPES.includes(weakType[1].toUpperCase())) {
-          addReportMessage(report, 'errors', `Pregunta ${blockNumber}: tipo desconocido`, `El tipo “${weakType[1].toUpperCase()}” no es compatible. Use MC, TF, FIB o ESSAY.`, blockNumber);
+          addReportMessage(report, 'errors', `Question ${blockNumber}: unknown type`, `“${weakType[1].toUpperCase()}” is not supported. Use MC, MA, TF, FIB, or ESSAY.`, blockNumber);
           return;
         }
-        addReportMessage(report, 'warnings', `Pregunta ${blockNumber}: no tiene tipo explícito`, 'La herramienta la interpretará como MC. Se recomienda comenzar con MC, TF, FIB o ESSAY.', blockNumber);
+        addReportMessage(report, 'warnings', `Question ${blockNumber}: no explicit type`, 'The tool will interpret it as MC. Begin with MC, MA, TF, FIB, or ESSAY.', blockNumber);
       }
 
       const type = explicitType ? explicitType[1].toUpperCase() : 'MC';
 
       if (BLOCKED_TYPES.includes(type)) {
-        addReportMessage(report, 'errors', `Pregunta ${blockNumber}: ${type} no está disponible`, `${type} está desactivado en esta versión estable porque puede fallar al importarse en Blackboard Ultra.`, blockNumber);
+        addReportMessage(report, 'errors', `Question ${blockNumber}: ${type} unavailable`, `${type} is disabled in this stable version because Blackboard Ultra may reject it.`, blockNumber);
         return;
       }
 
       if (!SUPPORTED_TYPES.includes(type)) {
-        addReportMessage(report, 'errors', `Pregunta ${blockNumber}: tipo no compatible`, 'Use MC, TF, FIB o ESSAY.', blockNumber);
+        addReportMessage(report, 'errors', `Question ${blockNumber}: unsupported type`, 'Use MC, MA, TF, FIB, or ESSAY.', blockNumber);
         return;
       }
 
       try {
         const parsed = parseQuestionBlock(block, index);
-        if (parsed.type === 'MC' || parsed.type === 'TF') {
+        if (parsed.type === 'MC' || parsed.type === 'MA' || parsed.type === 'TF') {
           const letters = parsed.options.map(option => option.ident);
           const duplicated = letters.filter((letter, pos) => letters.indexOf(letter) !== pos);
           if (duplicated.length) {
-            addReportMessage(report, 'warnings', `Pregunta ${blockNumber}: letras repetidas`, `Revise opciones repetidas: ${[...new Set(duplicated)].join(', ')}.`, blockNumber);
+            addReportMessage(report, 'warnings', `Question ${blockNumber}: repeated letters`, `Review repeated option labels: ${[...new Set(duplicated)].join(', ')}.`, blockNumber);
           }
           if (parsed.type === 'TF') {
-            addReportMessage(report, 'warnings', `Pregunta ${blockNumber}: conversión de TF`, 'Blackboard importará esta pregunta como Multiple Choice con opciones Verdadero/Falso.', blockNumber);
+            addReportMessage(report, 'warnings', `Question ${blockNumber}: TF conversion`, 'Blackboard will import this question as Multiple Choice with True/False options.', blockNumber);
           }
-          addReportMessage(report, 'oks', `Pregunta ${blockNumber}: ${parsed.type} válida`, 'Tiene opciones suficientes y una sola respuesta correcta marcada con *.', blockNumber);
+          addReportMessage(report, 'oks', `Question ${blockNumber}: valid ${parsed.type}`, parsed.type === 'MA' ? 'It has enough options and at least two correct answers marked with *.' : 'It has enough options and exactly one correct answer marked with *.', blockNumber);
         } else if (parsed.type === 'FIB') {
           if (!parsed.question.includes('_____')) {
-            addReportMessage(report, 'warnings', `Pregunta ${blockNumber}: FIB sin línea visible`, 'Se recomienda usar _____ en el enunciado para indicar dónde va la respuesta.', blockNumber);
+            addReportMessage(report, 'warnings', `Question ${blockNumber}: FIB without a visible blank`, 'Use _____ in the prompt to show where the answer belongs.', blockNumber);
           }
-          addReportMessage(report, 'oks', `Pregunta ${blockNumber}: FIB válida`, 'Tiene al menos una respuesta aceptada.', blockNumber);
+          addReportMessage(report, 'oks', `Question ${blockNumber}: valid FIB`, 'It has at least one accepted answer.', blockNumber);
         } else if (parsed.type === 'ESSAY') {
-          addReportMessage(report, 'oks', `Pregunta ${blockNumber}: ESSAY válida`, 'Se generará como pregunta de ensayo en QTI 2.1.', blockNumber);
+          addReportMessage(report, 'oks', `Question ${blockNumber}: valid ESSAY`, 'It will be generated as a QTI 2.1 essay question.', blockNumber);
         }
       } catch (error) {
-        addReportMessage(report, 'errors', `Pregunta ${blockNumber}: requiere corrección`, error.message, blockNumber);
+        addReportMessage(report, 'errors', `Question ${blockNumber}: correction required`, error.message, blockNumber);
       }
     }
 
@@ -680,12 +836,12 @@ ${resources}
       const report = { oks: [], warnings: [], errors: [], detected: 0, text: '' };
 
       if (!text) {
-        addReportMessage(report, 'errors', 'No hay contenido', 'Pegue o escriba el banco de preguntas antes de verificar.');
+        addReportMessage(report, 'errors', 'No content', 'Paste or enter a question bank before running the check.');
         return report;
       }
 
       if (text.length > MAX_CHARS) {
-        addReportMessage(report, 'errors', 'Contenido demasiado extenso', 'Divida el banco de preguntas en partes más pequeñas antes de generar el paquete.');
+        addReportMessage(report, 'errors', 'Content too large', 'Divide the question bank into smaller groups before generating the package.');
       }
 
       const blocks = splitBlocks(text);
@@ -693,11 +849,11 @@ ${resources}
       const possibleHeaders = detectPossibleHeaders(text);
 
       if (possibleHeaders > blocks.length) {
-        addReportMessage(report, 'warnings', 'Posible separación incorrecta', `Se detectaron ${possibleHeaders} encabezados de preguntas, pero solo ${blocks.length} bloques. Deje una línea en blanco entre cada pregunta.`);
+        addReportMessage(report, 'warnings', 'Possible separator problem', `${possibleHeaders} question headers were detected, but only ${blocks.length} blocks. Leave one blank line between questions.`);
       }
 
       if (!blocks.length) {
-        addReportMessage(report, 'errors', 'No se detectaron preguntas', 'Revise que el banco tenga contenido organizado por bloques.');
+        addReportMessage(report, 'errors', 'No questions detected', 'Verify that the bank contains questions organized into blocks.');
         return report;
       }
 
@@ -712,30 +868,32 @@ ${resources}
         duplicateQuestions.set(question, positions);
       });
       [...duplicateQuestions.values()].filter(positions => positions.length > 1).forEach(positions => {
-        addReportMessage(report, 'warnings', 'Posible pregunta duplicada', `Revise las preguntas ${positions.join(', ')} antes de importar el banco.`);
+        addReportMessage(report, 'warnings', 'Possible duplicate question', `Review questions ${positions.join(', ')} before importing the bank.`);
       });
       return report;
     }
 
     function reportToText(report) {
       const lines = [];
-      lines.push('REPORTE DE VERIFICACIÓN - QTI 2.1 BLACKBOARD');
-      lines.push(`Preguntas detectadas: ${report.detected}`);
-      lines.push(`Correctas: ${report.oks.length}`);
-      lines.push(`Advertencias: ${report.warnings.length}`);
-      lines.push(`Errores: ${report.errors.length}`);
+      lines.push('ASSESSMENT EXCHANGE PREFLIGHT REPORT');
+      lines.push(`Target LMS: ${document.getElementById('targetLms').selectedOptions[0].textContent}`);
+      lines.push(`Points per question: ${document.getElementById('defaultPoints').value}`);
+      lines.push(`Questions detected: ${report.detected}`);
+      lines.push(`Passed: ${report.oks.length}`);
+      lines.push(`Warnings: ${report.warnings.length}`);
+      lines.push(`Errors: ${report.errors.length}`);
       lines.push('');
 
       const groups = [
-        ['ERRORES', report.errors],
-        ['ADVERTENCIAS', report.warnings],
-        ['CORRECTAS', report.oks]
+        ['ERRORS', report.errors],
+        ['WARNINGS', report.warnings],
+        ['PASSED', report.oks]
       ];
 
       groups.forEach(([label, items]) => {
         lines.push(label);
         if (!items.length) {
-          lines.push('- Ninguno');
+          lines.push('- None');
         } else {
           items.forEach(item => lines.push(`- ${item.title}: ${item.detail}`));
         }
@@ -761,7 +919,7 @@ ${resources}
       if (!ordered.length) {
         const div = document.createElement('div');
         div.className = 'validation-item ok';
-        div.innerHTML = '<strong>Todo se ve correcto</strong>No se encontraron errores ni advertencias.';
+        div.innerHTML = '<strong>Everything looks correct</strong>No errors or warnings were found.';
         container.appendChild(div);
         return;
       }
@@ -784,11 +942,11 @@ ${resources}
       renderValidationReport(report);
       if (showMessage) {
         if (report.errors.length) {
-          setMessage('error', `Se encontraron ${report.errors.length} error(es). Corrija el contenido antes de generar el ZIP.`);
+          setMessage('error', `${report.errors.length} error(s) found. Correct the content before generating the ZIP.`);
         } else if (report.warnings.length) {
-          setMessage('warn', `El contenido no tiene errores críticos, pero tiene ${report.warnings.length} advertencia(s). Revise antes de importar.`);
+          setMessage('warn', `No critical errors were found, but ${report.warnings.length} warning(s) require review before import.`);
         } else {
-          setMessage('success', `Contenido verificado correctamente. ${report.oks.length} pregunta(s) listas para generar el ZIP.`);
+          setMessage('success', `Preflight passed. ${report.oks.length} question(s) are ready for ZIP generation.`);
         }
       }
       return report;
@@ -799,7 +957,7 @@ ${resources}
       renderValidationReport(report);
       const text = reportToText(report);
       navigator.clipboard.writeText(text).then(() => {
-        setMessage('success', 'Reporte de verificación copiado al portapapeles.');
+        setMessage('success', 'Preflight report copied to the clipboard.');
       }).catch(() => {
         const temp = document.createElement('textarea');
         temp.value = text;
@@ -807,8 +965,55 @@ ${resources}
         temp.select();
         document.execCommand('copy');
         document.body.removeChild(temp);
-        setMessage('success', 'Reporte de verificación copiado al portapapeles.');
+        setMessage('success', 'Preflight report copied to the clipboard.');
       });
+    }
+
+    function copyImportChecklist() {
+      const target = document.getElementById('targetLms').selectedOptions[0].textContent;
+      const steps = Array.from(document.querySelectorAll('#postImportChecklist li')).map((item, index) => `${index + 1}. ${item.textContent.trim()}`);
+      const text = `POST-IMPORT VERIFICATION — ${target}\n\n${steps.join('\n')}`;
+      const fallback = () => {
+        const temp = document.createElement('textarea');
+        temp.value = text;
+        document.body.appendChild(temp);
+        temp.select();
+        document.execCommand('copy');
+        document.body.removeChild(temp);
+        setMessage('success', 'Post-import verification checklist copied to the clipboard.');
+      };
+      if (!navigator.clipboard) { fallback(); return; }
+      navigator.clipboard.writeText(text).then(() => setMessage('success', 'Post-import verification checklist copied to the clipboard.')).catch(fallback);
+    }
+
+    function downloadValidationReport() {
+      const report = buildValidationReport();
+      renderValidationReport(report);
+      const filename = sanitizeFileName(`${document.getElementById('packageName').value || 'QTI21_Blackboard'}_preflight`, 'txt');
+      downloadFile(filename, reportToText(report), 'text/plain;charset=utf-8');
+      setMessage(report.errors.length ? 'warn' : 'success', `Preflight report downloaded with ${report.errors.length} error(s) and ${report.warnings.length} warning(s).`);
+    }
+
+    async function loadQuestionBankFile() {
+      const input = document.getElementById('qtiFileInput');
+      const file = input.files?.[0];
+      if (!file) return;
+      if (file.size > 1024 * 1024) {
+        setMessage('error', 'The selected file is larger than 1 MB. Split the question bank into smaller files.');
+        input.value = '';
+        return;
+      }
+      try {
+        document.getElementById('inputText').value = await file.text();
+        const packageName = document.getElementById('packageName');
+        if (!packageName.value.trim() || packageName.value === 'UCAN_QTI21_Blackboard') packageName.value = file.name.replace(/\.[^.]+$/, '');
+        runValidationReport(true);
+        document.getElementById('inputText').focus();
+      } catch (error) {
+        setMessage('error', 'The selected file could not be read. Use a UTF-8 TXT or Markdown file.');
+      } finally {
+        input.value = '';
+      }
     }
 
     function generatePackage() {
@@ -817,17 +1022,18 @@ ${resources}
       currentPackage = null;
       const report = runValidationReport(false);
       if (report.errors.length) {
-        setMessage('error', `No se generó el ZIP porque hay ${report.errors.length} error(es) en el contenido pegado.`);
+        setMessage('error', `The ZIP was not generated because the content has ${report.errors.length} error(s).`);
         updateStats([]);
         return null;
       }
       try {
         const items = getItems();
         const files = buildPackage(items);
-        currentPackage = { files, items };
+        const integrity = validatePackage(files, items);
+        currentPackage = { files, items, integrity };
         output.value = buildPreview(files, items);
         updateStats(items);
-        setMessage('success', `Paquete QTI 2.1 preparado correctamente con ${items.length} preguntas. Ahora puede descargar el ZIP.`);
+        setMessage('success', `Blackboard-safe QTI 2.1 package prepared with ${items.length} question(s). Integrity check passed for ${integrity.resources} resources and ${integrity.files} files; optional response processing was omitted.`);
         return currentPackage;
       } catch (error) {
         updateStats([]);
@@ -836,25 +1042,12 @@ ${resources}
       }
     }
 
-    function validateOnly() {
-      const report = runValidationReport(true);
-      if (!report.errors.length) {
-        try {
-          const items = getItems();
-          updateStats(items);
-        } catch (error) {
-          updateStats([]);
-        }
-      } else {
-        updateStats([]);
-      }
-    }
-
     function updateStats(items) {
       const byType = Object.fromEntries(SUPPORTED_TYPES.map(t => [t, 0]));
       items.forEach(i => { byType[i.type] = (byType[i.type] || 0) + 1; });
       document.getElementById('countQuestions').textContent = items.length;
       document.getElementById('countMC').textContent = byType.MC || 0;
+      document.getElementById('countMA').textContent = byType.MA || 0;
       document.getElementById('countTF').textContent = byType.TF || 0;
       document.getElementById('countFIB').textContent = byType.FIB || 0;
       document.getElementById('countESSAY').textContent = byType.ESSAY || 0;
@@ -866,7 +1059,7 @@ ${resources}
       const zipBlob = createZipBlob(pkg.files);
       const filename = sanitizeFileName(document.getElementById('packageName').value, 'zip');
       downloadBlob(filename, zipBlob);
-      setMessage('success', `Archivo ${filename} descargado. Importe este ZIP directamente en Blackboard Ultra.`);
+      setMessage('success', `${filename} downloaded. Import this ZIP directly into Blackboard Ultra.`);
     }
 
 
@@ -883,7 +1076,7 @@ ${resources}
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
 
     function copyPreview() {
@@ -891,7 +1084,7 @@ ${resources}
       const output = document.getElementById('outputPreview');
       output.select();
       document.execCommand('copy');
-      setMessage('success', 'Vista previa copiada al portapapeles.');
+      setMessage('success', 'Package preview copied to the clipboard.');
     }
 
     function loadExample() {
@@ -901,15 +1094,21 @@ A. Uso de computadoras sin interacción humana
 C. Uso exclusivo de robots en el aula
 D. Sustitución total del docente
 
-TF 2. La inteligencia artificial permite personalizar el aprendizaje según las necesidades del estudiante.
+MA 2. Seleccione dos usos responsables de la IA educativa.
+*A. Personalizar apoyos de aprendizaje
+*B. Revisar sesgos y resultados
+C. Publicar datos privados del estudiante
+D. Sustituir toda decisión docente
+
+TF 3. La inteligencia artificial permite personalizar el aprendizaje según las necesidades del estudiante.
 *A. Verdadero
 B. Falso
 
-FIB 3. La inteligencia artificial permite ______ el aprendizaje.
+FIB 4. La inteligencia artificial permite ______ el aprendizaje.
 *personalizar
 *adaptar
 
-ESSAY 4. Explique dos implicaciones éticas del uso de IA en educación.`;
+ESSAY 5. Explique dos implicaciones éticas del uso de IA en educación.`;
       generatePackage();
     }
 
@@ -925,7 +1124,7 @@ ESSAY 4. Explique dos implicaciones éticas del uso de IA en educación.`;
       container.textContent = '';
       const div = document.createElement('div');
       div.className = 'validation-item warn';
-      div.innerHTML = '<strong>Sin verificar todavía</strong>Pegue o escriba el banco de preguntas y presione “Verificar contenido”.';
+      div.innerHTML = '<strong>Not checked yet</strong>Paste or enter a question bank, then select “Run preflight.”';
       container.appendChild(div);
       currentPackage = null;
       updateStats([]);
@@ -1057,18 +1256,27 @@ ESSAY 4. Explique dos implicaciones éticas del uso de IA en educación.`;
 
     let validationTimer = null;
     document.getElementById('btnDownloadZip').addEventListener('click', downloadZipPackage);
+    document.getElementById('btnDownloadTarget').addEventListener('click', downloadTargetPackage);
+    document.getElementById('btnCompareLms').addEventListener('click', () => document.getElementById('lmsCompatibilityTable').scrollIntoView({ behavior: 'smooth', block: 'center' }));
+    document.getElementById('btnCopyImportChecklist').addEventListener('click', copyImportChecklist);
+    document.getElementById('btnOpenFile').addEventListener('click', () => document.getElementById('qtiFileInput').click());
+    document.getElementById('qtiFileInput').addEventListener('change', loadQuestionBankFile);
     document.getElementById('btnLoadExample').addEventListener('click', loadExample);
     document.getElementById('btnClear').addEventListener('click', clearAll);
     document.getElementById('btnCopyPreview').addEventListener('click', copyPreview);
-    document.getElementById('btnValidate').addEventListener('click', validateOnly);
     document.getElementById('btnRunCheck').addEventListener('click', () => runValidationReport(true));
     document.getElementById('btnCopyReport').addEventListener('click', copyValidationReport);
+    document.getElementById('btnDownloadReport').addEventListener('click', downloadValidationReport);
+    document.getElementById('targetLms').addEventListener('change', updateTargetUi);
+    document.getElementById('defaultPoints').addEventListener('change', () => { currentPackage = null; runValidationReport(false); });
     document.getElementById('inputText').addEventListener('input', () => {
+      currentPackage = null;
       clearTimeout(validationTimer);
       validationTimer = setTimeout(() => {
         if (document.getElementById('inputText').value.trim()) runValidationReport(false);
       }, 700);
     });
+    updateTargetUi();
   </script>
 </body>
 </html>

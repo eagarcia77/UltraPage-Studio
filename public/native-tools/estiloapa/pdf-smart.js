@@ -155,7 +155,7 @@ async function extractPdfPages(file) {
   const pages = [];
 
   for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
-    setPdfStatus(`Reconstruyendo PDF: página ${pageNumber} de ${pdf.numPages}…`);
+    setPdfStatus(`Reconstructing PDF: page ${pageNumber} of ${pdf.numPages}…`);
     const page = await pdf.getPage(pageNumber);
     const viewport = page.getViewport({ scale: 1 });
     const content = await page.getTextContent();
@@ -693,7 +693,7 @@ async function smartFormatPdfFiles(files) {
   if (!preview || processingPdf) return;
   processingPdf = true;
   if (formatBtn) formatBtn.disabled = true;
-  setPdfStatus(`APA7 PDF Smart v${PDF_SMART_VERSION}: analizando estructura, figuras y tablas…`);
+  setPdfStatus(`APA7 PDF Smart v${PDF_SMART_VERSION}: analyzing structure, figures, and tables…`);
 
   try {
     const allHtml = [];
@@ -705,7 +705,7 @@ async function smartFormatPdfFiles(files) {
       if (totalCharacters < 80) throw new Error(`${file.name} parece ser un PDF escaneado o sin una capa de texto suficiente. Use el DOCX original o aplique OCR antes de subirlo.`);
 
       const bodyFontSize = detectBodyFontSize(pages);
-      setPdfStatus(`PDF ${fileIndex + 1}: preservando figuras y estructura visual…`);
+      setPdfStatus(`PDF ${fileIndex + 1}: preserving figures and visual structure…`);
       await prepareFigureImages(pages, bodyFontSize);
 
       let blocks = [];
@@ -723,17 +723,17 @@ async function smartFormatPdfFiles(files) {
 
     preview.innerHTML = allHtml.join("\n");
     applyPreviewPresentation(preview);
-    for (const id of ["downloadDocxBtn", "downloadHtmlBtn", "downloadAuditBtn", "reauditBtn"]) {
+    for (const id of ["downloadDocxBtn", "downloadHtmlBtn", "downloadPdfBtn", "downloadAuditBtn", "reauditBtn"]) {
       const button = document.querySelector(`#${id}`);
       if (button) button.disabled = false;
     }
     preview.dispatchEvent(new Event("input", { bubbles: true }));
     setTimeout(() => document.querySelector("#reauditBtn")?.click(), 80);
-    setPdfStatus(`PDF reconstruido con modo inteligente v${PDF_SMART_VERSION}. Se conservaron figuras, tablas detectadas, párrafos entre páginas y formato interno de referencias cuando fue posible.`, "success");
+    setPdfStatus(`PDF reconstructed with Smart mode v${PDF_SMART_VERSION}. Figures, detected tables, cross-page paragraphs, and internal reference formatting were preserved when possible.`, "success");
     preview.focus();
   } catch (error) {
     console.error("APA7 PDF Smart", error);
-    setPdfStatus(error?.message || "No se pudo reconstruir el PDF.", "error");
+    setPdfStatus(error?.message || "The PDF could not be reconstructed.", "error");
   } finally {
     processingPdf = false;
     if (formatBtn) formatBtn.disabled = false;

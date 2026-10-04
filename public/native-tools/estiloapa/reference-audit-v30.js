@@ -21,12 +21,12 @@ function normalizeSortKey(text) {
 
 function detectReferenceType(text) {
   const value = refAuditText(text);
-  if (/\b(dissertation|doctoral dissertation|master'?s thesis|tesis|disertaci[oó]n)\b/i.test(value)) return "Tesis/disertación";
-  if (/\b(report|informe|technical report|policy brief)\b/i.test(value)) return "Informe";
-  if (/https?:\/\/(?!doi\.org)/i.test(value) && !/\b\d+\s*\(\d+\)\s*,/i.test(value)) return "Página web";
-  if (/\b\d+\s*\(\d+\)\s*,\s*(?:\d|Article\b)/i.test(value) || /https:\/\/doi\.org\//i.test(value) && /,\s*\d+(?:\(\d+\))?,/i.test(value)) return "Artículo de revista";
-  if (/\((?:\d+(?:st|nd|rd|th)?\s+ed\.|ed\.)\)/i.test(value) || /\b(Pearson|Routledge|Springer|Wiley|SAGE|Sage|Press|Publishing)\b/.test(value)) return "Libro";
-  return "Otro";
+  if (/\b(dissertation|doctoral dissertation|master'?s thesis|tesis|disertaci[oó]n)\b/i.test(value)) return "Thesis/dissertation";
+  if (/\b(report|informe|technical report|policy brief)\b/i.test(value)) return "Report";
+  if (/https?:\/\/(?!doi\.org)/i.test(value) && !/\b\d+\s*\(\d+\)\s*,/i.test(value)) return "Web page";
+  if (/\b\d+\s*\(\d+\)\s*,\s*(?:\d|Article\b)/i.test(value) || /https:\/\/doi\.org\//i.test(value) && /,\s*\d+(?:\(\d+\))?,/i.test(value)) return "Journal article";
+  if (/\((?:\d+(?:st|nd|rd|th)?\s+ed\.|ed\.)\)/i.test(value) || /\b(Pearson|Routledge|Springer|Wiley|SAGE|Sage|Press|Publishing)\b/.test(value)) return "Book";
+  return "Other";
 }
 
 function hasItalicMarkup(node) {
@@ -66,43 +66,43 @@ function validateReferenceNode(node, index, allNodes) {
   const beforeYear = year ? text.slice(0, year.index).trim() : "";
   const afterYear = year ? text.slice(yearEnd).trim() : "";
 
-  if (/^\s*(?:\d+[.)]|[-•▪◦])\s+/.test(text)) issues.push(issue("La lista de referencias APA 7 no debe estar numerada ni usar viñetas.", "error"));
-  if (!year) issues.push(issue("No se detecta una fecha/año entre paréntesis.", "error"));
-  if (year && !/^\./.test(afterYear)) issues.push(issue("La fecha debe ir seguida de punto: (2026).", "error"));
-  if (year && beforeYear && !/[.]$/.test(beforeYear)) issues.push(issue("El elemento de autor debe terminar con punto antes de la fecha.", "review"));
-  if (year && afterYear.replace(/^\.\s*/, "").length < 4) issues.push(issue("No se identifica claramente el título y la fuente después de la fecha.", "error"));
+  if (/^\s*(?:\d+[.)]|[-•▪◦])\s+/.test(text)) issues.push(issue("An APA 7 reference list must not use numbering or bullets.", "error"));
+  if (!year) issues.push(issue("No parenthetical date/year was detected.", "error"));
+  if (year && !/^\./.test(afterYear)) issues.push(issue("The date must be followed by a period: (2026).", "error"));
+  if (year && beforeYear && !/[.]$/.test(beforeYear)) issues.push(issue("The author element should end with a period before the date.", "review"));
+  if (year && afterYear.replace(/^\.\s*/, "").length < 4) issues.push(issue("A title and source cannot be clearly identified after the date.", "error"));
 
-  if (/\bdoi\s*:/i.test(text)) issues.push(issue("El DOI debe presentarse como URL: https://doi.org/...", "error"));
-  if (/https?:\/\/dx\.doi\.org\//i.test(text)) issues.push(issue("Reemplace dx.doi.org por https://doi.org/.", "error"));
+  if (/\bdoi\s*:/i.test(text)) issues.push(issue("The DOI must be presented as a URL: https://doi.org/...", "error"));
+  if (/https?:\/\/dx\.doi\.org\//i.test(text)) issues.push(issue("Replace dx.doi.org with https://doi.org/.", "error"));
   const rawDoi = text.match(/\b10\.\d{4,9}\/[-._;()/:A-Z0-9]+\b/i);
-  if (rawDoi && !/https:\/\/doi\.org\//i.test(text)) issues.push(issue("Se detecta un DOI que no está expresado como https://doi.org/...", "error"));
-  if (/https?:\/\/\S+[.,;:]$/i.test(text)) issues.push(issue("No añada puntuación final después de un DOI o URL.", "error"));
-  if (/\bRetrieved from\b/i.test(text) && !/Retrieved\s+.+?,\s+(?:19|20)\d{2},\s+from/i.test(text)) issues.push(issue("“Retrieved from” normalmente no se usa en APA 7 salvo cuando corresponde una fecha de recuperación.", "review"));
-  if (/\s+and\s+/i.test(beforeYear) && /,\s*[A-ZÁÉÍÓÚÑ](?:\.|,)/.test(beforeYear)) issues.push(issue("En una lista de autores personales, APA 7 usa & antes del último autor, no “and”.", "review"));
+  if (rawDoi && !/https:\/\/doi\.org\//i.test(text)) issues.push(issue("A DOI was detected, but it is not written as https://doi.org/...", "error"));
+  if (/https?:\/\/\S+[.,;:]$/i.test(text)) issues.push(issue("Do not add final punctuation after a DOI or URL.", "error"));
+  if (/\bRetrieved from\b/i.test(text) && !/Retrieved\s+.+?,\s+(?:19|20)\d{2},\s+from/i.test(text)) issues.push(issue("“Retrieved from” is normally omitted in APA 7 unless a retrieval date is required.", "review"));
+  if (/\s+and\s+/i.test(beforeYear) && /,\s*[A-ZÁÉÍÓÚÑ](?:\.|,)/.test(beforeYear)) issues.push(issue("In a personal author list, APA 7 uses & before the final author, not “and.”", "review"));
 
-  if (!hasHangingIndent(node)) issues.push(issue("Falta sangría francesa de 0.5 pulg.", "error"));
-  if (!isDoubleSpaced(node)) issues.push(issue("La referencia debe estar a doble espacio.", "review"));
+  if (!hasHangingIndent(node)) issues.push(issue("A 0.5-inch hanging indent is missing.", "error"));
+  if (!isDoubleSpaced(node)) issues.push(issue("The reference must be double-spaced.", "review"));
 
-  const needsItalic = ["Artículo de revista", "Libro", "Informe", "Tesis/disertación", "Página web"].includes(type);
+  const needsItalic = ["Journal article", "Book", "Report", "Thesis/dissertation", "Web page"].includes(type);
   if (needsItalic && !hasItalicMarkup(node)) {
-    const message = type === "Artículo de revista"
-      ? "No se detecta cursiva; en artículos el título de la revista y el volumen deben ir en cursiva."
-      : "No se detecta la cursiva esperada para el título o fuente de este tipo de referencia.";
+    const message = type === "Journal article"
+      ? "No italics were detected; for articles, the journal title and volume must be italicized."
+      : "The expected italics for this reference type's title or source were not detected.";
     issues.push(issue(message, "review"));
   }
 
-  if (type === "Artículo de revista") {
-    if (!/,\s*\d+(?:\(\d+\))?,/i.test(text)) issues.push(issue("Revise volumen, número de edición y paginación/número de artículo.", "review"));
-    if (!/(?:\d+[-–]\d+|Article\s+[A-Za-z0-9.-]+|\b\d{5,}\b)/i.test(afterYear)) issues.push(issue("No se detecta claramente rango de páginas o número de artículo.", "review"));
+  if (type === "Journal article") {
+    if (!/,\s*\d+(?:\(\d+\))?,/i.test(text)) issues.push(issue("Review the volume, issue, and page range/article number.", "review"));
+    if (!/(?:\d+[-–]\d+|Article\s+[A-Za-z0-9.-]+|\b\d{5,}\b)/i.test(afterYear)) issues.push(issue("A page range or article number was not clearly detected.", "review"));
   }
 
-  if (type === "Libro" && year) {
+  if (type === "Book" && year) {
     const after = afterYear.replace(/^\.\s*/, "");
     const parts = after.split(".").map((part) => part.trim()).filter(Boolean);
-    if (parts.length < 2) issues.push(issue("Revise que la referencia de libro incluya título y editorial.", "review"));
+    if (parts.length < 2) issues.push(issue("Verify that the book reference includes a title and publisher.", "review"));
   }
 
-  if (type === "Página web" && !/https?:\/\/\S+/i.test(text)) issues.push(issue("No se detecta URL en la referencia de página web.", "error"));
+  if (type === "Web page" && !/https?:\/\/\S+/i.test(text)) issues.push(issue("No URL was detected in the web page reference.", "error"));
 
   const currentKey = normalizeSortKey(beforeYear || text);
   if (index > 0) {
@@ -110,7 +110,7 @@ function validateReferenceNode(node, index, allNodes) {
     const prevYear = previousText.match(/\(((?:19|20)\d{2}[a-z]?|n\.d\.|s\.f\.)\)/i);
     const prevAuthor = prevYear ? previousText.slice(0, prevYear.index).trim() : previousText;
     const previousKey = normalizeSortKey(prevAuthor);
-    if (currentKey.localeCompare(previousKey, "es", { sensitivity: "base" }) < 0) issues.push(issue("La entrada parece estar fuera del orden alfabético de la lista de referencias.", "review"));
+    if (currentKey.localeCompare(previousKey, "es", { sensitivity: "base" }) < 0) issues.push(issue("The entry appears to be out of alphabetical order in the reference list.", "review"));
   }
 
   const errors = issues.filter((item) => item.severity === "error").length;
@@ -163,11 +163,11 @@ function ensureReferenceAuditPanel() {
   panel.id = "referenceFormatAudit";
   panel.className = "reference-format-audit";
   panel.innerHTML = `
-    <h3>Validación del formato de referencias APA 7</h3>
-    <p class="muted">Revisa formato visible y patrones bibliográficos. El estado “Cumple controles automáticos” significa que no se detectaron problemas en las reglas comprobables por el programa; los datos de la fuente original todavía deben verificarse.</p>
+    <h3>APA 7 reference-format validation</h3>
+    <p class="muted">Checks visible formatting and bibliographic patterns. “Passes automated checks” means no problem was detected in rules the program can test; source data must still be verified.</p>
     <div class="ref-audit-actions">
-      <button type="button" id="auditReferencesNow">Auditar referencias</button>
-      <button type="button" id="formatReferenceList">Aplicar formato de lista APA 7</button>
+      <button type="button" id="auditReferencesNow">Audit references</button>
+      <button type="button" id="formatReferenceList">Apply APA 7 list format</button>
     </div>
     <div id="referenceAuditContent" aria-live="polite"></div>`;
   audit.append(panel);
@@ -177,8 +177,8 @@ function ensureReferenceAuditPanel() {
 }
 
 function statusLabel(status) {
-  if (status === "pass") return '<span class="ref-status-pass">Cumple controles automáticos</span>';
-  if (status === "review") return '<span class="ref-status-review">Revisar</span>';
+  if (status === "pass") return '<span class="ref-status-pass">Passes automated checks</span>';
+  if (status === "review") return '<span class="ref-status-review">Review</span>';
   return '<span class="ref-status-error">Error</span>';
 }
 
@@ -200,34 +200,34 @@ function renderReferenceFormattingAudit() {
   const percent = total ? Math.round((analysis.pass / total) * 100) : 0;
 
   if (!total) {
-    target.innerHTML = '<p class="muted">No se detectaron entradas marcadas como referencias. Use el estilo “Referencia APA” de la barra o formatee el documento primero.</p>';
+    target.innerHTML = '<p class="muted">No entries marked as references were detected. Use the Ribbon’s “APA reference” style or format the document first.</p>';
     return;
   }
 
   const rows = analysis.entries.map((entry) => {
     const details = entry.issues.length
       ? `<ul>${entry.issues.map((item) => `<li class="ref-status-${item.severity === "error" ? "error" : "review"}">${escapeRefAudit(item.label)}</li>`).join("")}</ul>`
-      : '<span class="ref-status-pass">Sin observaciones detectadas.</span>';
+      : '<span class="ref-status-pass">No findings detected.</span>';
     return `<tr>
       <td>${entry.index + 1}</td>
       <td>${escapeRefAudit(entry.type)}</td>
       <td>${statusLabel(entry.status)}</td>
       <td>${escapeRefAudit(entry.text)}</td>
       <td>${details}</td>
-      <td><button type="button" data-ref-jump="${entry.index}">Ver</button></td>
+      <td><button type="button" data-ref-jump="${entry.index}">View</button></td>
     </tr>`;
   }).join("");
 
   target.innerHTML = `
     <div class="ref-audit-summary">
-      <div class="ref-audit-card"><span>Referencias</span><strong>${total}</strong></div>
-      <div class="ref-audit-card"><span>Cumplen</span><strong>${analysis.pass}</strong></div>
-      <div class="ref-audit-card"><span>Revisar / error</span><strong>${analysis.review + analysis.error}</strong></div>
-      <div class="ref-audit-card"><span>Cumplimiento automático</span><strong>${percent}%</strong></div>
+      <div class="ref-audit-card"><span>References</span><strong>${total}</strong></div>
+      <div class="ref-audit-card"><span>Pass</span><strong>${analysis.pass}</strong></div>
+      <div class="ref-audit-card"><span>Review / error</span><strong>${analysis.review + analysis.error}</strong></div>
+      <div class="ref-audit-card"><span>Automated compliance</span><strong>${percent}%</strong></div>
     </div>
     <div class="ref-audit-table-wrap">
       <table class="ref-audit-table">
-        <thead><tr><th>#</th><th>Tipo probable</th><th>Estado</th><th>Referencia</th><th>Reglas APA 7</th><th>Editor</th></tr></thead>
+        <thead><tr><th>#</th><th>Likely type</th><th>Status</th><th>Reference</th><th>APA 7 rules</th><th>Editor</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
     </div>`;
@@ -290,7 +290,7 @@ function formatReferenceListLayout() {
   renderReferenceFormattingAudit();
   const status = document.querySelector("#status");
   if (status) {
-    status.textContent = `APA 7 v${APA_REFERENCE_AUDIT_VERSION}: se aplicó doble espacio, sangría francesa de 0.5 pulg. y orden alfabético a ${nodes.length} referencia(s). Los datos bibliográficos no fueron inventados ni sustituidos.`;
+    status.textContent = `APA 7 v${APA_REFERENCE_AUDIT_VERSION}: double spacing, a 0.5-inch hanging indent, and alphabetical order were applied to ${nodes.length} reference(s). Bibliographic data was not invented or replaced.`;
     status.className = "status success";
   }
 }

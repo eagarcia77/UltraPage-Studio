@@ -183,8 +183,8 @@ function appendTableAudit() {
   li.dataset.apaTableAudit = "true";
   li.className = missingTitle ? "warn" : "ok";
   li.textContent = missingTitle
-    ? `Tablas APA 7 v${APA_TABLE_VERSION}: ${tables.length} tabla(s) detectada(s); ${missingTitle} requiere(n) revisar o completar el título.`
-    : `Tablas APA 7 v${APA_TABLE_VERSION}: ${tables.length} tabla(s) con número, título y reglas sin líneas verticales.`;
+    ? `APA 7 tables v${APA_TABLE_VERSION}: ${tables.length} table(s) detected; ${missingTitle} require title review or completion.`
+    : `APA 7 tables v${APA_TABLE_VERSION}: ${tables.length} table(s) have a number, title, and rules without vertical lines.`;
   list.append(li);
 }
 

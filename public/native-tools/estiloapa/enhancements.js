@@ -92,14 +92,14 @@ function referenceIssues(ref, duplicateKeys) {
   const issues = [];
   const text = ref.text;
 
-  if (!ref.year) issues.push("No se detecta año entre paréntesis.");
-  if (!ref.author) issues.push("No se identifica claramente el autor o autor corporativo.");
-  if (/\bdoi\s*:/i.test(text)) issues.push("El DOI debe expresarse como URL: https://doi.org/…");
-  if (/https?:\/\/dx\.doi\.org\//i.test(text)) issues.push("Use https://doi.org/ en lugar de dx.doi.org.");
-  if (/(https?:\/\/\S+)[.,;:]$/i.test(text)) issues.push("La URL/DOI termina con puntuación; APA 7 normalmente no añade punto después de la URL.");
-  if (/^\s*(?:\d+[.)]|[-•])\s+/.test(text)) issues.push("La referencia comienza con viñeta o numeración; la lista APA no se numera.");
-  if (/\s{2,}/.test(text)) issues.push("Contiene espacios consecutivos.");
-  if (ref.key && duplicateKeys.has(ref.key)) issues.push("Puede ser una referencia duplicada para el mismo autor y año.");
+  if (!ref.year) issues.push("No parenthetical year was detected.");
+  if (!ref.author) issues.push("The personal or corporate author cannot be clearly identified.");
+  if (/\bdoi\s*:/i.test(text)) issues.push("The DOI must be written as a URL: https://doi.org/…");
+  if (/https?:\/\/dx\.doi\.org\//i.test(text)) issues.push("Use https://doi.org/ instead of dx.doi.org.");
+  if (/(https?:\/\/\S+)[.,;:]$/i.test(text)) issues.push("The URL/DOI ends with punctuation; APA 7 normally omits a period after the URL.");
+  if (/^\s*(?:\d+[.)]|[-•])\s+/.test(text)) issues.push("The reference starts with a bullet or number; an APA reference list is not numbered.");
+  if (/\s{2,}/.test(text)) issues.push("It contains consecutive spaces.");
+  if (ref.key && duplicateKeys.has(ref.key)) issues.push("This may duplicate another reference with the same author and year.");
   return issues;
 }
 
@@ -173,12 +173,12 @@ function ensurePanel() {
   panel.id = "advancedApaAudit";
   panel.className = "advanced-audit";
   panel.innerHTML = `
-    <h3>Revisión avanzada de citas y referencias</h3>
-    <p class="advanced-note">Correcciones automáticas limitadas a cambios seguros de presentación. Los datos bibliográficos deben verificarse con la fuente original.</p>
+    <h3>Advanced citation and reference review</h3>
+    <p class="advanced-note">Automatic fixes are limited to safe presentation changes. Verify bibliographic data against the original source.</p>
     <div class="advanced-actions">
-      <button type="button" id="safeFixReferences">Aplicar correcciones seguras</button>
-      <button type="button" id="refreshAdvancedAudit">Revisar ahora</button>
-      <button type="button" id="downloadAdvancedCsv">Descargar matriz CSV</button>
+      <button type="button" id="safeFixReferences">Apply safe fixes</button>
+      <button type="button" id="refreshAdvancedAudit">Review now</button>
+      <button type="button" id="downloadAdvancedCsv">Download CSV matrix</button>
     </div>
     <div id="advancedAuditContent" aria-live="polite"></div>
   `;
@@ -197,45 +197,45 @@ function renderAdvancedAudit() {
 
   const analysis = analyzeAdvanced();
   if (!analysis.refs.length && !analysis.citations.length) {
-    target.innerHTML = '<p class="advanced-note">Todavía no hay citas o referencias detectadas para revisar.</p>';
+    target.innerHTML = '<p class="advanced-note">No citations or references have been detected for review yet.</p>';
     return;
   }
 
   const rows = analysis.referenceReview.map((ref) => {
-    const status = ref.issues.length ? `<span class="advanced-warn">${ref.issues.length} observación(es)</span>` : '<span class="advanced-ok">Sin alertas básicas</span>';
+    const status = ref.issues.length ? `<span class="advanced-warn">${ref.issues.length} finding(s)</span>` : '<span class="advanced-ok">No basic alerts</span>';
     const issues = ref.issues.length ? `<ul>${ref.issues.map((issue) => `<li>${escapeHtml(issue)}</li>`).join("")}</ul>` : "—";
     return `<tr><td>${ref.index + 1}</td><td>${escapeHtml(ref.text)}</td><td>${status}</td><td>${issues}</td></tr>`;
   }).join("");
 
   const unmatched = analysis.unmatchedCitations.length
-    ? analysis.unmatchedCitations.map((citation) => `<li>${escapeHtml(citation.raw)} — no se encontró coincidencia por primer autor y año.</li>`).join("")
-    : '<li class="advanced-ok">Todas las citas detectadas tienen una coincidencia básica por autor y año.</li>';
+    ? analysis.unmatchedCitations.map((citation) => `<li>${escapeHtml(citation.raw)} — no first-author/year match was found.</li>`).join("")
+    : '<li class="advanced-ok">Every detected citation has a basic author/year match.</li>';
 
   const uncited = analysis.uncitedReferences.length
     ? analysis.uncitedReferences.map((ref) => `<li>${escapeHtml(ref.text)}</li>`).join("")
-    : '<li class="advanced-ok">No se detectaron referencias claramente no citadas.</li>';
+    : '<li class="advanced-ok">No clearly uncited references were detected.</li>';
 
   target.innerHTML = `
     <div class="advanced-summary">
-      <div class="advanced-card"><span>Citas detectadas</span><strong>${analysis.citations.length}</strong></div>
-      <div class="advanced-card"><span>Referencias</span><strong>${analysis.refs.length}</strong></div>
-      <div class="advanced-card"><span>Citas sin referencia</span><strong>${analysis.unmatchedCitations.length}</strong></div>
-      <div class="advanced-card"><span>Observaciones</span><strong>${analysis.issueCount}</strong></div>
+      <div class="advanced-card"><span>Citations detected</span><strong>${analysis.citations.length}</strong></div>
+      <div class="advanced-card"><span>References</span><strong>${analysis.refs.length}</strong></div>
+      <div class="advanced-card"><span>Citations without references</span><strong>${analysis.unmatchedCitations.length}</strong></div>
+      <div class="advanced-card"><span>Findings</span><strong>${analysis.issueCount}</strong></div>
     </div>
     <details ${analysis.unmatchedCitations.length ? "open" : ""}>
-      <summary><strong>Citas sin referencia detectada (${analysis.unmatchedCitations.length})</strong></summary>
+      <summary><strong>Citations without a detected reference (${analysis.unmatchedCitations.length})</strong></summary>
       <ul>${unmatched}</ul>
     </details>
     <details>
-      <summary><strong>Referencias sin cita detectada (${analysis.uncitedReferences.length})</strong></summary>
+      <summary><strong>References without a detected citation (${analysis.uncitedReferences.length})</strong></summary>
       <ul>${uncited}</ul>
     </details>
     <details>
-      <summary><strong>Revisión individual de referencias</strong></summary>
+      <summary><strong>Individual reference review</strong></summary>
       <div class="advanced-table-wrap">
         <table class="advanced-table">
-          <thead><tr><th>#</th><th>Referencia</th><th>Estado</th><th>Observaciones</th></tr></thead>
-          <tbody>${rows || '<tr><td colspan="4">No se detectaron referencias.</td></tr>'}</tbody>
+          <thead><tr><th>#</th><th>Reference</th><th>Status</th><th>Findings</th></tr></thead>
+          <tbody>${rows || '<tr><td colspan="4">No references were detected.</td></tr>'}</tbody>
         </table>
       </div>
     </details>
@@ -256,7 +256,7 @@ function applySafeReferenceFixes() {
     const after = normalizeReferenceText(before);
     if (after === before) continue;
 
-    // No reemplazamos contenido enriquecido porque podría eliminar cursivas, enlaces u otro marcado útil.
+    // Preserve rich content because replacing it could remove italics, links, or other useful markup.
     if (ref.children.length > 0) {
       skippedRichText += 1;
       continue;
@@ -273,11 +273,11 @@ function applySafeReferenceFixes() {
   const status = document.querySelector("#status");
   if (status) {
     const skippedMessage = skippedRichText
-      ? ` ${skippedRichText} referencia(s) con cursivas/enlaces se dejaron intactas para preservar el formato.`
+      ? ` ${skippedRichText} reference(s) with italics or links were left unchanged to preserve formatting.`
       : "";
     status.textContent = changed
-      ? `APA7 v${ENHANCEMENT_VERSION}: se aplicaron correcciones seguras a ${changed} referencia(s).${skippedMessage} Revise los datos bibliográficos manualmente.`
-      : `APA7 v${ENHANCEMENT_VERSION}: no se aplicaron cambios automáticos.${skippedMessage}`;
+      ? `APA7 v${ENHANCEMENT_VERSION}: safe fixes were applied to ${changed} reference(s).${skippedMessage} Review bibliographic data manually.`
+      : `APA7 v${ENHANCEMENT_VERSION}: no automatic changes were applied.${skippedMessage}`;
     status.className = "status success";
   }
 }
@@ -289,25 +289,25 @@ function csvEscape(value) {
 
 function downloadAdvancedCsv() {
   const analysis = analyzeAdvanced();
-  const lines = [["tipo", "autor_clave", "anio", "texto", "estado"]];
+  const lines = [["type", "author_key", "year", "text", "status"]];
 
   for (const citation of analysis.citations) {
     lines.push([
-      "cita",
+      "citation",
       citation.author,
       citation.year,
       citation.raw,
-      analysis.unmatchedCitations.some((item) => item.key === citation.key && item.raw === citation.raw) ? "sin referencia" : "coincidencia básica",
+      analysis.unmatchedCitations.some((item) => item.key === citation.key && item.raw === citation.raw) ? "missing reference" : "basic match",
     ]);
   }
 
   for (const ref of analysis.referenceReview) {
     lines.push([
-      "referencia",
+      "reference",
       ref.author,
       ref.year,
       ref.text,
-      ref.issues.length ? ref.issues.join(" | ") : "sin alertas básicas",
+      ref.issues.length ? ref.issues.join(" | ") : "no basic alerts",
     ]);
   }
 
@@ -316,7 +316,7 @@ function downloadAdvancedCsv() {
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
-  anchor.download = "auditoria-APA7-citas-referencias.csv";
+  anchor.download = "APA7-citation-reference-audit.csv";
   document.body.append(anchor);
   anchor.click();
   anchor.remove();

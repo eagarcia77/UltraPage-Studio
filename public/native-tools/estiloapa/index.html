@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="es">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Formateador y editor APA 7 para módulos, disertaciones doctorales y tesis de maestría con auditoría avanzada de referencias, tablas y figuras.">
+  <meta name="description" content="APA 7 formatter and editor for modules, doctoral dissertations, and master's theses with advanced reference, table, and figure auditing.">
   <title>APA7 Academic Formatter</title>
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="scrollbar-v31.css">
@@ -27,83 +27,116 @@
   <script type="module" src="thesis-docx.js"></script>
   <script type="module" src="html-enhance.js"></script>
   <script type="module" src="docx-enhance.js"></script>
+  <script type="module" src="lms-export.js" data-ultrapage-lms-export></script>
   <link rel="stylesheet" href="ultrapage-theme.css" data-ultrapage-native-theme>
+  <link rel="stylesheet" href="../ultrapage-native-ribbon.css" data-ultrapage-native-ribbon-style>
+  <script defer src="../ultrapage-native-ribbon.js" data-ultrapage-native-ribbon></script>
+  <script defer src="../ultrapage-native-recovery.js" data-ultrapage-native-recovery></script>
 </head>
-<body>
-  <a class="skip-link" href="#main">Saltar al contenido principal</a>
+<body data-native-draft-tool="estiloapa">
+  <a class="skip-link" href="#main">Skip to main content</a>
   <header class="site-header">
     <div class="header-inner">
       <div>
-        <p class="eyebrow">Herramienta académica · ejecución local</p>
+        <p class="eyebrow">Academic tool · local processing</p>
         <h1>APA7 Academic Formatter</h1>
-        <p class="subtitle">Versión 3.4 restaurada con un parche controlado para figuras APA 7. Conserva banners sin numeración, evita duplicar captions integrados y exporta el módulo siguiendo el orden actual de la vista previa.</p>
+        <p class="subtitle">Version 3.4 restored with controlled APA 7 figure handling. It preserves unnumbered banners, avoids duplicate embedded captions, and exports content in the current preview order.</p>
       </div>
-      <span class="badge" aria-label="Versión 3.4.8">v3.4.8</span>
+      <span class="badge" aria-label="Version 3.4.8">v3.4.8</span>
     </div>
   </header>
   <main id="main" class="layout">
     <section class="panel controls" aria-labelledby="upload-title">
-      <h2 id="upload-title">1. Cargar y ejecutar</h2>
-      <p>Seleccione uno o varios documentos. Para comprobar que la aplicación funciona sin subir archivos, presione <strong>Probar ejemplo</strong>.</p>
+      <h2 id="upload-title">1. Load and process</h2>
+      <p>Select one or more documents. To test the application without uploading a file, select <strong>Try sample</strong>.</p>
       <label class="drop-zone" for="files" id="dropZone">
         <span class="drop-icon" aria-hidden="true">⇧</span>
-        <strong>Seleccione o arrastre archivos aquí</strong>
-        <span>DOCX, PDF, TXT, MD, HTML y HTM. El contenido se procesa localmente en su navegador.</span>
+        <strong>Select or drop files here</strong>
+        <span>DOCX, PDF, TXT, MD, HTML, and HTM. Content is processed locally in your browser.</span>
         <input id="files" type="file" multiple accept=".docx,.pdf,.txt,.md,.html,.htm,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/html">
       </label>
-      <p class="muted"><strong>v3.4.8:</strong> mantiene la base funcional v3.4, incorpora imágenes y añade edición protegida en la vista previa para evitar que los normalizadores borren o reemplacen texto mientras se escribe.</p>
+      <p class="muted"><strong>v3.4.8:</strong> preserves the stable v3.4 foundation, incorporates images, and protects preview editing so normalizers do not erase or replace text while you type.</p>
       <div id="fileList" class="file-list" aria-live="polite"></div>
       <fieldset>
-        <legend>Configuración de formato</legend>
+        <legend>Formatting settings</legend>
         <label>
-          Perfil de formato
+          Formatting profile
           <select id="formatProfile">
-            <option value="modulo11c" selected>Módulo institucional — APA 7 estricto</option>
-            <option value="thesis-doctoral">Disertación doctoral — plantilla institucional</option>
-            <option value="thesis-masters">Tesis de maestría — formato institucional</option>
-            <option value="apa7">APA 7 estándar</option>
+            <option value="modulo11c" selected>Institutional module — strict APA 7</option>
+            <option value="thesis-doctoral">Doctoral dissertation — institutional template</option>
+            <option value="thesis-masters">Master's thesis — institutional format</option>
+            <option value="apa7">Standard APA 7</option>
           </select>
         </label>
         <label>
-          Fuente
+          Font
           <select id="fontFamily">
             <option value="Times New Roman" selected>Times New Roman — 12 pt</option>
-            <option value="Arial">Arial — perfil de módulo 12 pt / APA estándar 11 pt</option>
+            <option value="Arial">Arial — module profile 12 pt / standard APA 11 pt</option>
             <option value="Calibri">Calibri — 11 pt</option>
             <option value="Georgia">Georgia — 11 pt</option>
           </select>
         </label>
-        <label class="checkbox-row"><input id="firstLineIndent" type="checkbox" checked> Sangría de primera línea de 0.5 pulg. en párrafos regulares</label>
-        <label class="checkbox-row"><input id="hangingReferences" type="checkbox" checked> Sangría francesa de 0.5 pulg. en referencias</label>
-        <label class="checkbox-row"><input id="sortReferences" type="checkbox" checked> Ordenar referencias alfabéticamente</label>
-        <label class="checkbox-row"><input id="pageNumbers" type="checkbox" checked> Añadir numeración de páginas en el DOCX</label>
+        <label class="checkbox-row"><input id="firstLineIndent" type="checkbox" checked> 0.5-inch first-line indent for regular paragraphs</label>
+        <label class="checkbox-row"><input id="hangingReferences" type="checkbox" checked> 0.5-inch hanging indent for references</label>
+        <label class="checkbox-row"><input id="sortReferences" type="checkbox" checked> Sort references alphabetically</label>
+        <label class="checkbox-row"><input id="pageNumbers" type="checkbox" checked> Add page numbers to DOCX</label>
       </fieldset>
-      <div class="button-row">
-        <button id="formatBtn" class="primary" type="button">Aplicar formato</button>
-        <button id="demoBtn" type="button">Probar ejemplo</button>
-        <button id="clearBtn" type="button">Limpiar</button>
+      <div class="button-row native-action-ribbon" role="toolbar" aria-label="Document authoring commands" data-native-ribbon>
+        <div class="native-ribbon-group" role="group" aria-label="Authoring">
+          <div class="native-ribbon-actions"><button id="formatBtn" class="primary" type="button">Apply formatting</button><button id="demoBtn" type="button">Try sample</button></div>
+          <span class="native-ribbon-label">Authoring</span>
+        </div>
+        <div class="native-ribbon-group" role="group" aria-label="Document">
+          <div class="native-ribbon-actions"><button id="clearBtn" type="button">Clear</button></div>
+          <span class="native-ribbon-label">Document</span>
+        </div>
       </div>
       <div id="status" class="status" role="status" aria-live="polite"></div>
     </section>
     <section class="panel audit" aria-labelledby="audit-title">
       <div class="section-heading">
-        <div><p class="eyebrow">Revisión automática</p><h2 id="audit-title">2. Auditoría APA 7 y estructura</h2></div>
+        <div><p class="eyebrow">Automated review</p><h2 id="audit-title">2. APA 7 and structure audit</h2></div>
         <span id="score" class="score" aria-live="polite">—</span>
       </div>
-      <p class="muted">La puntuación es heurística. La auditoría revisa citas, estructura, referencias, listas, tablas, figuras y medios originales.</p>
-      <div id="metrics" class="metrics" aria-label="Métricas de auditoría"></div>
-      <div class="button-row compact"><button id="reauditBtn" type="button" disabled>Volver a auditar</button><button id="downloadAuditBtn" type="button" disabled>Descargar auditoría</button></div>
-      <ul id="auditList" class="audit-list"><li>Cargue uno o más archivos o presione “Probar ejemplo”.</li></ul>
+      <p class="muted">The score is heuristic. The audit reviews citations, structure, references, lists, tables, figures, and original media.</p>
+      <div id="metrics" class="metrics" aria-label="Audit metrics"></div>
+      <div class="button-row compact native-action-ribbon" role="toolbar" aria-label="APA review commands" data-native-ribbon>
+        <div class="native-ribbon-group" role="group" aria-label="Review"><div class="native-ribbon-actions"><button id="reauditBtn" type="button" disabled>Run audit</button></div><span class="native-ribbon-label">Review</span></div>
+        <div class="native-ribbon-group" role="group" aria-label="Report"><div class="native-ribbon-actions"><button id="downloadAuditBtn" type="button" disabled>Download report</button></div><span class="native-ribbon-label">Report</span></div>
+      </div>
+      <ul id="auditList" class="audit-list"><li>Load one or more files or select “Try sample.”</li></ul>
     </section>
     <section class="panel preview-panel" aria-labelledby="preview-title">
       <div class="preview-toolbar">
-        <div><p class="eyebrow">Documento editable</p><h2 id="preview-title">3. Vista previa y exportación</h2></div>
-        <div class="button-row compact"><button id="downloadDocxBtn" type="button" disabled>Descargar DOCX</button><button id="downloadHtmlBtn" type="button" disabled>Descargar HTML</button></div>
+        <div><p class="eyebrow">Editable document</p><h2 id="preview-title">3. Preview and export</h2></div>
+        <div class="button-row compact native-action-ribbon" role="toolbar" aria-label="Document export commands" data-native-ribbon>
+          <div class="native-ribbon-group" role="group" aria-label="Export"><div class="native-ribbon-actions"><button id="downloadDocxBtn" type="button" disabled>Download DOCX</button><button id="downloadHtmlBtn" type="button" disabled>Download HTML</button><button id="downloadPdfBtn" type="button" disabled aria-describedby="pdfExportHelp">Download accessible PDF</button></div><span class="native-ribbon-label">Export</span></div>
+          <div class="native-ribbon-group native-lms-group" role="group" aria-label="LMS Export">
+            <div class="native-ribbon-actions native-lms-actions">
+              <label class="native-lms-profile" for="lmsExportProfile"><span>LMS profile</span><select id="lmsExportProfile"><option value="blackboard">Blackboard Ultra</option><option value="moodle">Moodle</option><option value="canvas">Canvas</option><option value="universal">Universal LMS</option></select></label>
+              <button id="checkLmsBtn" type="button" disabled>Check LMS compatibility</button>
+              <button id="copyLmsHtmlBtn" type="button" disabled>Copy LMS HTML</button>
+              <button id="downloadLmsHtmlBtn" type="button" disabled>Download LMS HTML</button>
+              <button id="downloadLmsReportBtn" type="button" disabled>Download LMS report</button>
+            </div>
+            <span class="native-ribbon-label">LMS Export</span>
+          </div>
+        </div>
       </div>
-      <p id="previewHelp" class="muted"><strong>Edición protegida v3.4.8:</strong> puede escribir, borrar, cortar y pegar directamente en esta vista previa sin que los normalizadores reconstruyan el texto mientras el cursor está activo. Las reglas APA 7 se reanudan al salir del editor, volver a auditar o exportar.</p>
-      <div class="paper-wrap" tabindex="0" aria-label="Área desplazable de vista previa del documento"><article id="preview" class="apa-paper" contenteditable="true" aria-label="Vista previa editable del documento" aria-describedby="previewHelp" spellcheck="true"><p class="placeholder">El contenido formateado aparecerá aquí.</p></article></div>
+      <p id="pdfExportHelp" class="muted">Creates a tagged PDF with document language, metadata, headings, lists, tables, links, and image descriptions.</p>
+      <p id="lmsExportHelp" class="muted">LMS Export creates conservative, self-contained HTML for Blackboard Ultra, Moodle, Canvas, or another LMS. Run the compatibility check before copying or downloading.</p>
+      <p id="lmsExportStatus" class="native-lms-status" role="status" aria-live="polite">LMS compatibility has not been checked.</p>
+      <dialog id="lmsAuditDialog" class="native-lms-dialog" aria-labelledby="lmsAuditTitle">
+        <div class="native-lms-dialog-head"><div><p class="eyebrow">LMS portability</p><h2 id="lmsAuditTitle">Compatibility report</h2></div><button id="closeLmsAuditBtn" type="button" aria-label="Close compatibility report">×</button></div>
+        <div id="lmsAuditSummary" class="native-lms-summary"></div>
+        <ol id="lmsAuditFindings" class="native-lms-findings"></ol>
+        <div class="native-lms-dialog-actions"><button id="closeLmsAuditFooterBtn" type="button">Close</button></div>
+      </dialog>
+      <p id="previewHelp" class="muted"><strong>Protected editing v3.4.8:</strong> type, delete, cut, and paste directly in this preview without normalizers rebuilding text while the cursor is active. APA 7 rules resume when you leave the editor, rerun the audit, or export.</p>
+      <div class="paper-wrap" tabindex="0" aria-label="Scrollable document preview area"><article id="preview" class="apa-paper" contenteditable="true" aria-label="Editable document preview" aria-describedby="previewHelp" lang="es-PR" spellcheck="true"><p class="placeholder">Formatted content will appear here.</p></article></div>
     </section>
   </main>
-  <footer><p>APA7 Academic Formatter v3.4.8 · Base v3.4 · Edición protegida · Imágenes DOCX/PDF · Figuras APA 7 · Tablas APA · Referencias APA 7.</p></footer>
+  <footer><p>APA7 Academic Formatter v3.4.8 · v3.4 foundation · Protected editing · DOCX/PDF images · APA 7 figures · APA tables · APA 7 references.</p></footer>
 </body>
 </html>
