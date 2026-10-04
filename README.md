@@ -10,6 +10,8 @@
 
 Editor visual para crear contenido accesible y portátil entre Blackboard Ultra, Canvas, Moodle, D2L Brightspace y otros LMS basados en HTML estándar.
 
+> **Estado del producto:** vista previa precomercial. Las ventas y las afirmaciones de certificación permanecen desactivadas hasta completar la [puerta de estabilidad y preparación comercial](docs/COMMERCIALIZATION_READINESS.md).
+
 ## Funciones
 
 - Edición visual y edición directa de HTML.

@@ -17,12 +17,12 @@ function updateV347Ui() {
   const badge = document.querySelector(".badge");
   if (badge) {
     badge.textContent = `v${HTML_ENHANCE_VERSION}`;
-    badge.setAttribute("aria-label", `Versión ${HTML_ENHANCE_VERSION}`);
+    badge.setAttribute("aria-label", `Version ${HTML_ENHANCE_VERSION}`);
   }
   const footer = document.querySelector("footer p");
-  if (footer) footer.textContent = `APA7 Academic Formatter v${HTML_ENHANCE_VERSION} · Imágenes DOCX/PDF incorporadas · Banner inicial excluido · Figuras APA 7 · Referencias APA 7.`;
+  if (footer) footer.textContent = `APA7 Academic Formatter v${HTML_ENHANCE_VERSION} · DOCX/PDF images included · Opening banner excluded · APA 7 figures · APA 7 references.`;
   const help = document.querySelector("#previewHelp");
-  if (help) help.innerHTML = "El documento permanece editable. <strong>v3.4.7:</strong> incorpora imágenes de DOCX y recupera figuras del PDF incluso cuando cada página llega como un solo párrafo con saltos de línea. Las figuras que ya contienen Figura X, título y Nota dentro de la imagen se conservan sin duplicar caption. El banner inicial se excluye.";
+  if (help) help.innerHTML = "The document remains editable. <strong>v3.4.7:</strong> embeds DOCX images and recovers PDF figures even when each page arrives as one paragraph with line breaks. Figures that already include a number, title, and note in the image are preserved without a duplicate caption. The opening banner is excluded.";
 }
 
 async function downloadInstitutionalHtml() {
@@ -80,7 +80,7 @@ th,td { border:0; padding:.18em; vertical-align:top; line-height:1.55; } tr:firs
     const selfCaptioned = [...preview.querySelectorAll('img.pdf-recovered-v347[data-apa-self-captioned="true"]')].length;
     const manual = [...preview.querySelectorAll('img[data-apa-manual-image="true"]')].length;
     const refs = [...preview.querySelectorAll(".apa-reference")].length;
-    status.textContent = `HTML v${HTML_ENHANCE_VERSION}: ${figures} figura(s), ${recovered} recuperada(s) del PDF (${selfCaptioned} con caption integrado), ${manual} manuales; banner excluido; ${refs} referencia(s) APA 7.`;
+    status.textContent = `HTML v${HTML_ENHANCE_VERSION}: ${figures} figure(s), ${recovered} recovered from PDF (${selfCaptioned} with an embedded caption), ${manual} manual; opening banner excluded; ${refs} APA 7 reference(s).`;
     status.className = "status success";
   }
 }
@@ -97,7 +97,7 @@ document.addEventListener("click", (event) => {
       console.error("HTML v3.4.7", error);
       const status = document.querySelector("#status");
       if (status) {
-        status.textContent = `No se pudo generar el HTML: ${error.message}`;
+        status.textContent = `The HTML could not be generated: ${error.message}`;
         status.className = "status error";
       }
     })

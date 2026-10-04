@@ -1,4 +1,4 @@
-const VERSION = "ultrapage-v38";
+const VERSION = "ultrapage-v46";
 const SHELL_CACHE = `${VERSION}-shell`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
 const APP_SHELL = [
@@ -11,6 +11,10 @@ const APP_SHELL = [
   "/brand/ultrapage-icon-512.png",
   "/brand/apple-touch-icon.png",
   "/native-tools/ultrapage-native-theme.css",
+  "/native-tools/ultrapage-native-ribbon.css",
+  "/native-tools/ultrapage-native-ribbon.js",
+  "/native-tools/ultrapage-native-recovery.js",
+  "/native-tools/ultrapage-assessment-bridge.js",
   "/native-tools/estiloapa/index.html",
   "/native-tools/estiloapa/styles.css",
   "/native-tools/estiloapa/scrollbar-v31.css",
@@ -32,8 +36,10 @@ const APP_SHELL = [
   "/native-tools/estiloapa/thesis-html.js",
   "/native-tools/estiloapa/thesis-docx.js",
   "/native-tools/estiloapa/html-enhance.js",
+  "/native-tools/estiloapa/lms-export.js",
   "/native-tools/estiloapa/docx-enhance.js",
   "/native-tools/txt-test-generator/index.html",
+  "/native-tools/txt-test-generator/canvas-qti.js",
   "/native-tools/txt-test-generator/img/LOGO-INTER-SG-HORIZONTAL_sticker.png",
   "/native-tools/txt-test-generator/img/ucan-logo.png",
   "/native-tools/txt-test-generator/Guía_Generador_Exámenes_Blackboard_Ultra_Simplificada.pdf",

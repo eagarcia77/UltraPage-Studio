@@ -153,11 +153,11 @@ function aesUpdateUi() {
   const badge = document.querySelector(".badge");
   if (badge) {
     badge.textContent = `v${APA_EDIT_STABILITY_VERSION}`;
-    badge.setAttribute("aria-label", `Versión ${APA_EDIT_STABILITY_VERSION}`);
+    badge.setAttribute("aria-label", `Version ${APA_EDIT_STABILITY_VERSION}`);
   }
   const help = document.querySelector("#previewHelp");
   if (help) {
-    help.innerHTML = "<strong>Edición protegida v3.4.8:</strong> puede escribir, borrar, cortar y pegar directamente en esta vista previa sin que los normalizadores reconstruyan el texto mientras el cursor está activo. Las reglas APA 7 se reanudan al salir del editor, volver a auditar o exportar.";
+    help.innerHTML = "<strong>Protected editing v3.4.8:</strong> type, delete, cut, and paste directly in this preview without normalizers rebuilding the text while the cursor is active. APA 7 rules resume when you leave the editor, run the audit again, or export.";
   }
 }
 
@@ -190,7 +190,7 @@ function aesInitialize() {
 
   document.addEventListener("pointerdown", (event) => {
     const action = event.target?.closest?.(
-      "#formatBtn,#demoBtn,#clearBtn,#reauditBtn,#downloadDocxBtn,#downloadHtmlBtn,#downloadAuditBtn,#formatReferenceList,#auditReferencesNow"
+      "#formatBtn,#demoBtn,#clearBtn,#reauditBtn,#downloadDocxBtn,#downloadHtmlBtn,#downloadPdfBtn,#downloadAuditBtn,#formatReferenceList,#auditReferencesNow"
     );
     if (!action) return;
     aesFinishEditing({ dispatch: false });
@@ -200,7 +200,7 @@ function aesInitialize() {
     aesFlushPendingNormalizations();
     const status = document.querySelector("#status");
     if (status?.dataset?.apaEditStatus === "true") {
-      status.textContent = "Cambios de texto conservados. La vista previa salió del modo de edición protegida.";
+      status.textContent = "Text changes preserved. The preview has left protected editing mode.";
       status.className = "status success";
       delete status.dataset.apaEditStatus;
     }

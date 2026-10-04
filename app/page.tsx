@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import JSZip from "jszip";
-import { Accessibility, AlertTriangle, AlignCenter, AlignJustify, AlignLeft, AlignRight, Bold, BookOpen, CalendarDays, Check, ChevronDown, ClipboardPaste, Cloud, Code2, Columns3, Copy, Download, Eraser, Eye, FileImage, FilePlus2, FileText, Folder, Heading2, Highlighter, History, ImagePlus, Italic, Keyboard, Link2, List, ListOrdered, Loader2, LockKeyhole, Maximize2, Minus, Monitor, MoreHorizontal, Palette, PanelRight, Pilcrow, PlugZap, Plus, Printer, Quote, Redo2, Rows3, Save, Scissors, Search, Sigma, Smartphone, Stamp, Strikethrough, Subscript, Superscript, Table2, Tablet, Trash2, Underline, Undo2, Unlink, Upload, Video, Volume2, X, ZoomIn, ZoomOut } from "lucide-react";
+import { Accessibility, AlertTriangle, AlignCenter, AlignJustify, AlignLeft, AlignRight, Bold, BookOpen, CalendarDays, Check, ChevronDown, ClipboardPaste, Cloud, Code2, Columns3, Copy, Download, Eraser, Eye, FileImage, FilePlus2, FileText, Folder, Heading2, Highlighter, History, ImagePlus, Italic, Keyboard, Link2, List, ListOrdered, Loader2, LockKeyhole, Maximize2, Minus, Monitor, MoreHorizontal, Palette, PanelRight, Pilcrow, PlugZap, Plus, Printer, Quote, Redo2, Rows3, Save, Scissors, Search, Settings2, Sigma, Smartphone, Stamp, Strikethrough, Subscript, Superscript, Table2, Tablet, Trash2, Underline, Undo2, Unlink, Upload, Video, Volume2, X, ZoomIn, ZoomOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -23,19 +23,52 @@ const demoFiles = [
 ];
 const DRAFT_KEY = "ultrapage-studio-draft-v1";
 const HISTORY_KEY = "ultrapage-studio-history-v1";
+const PREVIEW_AUDIT_CHECK_COUNT = 23;
 type DocumentLanguage = "es-PR" | "en-US";
 type LmsProfile = "universal" | "blackboard" | "canvas" | "moodle" | "brightspace";
+type PageSize = "letter" | "a4";
+type PageOrientation = "portrait" | "landscape";
+type PageMargin = "normal" | "narrow" | "wide";
 type RibbonTab = "file" | "home" | "insert" | "layout" | "references" | "review" | "view" | "tools" | "table" | "picture" | "link";
-type DraftSnapshot = { id: string; html: string; title: string; fileName: string; language?: DocumentLanguage; lmsProfile?: LmsProfile; author?: string; description?: string; savedAt: string };
+type PageSetup = { size: PageSize; orientation: PageOrientation; margin: PageMargin };
+type DraftSnapshot = { id: string; html: string; title: string; fileName: string; language?: DocumentLanguage; lmsProfile?: LmsProfile; author?: string; description?: string; pageSetup?: PageSetup; savedAt: string };
 type CapturedFormat = { fontFamily: string; fontSize: string; fontWeight: string; fontStyle: string; textDecorationLine: string; color: string; backgroundColor: string; lineHeight: string; textAlign: string };
 type SelectedImageData = { alt: string; caption: string; decorative: boolean; width: number };
+type SelectedImageSummary = { index: number; total: number; status: "described" | "decorative" | "needs-alt" };
 type SelectedLinkData = { text: string; url: string; newTab: boolean };
 type PreviewAuditLocation = { selector: string; index: number; label: string };
 type PreviewAuditCheck = { ok: boolean; label: string; detail: string; location?: PreviewAuditLocation };
 type PreviewDeviceResult = { device: "desktop" | "tablet" | "mobile"; label: string; width: number; ok: boolean; detail: string };
 type HtmlDiagnostic = { severity: "error" | "warning"; message: string; line: number; column: number; offset: number; length: number };
 type HtmlTagCrumb = { name: string; offset: number };
+type HtmlLiveSelection = { tag: string; ordinal: number; offset: number; length: number; line: number; column: number; label: string; selectedText?: string };
 type HtmlPackageResult = { bundledAssets: number; externalAssets: number; fileName: string };
+
+const pageSizes: Record<PageSize, { label: string; width: number; height: number }> = {
+  letter: { label: "Letter", width: 8.5, height: 11 },
+  a4: { label: "A4", width: 8.27, height: 11.69 },
+};
+const pageMargins: Record<PageMargin, { label: string; horizontal: number; vertical: number }> = {
+  normal: { label: "Normal", horizontal: 0.75, vertical: 0.75 },
+  narrow: { label: "Narrow", horizontal: 0.5, vertical: 0.5 },
+  wide: { label: "Wide", horizontal: 1, vertical: 1 },
+};
+
+function isPageSetup(value: unknown): value is PageSetup {
+  if (!value || typeof value !== "object") return false;
+  const setup = value as Partial<PageSetup>;
+  return (setup.size === "letter" || setup.size === "a4") && (setup.orientation === "portrait" || setup.orientation === "landscape") && (setup.margin === "normal" || setup.margin === "narrow" || setup.margin === "wide");
+}
+
+function pageDimensions(setup: PageSetup) {
+  const paper = pageSizes[setup.size];
+  return setup.orientation === "landscape" ? { width: paper.height, height: paper.width } : { width: paper.width, height: paper.height };
+}
+
+function pagePrintCss(setup: PageSetup) {
+  const margin = pageMargins[setup.margin];
+  return `@page{size:${setup.size === "a4" ? "A4" : "Letter"} ${setup.orientation};margin:${margin.vertical}in ${margin.horizontal}in}@media print{.page-canvas{padding:0!important}}`;
+}
 
 function parseComputedColor(value: string): [number, number, number, number] | null {
   const match = value.match(/rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)(?:\s*[,/]\s*([\d.]+))?\s*\)/i);
@@ -126,6 +159,16 @@ function applyAutomaticFirstLineIndentation(root: ParentNode, language: Document
   });
 }
 
+function applyPreviewKeyboardSemantics(root: ParentNode) {
+  root.querySelectorAll<HTMLTableElement>("table").forEach((table) => {
+    if (!table.hasAttribute("tabindex")) table.tabIndex = 0;
+    if (!table.hasAttribute("aria-label")) {
+      const caption = table.querySelector("caption")?.textContent?.trim();
+      if (caption) table.setAttribute("aria-label", caption);
+    }
+  });
+}
+
 function normalizeAutomaticIndentationHtml(sourceHtml: string, language: DocumentLanguage = "es-PR") {
   if (typeof DOMParser === "undefined") return sourceHtml;
   const parsed = new DOMParser().parseFromString(`<div id="ultrapage-auto-indent-root">${sourceHtml}</div>`, "text/html");
@@ -212,6 +255,36 @@ function sourcePosition(source: string, offset: number) {
   return { line: lines.length, column: (lines.at(-1)?.length || 0) + 1 };
 }
 
+function findOpeningTagByOrdinal(source: string, tagName: string, ordinal: number) {
+  const tagPattern = /<!--[\s\S]*?-->|<![^>]*>|<\/?([A-Za-z][\w:-]*)(?:\s[^>]*)?>/g;
+  let match: RegExpExecArray | null;
+  let current = 0;
+  while ((match = tagPattern.exec(source)) !== null) {
+    if (match[0].startsWith("<!--") || match[0].startsWith("<!") || match[0].startsWith("</")) continue;
+    if ((match[1] || "").toLowerCase() !== tagName.toLowerCase()) continue;
+    if (current === ordinal) return { offset: match.index, length: match[0].length };
+    current += 1;
+  }
+  return null;
+}
+
+function findTextWithinElement(source: string, opening: { offset: number; length: number }, tagName: string, selectedText: string) {
+  const normalized = selectedText.replace(/\s+/g, " ").trim().slice(0, 512);
+  if (!normalized || HTML_VOID_ELEMENTS.has(tagName.toUpperCase())) return null;
+  const start = opening.offset + opening.length;
+  const closingOffset = source.toLowerCase().indexOf(`</${tagName.toLowerCase()}>`, start);
+  const end = closingOffset >= 0 ? closingOffset : Math.min(source.length, start + 12000);
+  const escapePattern = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const encoded = normalized.replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character] || character);
+  const candidates = [normalized, encoded].filter((value, index, values) => values.indexOf(value) === index);
+  for (const candidate of candidates) {
+    const flexibleWhitespace = candidate.split(/\s+/).map(escapePattern).join("\\s+");
+    const match = source.slice(start, end).match(new RegExp(flexibleWhitespace));
+    if (match?.index !== undefined) return { offset: start + match.index, length: match[0].length };
+  }
+  return null;
+}
+
 function analyzeHtmlSource(source: string): HtmlDiagnostic[] {
   const diagnostics: HtmlDiagnostic[] = [];
   const stack: Array<{ name: string; offset: number; length: number }> = [];
@@ -247,7 +320,13 @@ function analyzeHtmlSource(source: string): HtmlDiagnostic[] {
       if (ids.has(id)) add("error", `Duplicate id “${id}” breaks reliable navigation.`, match.index, token.length);
       else ids.set(id, match.index);
     }
-    if (name === "img" && !/\salt\s*=\s*["'][^"']*["']/i.test(attributes)) add("warning", "Image is missing an alt attribute.", match.index, token.length);
+    if (name === "img") {
+      const altMatch = attributes.match(/\salt\s*=\s*["']([^"']*)["']/i);
+      const explicitlyDecorative = /\srole\s*=\s*["']presentation["']/i.test(attributes) || /\saria-hidden\s*=\s*["']true["']/i.test(attributes);
+      if (!altMatch) add("error", "Image is missing an alt attribute.", match.index, token.length);
+      else if (!altMatch[1].trim() && !explicitlyDecorative) add("warning", "Image has empty alt text but is not explicitly marked decorative.", match.index, token.length);
+      else if (altMatch[1].trim() && explicitlyDecorative) add("warning", "Decorative image should use empty alt text.", match.index, token.length);
+    }
     if (name === "a" && !/\shref\s*=\s*["'][^"']+["']/i.test(attributes)) add("warning", "Link is missing a usable href destination.", match.index, token.length);
     if (/\sstyle\s*=\s*["'][^"']*(?:min-width|width)\s*:\s*(?:[4-9]\d{2,}|\d{4,})px/i.test(attributes)) add("warning", "A fixed width may overflow on mobile devices.", match.index, token.length);
     if (!selfClosing) stack.push({ name, offset: match.index, length: token.length });
@@ -333,7 +412,7 @@ function sanitizePastedHtml(source: string) {
   Array.from(parsed.body.querySelectorAll<HTMLElement>("*")).forEach((element) => {
     if (removeEntirely.has(element.tagName)) { element.remove(); return; }
     if (!allowedTags.has(element.tagName)) { element.replaceWith(...Array.from(element.childNodes)); return; }
-    const safeAttributes = new Set(["href","src","alt","title","scope","colspan","rowspan","class","role","aria-label","aria-hidden","width","height","loading","id","data-table-style","data-ultrapage-toc","data-accessible-media","data-captions","data-ultrapage-webdav-src","data-ultrapage-auto-indent","allow","allowfullscreen","referrerpolicy","frameborder"]);
+    const safeAttributes = new Set(["href","src","alt","title","scope","colspan","rowspan","class","role","aria-label","aria-hidden","tabindex","width","height","loading","id","data-table-style","data-ultrapage-toc","data-accessible-media","data-captions","data-ultrapage-webdav-src","data-ultrapage-auto-indent","data-ultrapage-image-id","data-ultrapage-alt-status","data-ultrapage-decorative","allow","allowfullscreen","referrerpolicy","frameborder"]);
     Array.from(element.attributes).forEach((attribute) => {
       if (attribute.name === "style") return;
       if (!safeAttributes.has(attribute.name.toLowerCase())) element.removeAttribute(attribute.name);
@@ -356,8 +435,23 @@ function sanitizePastedHtml(source: string) {
       const safeEmbeddedImage = /^data:image\/(png|jpe?g|gif|webp|avif);base64,/i.test(source) && source.length <= 14 * 1024 * 1024;
       if (!safeHostedImage && !safeEmbeddedImage) { element.remove(); return; }
       element.setAttribute("loading", "lazy");
-      if (!element.hasAttribute("alt")) element.setAttribute("alt", "");
+      const explicitlyDecorative = element.getAttribute("role") === "presentation" || element.getAttribute("aria-hidden") === "true" || element.getAttribute("data-ultrapage-decorative") === "true";
+      const alternativeText = element.getAttribute("alt")?.trim() || "";
+      if (explicitlyDecorative) {
+        element.setAttribute("alt", "");
+        element.setAttribute("role", "presentation");
+        element.setAttribute("aria-hidden", "true");
+        element.setAttribute("data-ultrapage-decorative", "true");
+        element.setAttribute("data-ultrapage-alt-status", "decorative");
+      } else if (alternativeText) {
+        element.setAttribute("alt", alternativeText);
+        element.setAttribute("data-ultrapage-alt-status", "described");
+      } else {
+        element.setAttribute("alt", "");
+        element.setAttribute("data-ultrapage-alt-status", "pending");
+      }
     }
+    if (element.tagName === "TABLE" && !element.hasAttribute("tabindex")) element.setAttribute("tabindex", "0");
     if (element.tagName === "IFRAME") {
       const safeSource = normalizeMediaEmbed(element.getAttribute("src") || "");
       if (!safeSource) element.remove();
@@ -481,7 +575,7 @@ function buildLmsHtml(sourceHtml: string, language: DocumentLanguage = "es-PR", 
   root.querySelectorAll("ul").forEach((element) => element.setAttribute("type", "disc"));
   root.querySelectorAll("ol").forEach((element) => element.setAttribute("type", "1"));
   root.querySelectorAll("table").forEach((element) => {
-    element.setAttribute("width", "100%"); element.setAttribute("border", "0"); element.setAttribute("cellspacing", "0"); element.setAttribute("cellpadding", "8");
+    element.setAttribute("width", "100%"); element.setAttribute("border", "0"); element.setAttribute("cellspacing", "0"); element.setAttribute("cellpadding", "8"); element.setAttribute("tabindex", "0");
   });
   root.querySelectorAll('table[data-table-style="grid"]').forEach((element) => element.setAttribute("border", "1"));
   root.querySelectorAll("th").forEach((element) => element.setAttribute("bgcolor", "#f3effc"));
@@ -501,6 +595,12 @@ function buildLmsHtml(sourceHtml: string, language: DocumentLanguage = "es-PR", 
     if (["left", "center", "right", "justify"].includes(alignment)) element.setAttribute("align", alignment);
   });
   root.querySelectorAll(`[${AUTO_INDENT_ATTRIBUTE}]`).forEach((element) => element.removeAttribute(AUTO_INDENT_ATTRIBUTE));
+  root.querySelectorAll("[data-ultrapage-image-id],[data-ultrapage-alt-status],[data-ultrapage-selected],[data-ultrapage-decorative]").forEach((element) => {
+    element.removeAttribute("data-ultrapage-image-id");
+    element.removeAttribute("data-ultrapage-alt-status");
+    element.removeAttribute("data-ultrapage-selected");
+    element.removeAttribute("data-ultrapage-decorative");
+  });
   return root.outerHTML;
 }
 
@@ -509,8 +609,10 @@ export default function Home() {
   const codeEditor = useRef<HTMLTextAreaElement>(null);
   const codeLineNumbers = useRef<HTMLDivElement>(null);
   const codeHighlightLayer = useRef<HTMLPreElement>(null);
+  const livePreviewFrame = useRef<HTMLIFrameElement>(null);
   const localFileInput = useRef<HTMLInputElement>(null);
   const savedSelection = useRef<Range | null>(null);
+  const selectedImageRef = useRef<HTMLImageElement | null>(null);
   const [html, setHtml] = useState(starterHtml);
   const htmlRef = useRef(starterHtml);
   const [mode, setMode] = useState<"visual" | "ultra" | "html">("visual");
@@ -521,6 +623,7 @@ export default function Home() {
   const [codeWrapEnabled, setCodeWrapEnabled] = useState(false);
   const [codeCaret, setCodeCaret] = useState(0);
   const [showCodeDiagnostics, setShowCodeDiagnostics] = useState(true);
+  const [liveSelection, setLiveSelection] = useState<HtmlLiveSelection | null>(null);
   const [lmsHtml, setLmsHtml] = useState("");
   const [device, setDevice] = useState<"desktop" | "tablet" | "mobile">("desktop");
   const [zoom, setZoom] = useState(100);
@@ -533,6 +636,7 @@ export default function Home() {
   const [readingAloud, setReadingAloud] = useState(false);
   const [previewCompareOpen, setPreviewCompareOpen] = useState(false);
   const [accessibilityIssueCursor, setAccessibilityIssueCursor] = useState(-1);
+  const [previewIssueCursor, setPreviewIssueCursor] = useState(-1);
   const [rightPanel, setRightPanel] = useState(false);
   const [sidePanelTab, setSidePanelTab] = useState<"review" | "outline" | "preview">("review");
   const [previewAuditChecks, setPreviewAuditChecks] = useState<PreviewAuditCheck[]>([]);
@@ -549,6 +653,7 @@ export default function Home() {
   const [lmsProfile, setLmsProfile] = useState<LmsProfile>("universal");
   const [documentAuthor, setDocumentAuthor] = useState("");
   const [documentDescription, setDocumentDescription] = useState("");
+  const [pageSetup, setPageSetup] = useState<PageSetup>({ size: "letter", orientation: "portrait", margin: "normal" });
   const [imageDragActive, setImageDragActive] = useState(false);
   const [spellCheckEnabled, setSpellCheckEnabled] = useState(true);
   const [ribbonCommand, setRibbonCommand] = useState("");
@@ -558,6 +663,7 @@ export default function Home() {
   const [activeBlock, setActiveBlock] = useState("p");
   const [capturedFormat, setCapturedFormat] = useState<CapturedFormat | null>(null);
   const [selectionContext, setSelectionContext] = useState<"table" | "picture" | "link" | null>(null);
+  const [selectedImageSummary, setSelectedImageSummary] = useState<SelectedImageSummary | null>(null);
 
   useEffect(() => {
     const compactLayout = window.matchMedia("(max-width: 1040px)");
@@ -567,7 +673,7 @@ export default function Home() {
     try {
       const stored = localStorage.getItem(DRAFT_KEY);
       if (stored) {
-        const draft = JSON.parse(stored) as { html?: string; title?: string; fileName?: string; language?: DocumentLanguage; lmsProfile?: LmsProfile; author?: string; description?: string };
+        const draft = JSON.parse(stored) as { html?: string; title?: string; fileName?: string; language?: DocumentLanguage; lmsProfile?: LmsProfile; author?: string; description?: string; pageSetup?: PageSetup };
         const restoredHtml = typeof draft.html === "string" ? draft.html : "";
         htmlRef.current = restoredHtml;
         setHtml(restoredHtml);
@@ -578,6 +684,7 @@ export default function Home() {
         if (isLmsProfile(draft.lmsProfile)) setLmsProfile(draft.lmsProfile);
         setDocumentAuthor(draft.author || "");
         setDocumentDescription(draft.description || "");
+        if (isPageSetup(draft.pageSetup)) setPageSetup(draft.pageSetup);
         toast.success("Draft recovered", { description: "Your autosaved work was restored." });
       }
     } catch { localStorage.removeItem(DRAFT_KEY); }
@@ -586,22 +693,23 @@ export default function Home() {
   useEffect(() => {
     if (!draftLoaded) return;
     const timer = window.setTimeout(() => {
-      localStorage.setItem(DRAFT_KEY, JSON.stringify({ html, title, fileName: documentFileName, language: documentLanguage, lmsProfile, author: documentAuthor, description: documentDescription, updatedAt: new Date().toISOString() }));
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({ html, title, fileName: documentFileName, language: documentLanguage, lmsProfile, author: documentAuthor, description: documentDescription, pageSetup, updatedAt: new Date().toISOString() }));
       setSaved(true);
     }, 700);
     return () => window.clearTimeout(timer);
-  }, [draftLoaded, html, title, documentFileName, documentLanguage, lmsProfile, documentAuthor, documentDescription]);
+  }, [draftLoaded, html, title, documentFileName, documentLanguage, lmsProfile, documentAuthor, documentDescription, pageSetup]);
 
   htmlRef.current = html;
   const attachEditor = useCallback((node: HTMLDivElement | null) => {
     editor.current = node;
     if (node && node.innerHTML !== htmlRef.current) node.innerHTML = htmlRef.current;
-    if (node) applyAutomaticFirstLineIndentation(node, documentLanguage);
+    if (node) { applyAutomaticFirstLineIndentation(node, documentLanguage); applyPreviewKeyboardSemantics(node); }
   }, [documentLanguage]);
   useEffect(() => {
     if (mode !== "visual" || !editor.current) return;
     if (editor.current.innerHTML !== html) editor.current.innerHTML = html;
     applyAutomaticFirstLineIndentation(editor.current, documentLanguage);
+    applyPreviewKeyboardSemantics(editor.current);
     const normalized = editor.current.innerHTML;
     if (normalized !== html) {
       htmlRef.current = normalized;
@@ -637,9 +745,10 @@ export default function Home() {
       if (removalTimer) window.clearTimeout(removalTimer);
     };
   }, [accessibilityHighlight, mode]);
-  const runPreviewAudit = useCallback((announce = false) => {
+  const runPreviewAudit = useCallback((announce = false, profileOverride?: LmsProfile) => {
     const canvas = editor.current;
     if (!canvas) return;
+    const auditProfile = profileOverride || lmsProfile;
     const images = Array.from(canvas.querySelectorAll<HTMLImageElement>("img"));
     const tables = Array.from(canvas.querySelectorAll<HTMLTableElement>("table"));
     const headings = Array.from(canvas.querySelectorAll<HTMLElement>("h1,h2,h3,h4"));
@@ -683,7 +792,19 @@ export default function Home() {
     const overflowingIndex = overflowingElement ? Array.from(canvas.querySelectorAll<HTMLElement>(overflowingElement.tagName.toLowerCase())).indexOf(overflowingElement) : -1;
     const mediaIssueIndex = images.findIndex((image) => image.clientWidth > (image.parentElement?.clientWidth || canvas.clientWidth) + 2);
     const packageAssetIssueIndex = images.findIndex((image) => !/^data:image\/(png|jpe?g|gif|webp|avif);base64,/i.test(image.getAttribute("src") || ""));
+    const imageLoadIssueIndex = images.findIndex((image) => image.complete && image.naturalWidth === 0);
+    const imageAlternativeIssueIndex = images.findIndex((image) => {
+      const decorative = image.getAttribute("role") === "presentation" || image.getAttribute("aria-hidden") === "true" || image.getAttribute("data-ultrapage-decorative") === "true";
+      return (!decorative && !image.getAttribute("alt")?.trim()) || (decorative && Boolean(image.getAttribute("alt")?.trim()));
+    });
+    const decorativeSemanticsIssueIndex = images.findIndex((image) => {
+      const declaredDecorative = image.getAttribute("data-ultrapage-decorative") === "true" || image.getAttribute("role") === "presentation" || image.getAttribute("aria-hidden") === "true";
+      return declaredDecorative && !(image.getAttribute("alt") === "" && (image.getAttribute("role") === "presentation" || image.getAttribute("aria-hidden") === "true"));
+    });
     const tableIssueIndex = tables.findIndex((table) => table.scrollWidth > table.clientWidth + 2 && !["auto", "scroll"].includes(getComputedStyle(table).overflowX));
+    const tableKeyboardIssueIndex = tables.findIndex((table) => table.tabIndex < 0);
+    const tableHeaders = Array.from(canvas.querySelectorAll<HTMLTableCellElement>("th"));
+    const tableHeaderScopeIssueIndex = tableHeaders.findIndex((header) => !["col", "row", "colgroup", "rowgroup"].includes((header.getAttribute("scope") || "").toLowerCase()));
     const textIssueIndex = wrappingCandidates.findIndex((element) => element.scrollWidth > element.clientWidth + 2 && !["auto", "scroll"].includes(getComputedStyle(element).overflowX));
     const textIssue = textIssueIndex >= 0 ? wrappingCandidates[textIssueIndex] : null;
     const textIssueSelector = textIssue?.tagName.toLowerCase() || "p";
@@ -708,19 +829,38 @@ export default function Home() {
     const emptyStructureIssue = emptyStructureCandidates[0] || null;
     const emptyStructureSelector = emptyStructureIssue?.tagName.toLowerCase() || "h1";
     const emptyStructureSelectorIndex = emptyStructureIssue ? Array.from(canvas.querySelectorAll<HTMLElement>(emptyStructureSelector)).indexOf(emptyStructureIssue) : 0;
-    const lmsAuditOutput = buildLmsHtml(canvas.innerHTML, documentLanguage, lmsProfile);
+    const previewLinks = Array.from(canvas.querySelectorAll<HTMLAnchorElement>("a"));
+    const brokenInternalLinkIndex = previewLinks.findIndex((link) => {
+      const href = link.getAttribute("href") || "";
+      if (!href.startsWith("#") || href === "#") return false;
+      let targetId = href.slice(1);
+      try { targetId = decodeURIComponent(targetId); } catch { /* A malformed fragment is treated as missing. */ }
+      return !Array.from(canvas.querySelectorAll<HTMLElement>("[id]")).some((target) => target.id === targetId);
+    });
+    const lmsAuditOutput = buildLmsHtml(canvas.innerHTML, documentLanguage, auditProfile);
     const lmsAuditDocument = new DOMParser().parseFromString(lmsAuditOutput, "text/html");
     const normalizeAuditText = (value: string | null | undefined) => (value || "").replace(/\s+/g, " ").trim();
     const semanticSelectors = ["h1", "h2", "h3", "h4", "p", "ul", "ol", "li", "a", "img", "figure", "figcaption", "table", "caption", "thead", "tbody", "tr", "th", "td", "blockquote"];
     const lmsStructurePreserved = semanticSelectors.every((selector) => lmsAuditDocument.querySelectorAll(selector).length >= canvas.querySelectorAll(selector).length);
     const lmsTextPreserved = normalizeAuditText(lmsAuditDocument.body.textContent) === normalizeAuditText(canvas.textContent);
     const lmsParityReady = Boolean(lmsAuditOutput.trim()) && lmsStructurePreserved && lmsTextPreserved;
+    const lmsImages = Array.from(lmsAuditDocument.querySelectorAll<HTMLImageElement>("img"));
+    const lmsImageSemanticsReady = lmsImages.length === images.length && lmsImages.every((image) => {
+      const decorative = image.getAttribute("role") === "presentation" || image.getAttribute("aria-hidden") === "true";
+      return decorative ? image.getAttribute("alt") === "" : Boolean(image.getAttribute("alt")?.trim());
+    });
+    const lmsMarkupClean = !lmsAuditDocument.querySelector("script,style,object,embed,form,input,button,[data-ultrapage-image-id],[data-ultrapage-alt-status],[data-ultrapage-selected],[data-ultrapage-decorative]");
     const checks: PreviewAuditCheck[] = [
       { ok: Boolean(canvas.textContent?.trim() || images.length || tables.length), label: "Content renders", detail: "The editable canvas contains visible content." },
       { ok: !pageOverflow, label: "No page overflow", detail: pageOverflow ? "An element extends beyond the simulated device width." : "Content remains inside the simulated viewport.", location: overflowingElement ? { selector: overflowingElement.tagName.toLowerCase(), index: Math.max(0, overflowingIndex), label: `Overflowing ${overflowingElement.tagName.toLowerCase()} element` } : undefined },
       { ok: mediaContained, label: "Responsive images", detail: images.length ? `${images.length} image${images.length === 1 ? " fits" : "s fit"} the content area.` : "No images require responsive testing.", location: mediaIssueIndex >= 0 ? { selector: "img", index: mediaIssueIndex, label: `Image ${mediaIssueIndex + 1}` } : undefined },
+      { ok: imageLoadIssueIndex < 0, label: "Image rendering", detail: imageLoadIssueIndex < 0 ? (images.length ? "Every completed image request rendered successfully." : "No image resources require rendering checks.") : "An image source finished loading without producing a usable image.", location: imageLoadIssueIndex >= 0 ? { selector: "img", index: imageLoadIssueIndex, label: `Image ${imageLoadIssueIndex + 1} did not render` } : undefined },
+      { ok: imageAlternativeIssueIndex < 0, label: "Image alternatives", detail: imageAlternativeIssueIndex < 0 ? (images.length ? "Every informative image has alt text and every decorative image has empty alt text." : "No images require alternative-text review.") : "An image needs meaningful alt text or an explicit decorative decision.", location: imageAlternativeIssueIndex >= 0 ? { selector: "img", index: imageAlternativeIssueIndex, label: `Image ${imageAlternativeIssueIndex + 1} needs accessibility review` } : undefined },
+      { ok: decorativeSemanticsIssueIndex < 0, label: "Decorative image semantics", detail: decorativeSemanticsIssueIndex < 0 ? "Decorative images are hidden from assistive technology consistently." : "A decorative image has conflicting alt, role, or aria-hidden values.", location: decorativeSemanticsIssueIndex >= 0 ? { selector: "img", index: decorativeSemanticsIssueIndex, label: `Decorative image ${decorativeSemanticsIssueIndex + 1}` } : undefined },
       { ok: packageAssetIssueIndex < 0, label: "HTML package assets", detail: packageAssetIssueIndex < 0 ? "Images are embedded and can be extracted into the ZIP package." : "An external image will be downloaded during export; if its server blocks access, it will remain listed in manifest.json.", location: packageAssetIssueIndex >= 0 ? { selector: "img", index: packageAssetIssueIndex, label: `External image ${packageAssetIssueIndex + 1}` } : undefined },
       { ok: tablesScrollable, label: "Responsive tables", detail: tables.length ? `${tables.length} table${tables.length === 1 ? " remains contained or scrolls" : "s remain contained or scroll"} horizontally.` : "No tables require responsive testing.", location: tableIssueIndex >= 0 ? { selector: "table", index: tableIssueIndex, label: `Table ${tableIssueIndex + 1}` } : undefined },
+      { ok: tableKeyboardIssueIndex < 0, label: "Keyboard-scrollable tables", detail: tableKeyboardIssueIndex < 0 ? (tables.length ? "Every table can receive keyboard focus for horizontal scrolling." : "No tables require keyboard scrolling.") : "A table cannot receive keyboard focus for horizontal scrolling.", location: tableKeyboardIssueIndex >= 0 ? { selector: "table", index: tableKeyboardIssueIndex, label: `Table ${tableKeyboardIssueIndex + 1} is not keyboard focusable` } : undefined },
+      { ok: tableHeaderScopeIssueIndex < 0, label: "Table header associations", detail: tableHeaderScopeIssueIndex < 0 ? (tableHeaders.length ? "Every table header declares its row or column relationship." : "No table headers require association testing.") : "A table header is missing a valid scope attribute.", location: tableHeaderScopeIssueIndex >= 0 ? { selector: "th", index: tableHeaderScopeIssueIndex, label: `Table header ${tableHeaderScopeIssueIndex + 1} without row or column scope` } : undefined },
       { ok: matrixReady, label: "Responsive device matrix", detail: matrixReady ? "Desktop, Tablet, and Mobile passed simultaneously." : "At least one simulated viewport requires review." },
       { ok: headings.length === 0 || headings[0].tagName === "H1", label: "Preview structure", detail: headings.length ? `${headings.length} heading${headings.length === 1 ? "" : "s"} detected; the first is ${headings[0].tagName}.` : "No headings are present yet.", location: headings.length && headings[0].tagName !== "H1" ? { selector: "h1,h2,h3,h4", index: 0, label: "First heading" } : undefined },
       { ok: headingHierarchyOk, label: "Heading hierarchy", detail: headingHierarchyOk ? "Heading levels progress without skipped levels." : "A heading level is skipped; adjust the document outline.", location: !headingHierarchyOk ? { selector: "h1,h2,h3,h4", index: Math.max(0, headingLevels.findIndex((level, index) => index > 0 && level > headingLevels[index - 1] + 1)), label: "Skipped heading level" } : undefined },
@@ -729,10 +869,14 @@ export default function Home() {
       { ok: contrastIssueIndex < 0, label: "Readable color contrast", detail: contrastIssue ? `${contrastSelector.toUpperCase()} text does not meet the WCAG contrast threshold.` : "Visible text meets WCAG AA contrast thresholds.", location: contrastIssue ? { selector: contrastSelector, index: Math.max(0, contrastSelectorIndex), label: `Low-contrast ${contrastSelector} element` } : undefined },
       { ok: smallTextIssueIndex < 0, label: "Readable text size", detail: smallTextIssue ? `${smallTextSelector.toUpperCase()} text is smaller than 12 px.` : "Body text remains at or above the 12 px minimum.", location: smallTextIssue ? { selector: smallTextSelector, index: Math.max(0, smallTextSelectorIndex), label: `Small ${smallTextSelector} text` } : undefined },
       { ok: emptyStructureCandidates.length === 0, label: "No empty semantic elements", detail: emptyStructureIssue ? `An empty ${emptyStructureSelector.toUpperCase()} can create confusing navigation or reading pauses.` : "Headings, links, list items, and labels contain meaningful content.", location: emptyStructureIssue ? { selector: emptyStructureSelector, index: Math.max(0, emptyStructureSelectorIndex), label: `Empty ${emptyStructureSelector} element` } : undefined },
-      { ok: lmsParityReady, label: "LMS content parity", detail: lmsParityReady ? `Text and semantic elements are preserved in ${lmsProfiles[lmsProfile].shortLabel} HTML.` : `The ${lmsProfiles[lmsProfile].shortLabel} conversion changes visible text or removes a semantic element.` },
-      { ok: Boolean(lmsAuditOutput.trim()), label: `${lmsProfiles[lmsProfile].shortLabel} output`, detail: "The current design produces portable LMS HTML." },
+      { ok: brokenInternalLinkIndex < 0, label: "Internal links resolve", detail: brokenInternalLinkIndex < 0 ? "Every table-of-contents and same-page link points to an existing element." : "An internal link points to an ID that does not exist in the document.", location: brokenInternalLinkIndex >= 0 ? { selector: "a", index: brokenInternalLinkIndex, label: `Broken internal link ${brokenInternalLinkIndex + 1}` } : undefined },
+      { ok: lmsParityReady, label: "LMS content parity", detail: lmsParityReady ? `Text and semantic elements are preserved in ${lmsProfiles[auditProfile].shortLabel} HTML.` : `The ${lmsProfiles[auditProfile].shortLabel} conversion changes visible text or removes a semantic element.` },
+      { ok: lmsImageSemanticsReady, label: "LMS image accessibility parity", detail: lmsImageSemanticsReady ? `Alt text and decorative decisions survive the ${lmsProfiles[auditProfile].shortLabel} conversion.` : `An image loses or conflicts with its accessibility decision in ${lmsProfiles[auditProfile].shortLabel} output.`, location: !lmsImageSemanticsReady && images.length ? { selector: "img", index: 0, label: "First image requiring LMS parity review" } : undefined },
+      { ok: lmsMarkupClean, label: `${lmsProfiles[auditProfile].shortLabel} markup hygiene`, detail: lmsMarkupClean ? "Unsafe elements and editor-only metadata are absent from the LMS output." : "The generated LMS fragment contains an unsafe element or editor-only metadata." },
+      { ok: Boolean(lmsAuditOutput.trim()), label: `${lmsProfiles[auditProfile].shortLabel} output`, detail: "The current design produces portable LMS HTML." },
     ];
     setPreviewAuditChecks(checks);
+    setPreviewIssueCursor(-1);
     setPreviewAuditTime(new Intl.DateTimeFormat(documentLanguage, { hour: "numeric", minute: "2-digit", second: "2-digit" }).format(new Date()));
     if (announce) {
       const passed = checks.filter((check) => check.ok).length;
@@ -745,7 +889,7 @@ export default function Home() {
     if (mode !== "visual") return;
     const frame = window.requestAnimationFrame(() => runPreviewAudit(false));
     return () => window.cancelAnimationFrame(frame);
-  }, [html, device, zoom, mode, showRulers, showMarginGuides, runPreviewAudit]);
+  }, [html, device, zoom, mode, showRulers, showMarginGuides, pageSetup, runPreviewAudit]);
   const organizeSourceHtml = () => {
     if (codeView !== "source") { toast.info("Switch to Edit Source to organize the editable HTML"); return; }
     const organized = formatHtmlFragment(html);
@@ -782,19 +926,99 @@ export default function Home() {
     if (codeWorkspace === "live") setCodeWorkspace("split");
     toast[errors ? "error" : warnings ? "warning" : "success"](errors || warnings ? `HTML validation: ${errors} error${errors === 1 ? "" : "s"}, ${warnings} warning${warnings === 1 ? "" : "s"}` : "HTML validation passed", { description: errors || warnings ? "Select a diagnostic to move to its exact line and column." : "Tags are balanced and the source passed the built-in LMS safety checks." });
   };
-  const goToCodeLocation = (offset: number, length = 0) => {
+  const goToCodeLocation = (offset: number, length = 0, sourceOverride?: string) => {
     if (codeWorkspace === "live") setCodeWorkspace("split");
-    window.requestAnimationFrame(() => {
+    const reveal = (attempt = 0) => window.requestAnimationFrame(() => {
       const target = codeEditor.current;
-      if (!target) return;
+      if (!target) {
+        if (attempt < 3) reveal(attempt + 1);
+        return;
+      }
       target.focus();
       target.setSelectionRange(offset, offset + length);
       setCodeCaret(offset);
-      const line = sourcePosition(activeCode, offset).line;
-      target.scrollTop = Math.max(0, (line - 3) * 20);
+      const position = sourcePosition(sourceOverride ?? activeCode, offset);
+      const lineHeight = Number.parseFloat(window.getComputedStyle(target).lineHeight) || 23.1;
+      target.scrollTop = Math.max(0, (position.line - 3) * lineHeight);
+      if (!codeWrapEnabled) target.scrollLeft = Math.max(0, (position.column - 4) * 8.4);
       if (codeLineNumbers.current) codeLineNumbers.current.scrollTop = target.scrollTop;
-      if (codeHighlightLayer.current) codeHighlightLayer.current.scrollTop = target.scrollTop;
+      if (codeHighlightLayer.current) {
+        codeHighlightLayer.current.scrollTop = target.scrollTop;
+        codeHighlightLayer.current.scrollLeft = target.scrollLeft;
+      }
     });
+    reveal();
+  };
+  const clearLiveSelection = () => {
+    livePreviewFrame.current?.contentDocument?.querySelectorAll('[data-ultrapage-live-selected="true"]').forEach((element) => element.removeAttribute("data-ultrapage-live-selected"));
+    setLiveSelection(null);
+  };
+  const locateLiveSelection = () => {
+    if (!liveSelection) { toast.info("Select text or an element in Live Preview first"); return; }
+    goToCodeLocation(liveSelection.offset, liveSelection.length);
+  };
+  const connectLiveSelection = (frame: HTMLIFrameElement) => {
+    livePreviewFrame.current = frame;
+    const document = frame.contentDocument;
+    if (!document) return;
+    const previewRoot = codeView === "source" ? document.querySelector<HTMLElement>("main.ultra-page") : document.body;
+    if (!previewRoot) return;
+    const synchronize = (element: Element, selectedText = "") => {
+      if (element === previewRoot || !previewRoot.contains(element)) return;
+      const tag = element.tagName.toLowerCase();
+      const peers = Array.from(previewRoot.querySelectorAll(tag));
+      const ordinal = peers.indexOf(element);
+      if (ordinal < 0) return;
+      const sourceMatch = findOpeningTagByOrdinal(activeCode, tag, ordinal);
+      if (!sourceMatch) {
+        toast.warning("The Live element could not be matched to the current HTML source", { description: "Validate or format the HTML, then try again." });
+        return;
+      }
+      document.querySelectorAll('[data-ultrapage-live-selected="true"]').forEach((selected) => selected.removeAttribute("data-ultrapage-live-selected"));
+      element.setAttribute("data-ultrapage-live-selected", "true");
+      const normalizedSelection = selectedText.replace(/\s+/g, " ").trim().slice(0, 512);
+      const codeMatch = findTextWithinElement(activeCode, sourceMatch, tag, normalizedSelection) || sourceMatch;
+      const imageAlternative = tag === "img" ? element.getAttribute("alt") || "" : "";
+      const compactText = normalizedSelection || imageAlternative || element.textContent?.replace(/\s+/g, " ").trim() || "";
+      const label = compactText ? `${tag} · ${compactText.slice(0, 58)}${compactText.length > 58 ? "…" : ""}` : tag;
+      const position = sourcePosition(activeCode, codeMatch.offset);
+      setLiveSelection({ tag, ordinal, offset: codeMatch.offset, length: codeMatch.length, line: position.line, column: position.column, label, selectedText: normalizedSelection || undefined });
+      goToCodeLocation(codeMatch.offset, codeMatch.length);
+    };
+    document.addEventListener("mouseup", () => {
+      const selection = document.getSelection();
+      if (!selection || selection.isCollapsed || !selection.anchorNode) return;
+      const commonAncestor = selection.rangeCount ? selection.getRangeAt(0).commonAncestorContainer : selection.anchorNode;
+      const element = commonAncestor.nodeType === 1 ? commonAncestor as Element : commonAncestor.parentElement;
+      if (element) synchronize(element, selection.toString());
+    });
+    let selectionFrame = 0;
+    document.addEventListener("selectionchange", () => {
+      window.cancelAnimationFrame(selectionFrame);
+      selectionFrame = window.requestAnimationFrame(() => {
+        const selection = document.getSelection();
+        if (!selection || selection.isCollapsed || !selection.rangeCount) return;
+        const commonAncestor = selection.getRangeAt(0).commonAncestorContainer;
+        const element = commonAncestor.nodeType === 1 ? commonAncestor as Element : commonAncestor.parentElement;
+        if (element) synchronize(element, selection.toString());
+      });
+    });
+    document.addEventListener("click", (event) => {
+      const target = event.target && (event.target as Node).nodeType === 1 ? event.target as Element : null;
+      if (!target || document.getSelection()?.toString().trim()) return;
+      synchronize(target);
+    });
+    document.addEventListener("focusin", (event) => {
+      const target = event.target && (event.target as Node).nodeType === 1 ? event.target as Element : null;
+      if (target && target !== document.body) synchronize(target);
+    });
+    if (liveSelection) {
+      const previousMatch = previewRoot.querySelectorAll(liveSelection.tag)[liveSelection.ordinal];
+      if (previousMatch) {
+        previousMatch.setAttribute("data-ultrapage-live-selected", "true");
+        previousMatch.scrollIntoView({ block: "center", inline: "nearest" });
+      }
+    }
   };
   const handleCodeKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (codeView !== "source") return;
@@ -837,6 +1061,7 @@ export default function Home() {
       setAccessibilityHighlight(null);
       setAccessibilitySpotlight(null);
       applyAutomaticFirstLineIndentation(editor.current, documentLanguage);
+      applyPreviewKeyboardSemantics(editor.current);
       const currentHtml = editor.current.innerHTML;
       htmlRef.current = currentHtml;
       setHtml(currentHtml);
@@ -883,6 +1108,20 @@ export default function Home() {
   }, []);
   const selectEditorContext = (element: HTMLElement, context: "table" | "picture" | "link", selectWholeElement = false) => {
     if (!editor.current?.contains(element)) return;
+    editor.current.querySelectorAll("img[data-ultrapage-selected]").forEach((image) => image.removeAttribute("data-ultrapage-selected"));
+    if (context === "picture") {
+      const image = element.matches("img") ? element as HTMLImageElement : element.querySelector<HTMLImageElement>("img");
+      if (image) {
+        selectedImageRef.current = image;
+        image.setAttribute("data-ultrapage-selected", "true");
+        const images = Array.from(editor.current.querySelectorAll<HTMLImageElement>("img"));
+        const decorative = image.getAttribute("role") === "presentation" || image.getAttribute("aria-hidden") === "true" || image.getAttribute("data-ultrapage-decorative") === "true";
+        setSelectedImageSummary({ index: Math.max(0, images.indexOf(image)) + 1, total: images.length, status: decorative ? "decorative" : image.getAttribute("alt")?.trim() ? "described" : "needs-alt" });
+      }
+    } else {
+      selectedImageRef.current = null;
+      setSelectedImageSummary(null);
+    }
     const range = document.createRange();
     if (selectWholeElement) range.selectNode(element);
     else { range.selectNodeContents(element); range.collapse(true); }
@@ -903,6 +1142,56 @@ export default function Home() {
     const link = target.closest<HTMLAnchorElement>("a");
     if (link && editor.current.contains(link)) { event.preventDefault(); selectEditorContext(link, "link"); }
   };
+  const inspectDesignSelectionInHtml = () => {
+    const root = editor.current;
+    const range = savedSelection.current;
+    if (!root || !range || !root.contains(range.commonAncestorContainer)) {
+      toast.info("Select text, an image, a link, or a table cell in Design Preview first");
+      return;
+    }
+    const fullySelectedNode = range.startContainer === range.endContainer && range.startContainer.nodeType === Node.ELEMENT_NODE && range.endOffset === range.startOffset + 1
+      ? range.startContainer.childNodes[range.startOffset]
+      : null;
+    const selectedElement = fullySelectedNode instanceof HTMLElement ? fullySelectedNode : null;
+    const candidate = selectedElement || (range.startContainer.nodeType === Node.TEXT_NODE ? range.startContainer.parentElement : range.startContainer as HTMLElement);
+    if (!candidate || candidate === root) {
+      toast.info("Select a specific element or text inside Design Preview");
+      return;
+    }
+    const tag = candidate.tagName.toLowerCase();
+    const ordinal = Array.from(root.querySelectorAll(tag)).indexOf(candidate);
+    if (ordinal < 0) {
+      toast.error("The selected Design element could not be mapped to HTML");
+      return;
+    }
+    applyAutomaticFirstLineIndentation(root, documentLanguage);
+    applyPreviewKeyboardSemantics(root);
+    const organized = formatHtmlFragment(root.innerHTML);
+    const sourceMatch = findOpeningTagByOrdinal(organized, tag, ordinal);
+    if (!sourceMatch) {
+      toast.warning("The selected Design element could not be located in the organized HTML", { description: "Validate the source and try again." });
+      return;
+    }
+    const selectedText = range.toString().replace(/\s+/g, " ").trim().slice(0, 512);
+    const imageAlternative = tag === "img" ? candidate.getAttribute("alt") || "" : "";
+    const codeMatch = findTextWithinElement(organized, sourceMatch, tag, selectedText) || sourceMatch;
+    const compactText = selectedText || imageAlternative || candidate.textContent?.replace(/\s+/g, " ").trim() || "";
+    const label = compactText ? `${tag} · ${compactText.slice(0, 58)}${compactText.length > 58 ? "…" : ""}` : tag;
+    const position = sourcePosition(organized, codeMatch.offset);
+    htmlRef.current = organized;
+    setHtml(organized);
+    setCodeView("source");
+    setCodeWorkspace("split");
+    setLiveSelection({ tag, ordinal, offset: codeMatch.offset, length: codeMatch.length, line: position.line, column: position.column, label, selectedText: selectedText || undefined });
+    setMode("html");
+    window.requestAnimationFrame(() => window.requestAnimationFrame(() => goToCodeLocation(codeMatch.offset, codeMatch.length, organized)));
+    toast.success(`Design selection located in HTML at line ${position.line}`, { description: selectedText ? "The matching text is highlighted in Split view." : `<${tag}> is highlighted in Split view.` });
+  };
+  const openHtmlSplit = () => {
+    setCodeView("source");
+    setCodeWorkspace("split");
+    changeMode("html");
+  };
   const command = (name: string, value?: string) => {
     if (!editor.current) return;
     editor.current.focus();
@@ -911,6 +1200,7 @@ export default function Home() {
     document.execCommand(name, false, value);
     updateActiveFormats();
     applyAutomaticFirstLineIndentation(editor.current, documentLanguage);
+    applyPreviewKeyboardSemantics(editor.current);
     htmlRef.current = editor.current.innerHTML;
     setHtml(editor.current.innerHTML); setSaved(false);
     if (selection?.rangeCount) savedSelection.current = selection.getRangeAt(0).cloneRange();
@@ -1186,19 +1476,57 @@ export default function Home() {
     } else toast.info("No se encontraron coincidencias");
     return replacements;
   };
-  const handlePaste = (event: React.ClipboardEvent<HTMLDivElement>) => {
-    const imageFile = Array.from(event.clipboardData.files).find((file) => file.type.startsWith("image/"));
-    if (imageFile) {
-      event.preventDefault();
-      void insertLocalImageFile(imageFile, "clipboard");
-      return;
-    }
+  const handlePaste = async (event: React.ClipboardEvent<HTMLDivElement>) => {
     event.preventDefault();
     const clipboardHtml = event.clipboardData.getData("text/html");
     const clipboardText = event.clipboardData.getData("text/plain");
-    const cleaned = clipboardHtml ? sanitizePastedHtml(clipboardHtml) : escapeHtml(clipboardText).replace(/\r?\n/g, "<br>");
+    const itemFiles = Array.from(event.clipboardData.items).map((item) => item.kind === "file" ? item.getAsFile() : null).filter((file): file is File => Boolean(file?.type.startsWith("image/")));
+    const fileImages = [...itemFiles, ...Array.from(event.clipboardData.files).filter((file) => file.type.startsWith("image/"))]
+      .filter((file, index, files) => files.findIndex((candidate) => candidate.name === file.name && candidate.size === file.size && candidate.type === file.type) === index);
+    const pasteId = `paste-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const insertedIds: string[] = [];
+    const dataSources: string[] = [];
+    for (const file of fileImages) {
+      if (!/^image\/(png|jpeg|gif|webp|avif)$/i.test(file.type) || file.size > 10 * 1024 * 1024) continue;
+      try { dataSources.push(await blobToDataUrl(file)); }
+      catch { /* The exact failure is reported after processing the remaining clipboard content. */ }
+    }
+    const parsed = clipboardHtml ? new DOMParser().parseFromString(clipboardHtml, "text/html") : null;
+    const pastedImages = parsed ? Array.from(parsed.body.querySelectorAll<HTMLImageElement>("img")) : [];
+    let dataSourceIndex = 0;
+    pastedImages.forEach((image, index) => {
+      const currentSource = image.getAttribute("src") || "";
+      const portableSource = /^(https?:\/\/|\/|data:image\/(png|jpe?g|gif|webp|avif);base64,)/i.test(currentSource);
+      if (dataSources[dataSourceIndex]) image.setAttribute("src", dataSources[dataSourceIndex++]);
+      else if (!portableSource) image.removeAttribute("src");
+      const id = `${pasteId}-${index + 1}`;
+      image.setAttribute("data-ultrapage-image-id", id);
+      insertedIds.push(id);
+      const decorative = image.getAttribute("role") === "presentation" || image.getAttribute("aria-hidden") === "true";
+      if (!decorative && !image.getAttribute("alt")?.trim()) image.setAttribute("data-ultrapage-alt-status", "pending");
+    });
+    let markup = parsed ? parsed.body.innerHTML : escapeHtml(clipboardText).replace(/\r?\n/g, "<br>");
+    if (!pastedImages.length && dataSources.length) {
+      const imageMarkup = dataSources.map((source, index) => {
+        const id = `${pasteId}-${index + 1}`;
+        insertedIds.push(id);
+        return `<figure><img src="${source}" alt="" loading="lazy" data-ultrapage-image-id="${id}" data-ultrapage-alt-status="pending" style="display:block;max-width:100%;height:auto;margin:0 auto"></figure>`;
+      }).join("");
+      markup = clipboardText.trim() ? `${escapeHtml(clipboardText).replace(/\r?\n/g, "<br>")}${imageMarkup}` : imageMarkup;
+    }
+    const cleaned = sanitizePastedHtml(markup);
+    if (!cleaned.trim()) {
+      toast.error("Nothing portable could be pasted", { description: "Copy the image itself or save it locally, then paste or drop the file again." });
+      return;
+    }
     command("insertHTML", cleaned);
-    toast.success("Pasted content cleaned", { description: "Unsafe and non-portable LMS code was removed." });
+    const inserted = insertedIds.map((id) => editor.current?.querySelector<HTMLImageElement>(`img[data-ultrapage-image-id="${id}"]`)).filter((image): image is HTMLImageElement => Boolean(image));
+    const pending = inserted.filter((image) => image.getAttribute("data-ultrapage-alt-status") === "pending");
+    if (pending[0]) selectEditorContext(pending[0], "picture", true);
+    const lostImages = pastedImages.length - inserted.length;
+    if (pending.length) toast.warning(`${pending.length} pasted image${pending.length === 1 ? " needs" : "s need"} accessibility review`, { description: "Use Picture > Alt Text, or explicitly mark the image decorative." });
+    else toast.success("Pasted content cleaned", { description: "Images and portable LMS content were preserved." });
+    if (lostImages > 0) toast.error(`${lostImages} image${lostImages === 1 ? " was" : "s were"} not portable`, { description: "Copy the image itself or insert the saved file from the Image command." });
   };
   const insertAccessibleImage = ({ src, alt, caption, decorative, width }: { src: string; alt: string; caption: string; decorative: boolean; width: number }) => {
     const cleanSrc = src.trim();
@@ -1208,12 +1536,15 @@ export default function Home() {
     if (embeddedImage && cleanSrc.length > 14 * 1024 * 1024) { toast.error("The embedded image is too large. Use an image smaller than 10 MB."); return false; }
     if (!decorative && !alt.trim()) { toast.error("Add an image description or mark it as decorative"); return false; }
     const safeWidth = Math.min(100, Math.max(10, Number(width) || 100));
-    const image = `<img src="${escapeHtml(cleanSrc)}" alt="${decorative ? "" : escapeHtml(alt.trim())}"${decorative ? ' role="presentation"' : ""} loading="lazy" style="display:block;max-width:${safeWidth}%;height:auto;margin:0 auto">`;
+    const image = `<img src="${escapeHtml(cleanSrc)}" alt="${decorative ? "" : escapeHtml(alt.trim())}"${decorative ? ' role="presentation" aria-hidden="true" data-ultrapage-decorative="true" data-ultrapage-alt-status="decorative"' : ' data-ultrapage-alt-status="described"'} loading="lazy" style="display:block;max-width:${safeWidth}%;height:auto;margin:0 auto">`;
     const markup = caption.trim() ? `<figure>${image}<figcaption>${escapeHtml(caption.trim())}</figcaption></figure>` : `<figure>${image}</figure>`;
     command("insertHTML", markup); toast.success("Imagen accesible insertada"); return true;
   };
   const selectedImageContext = () => {
-    if (!editor.current || !savedSelection.current) return null;
+    if (!editor.current) return null;
+    const rememberedImage = selectedImageRef.current;
+    if (rememberedImage && editor.current.contains(rememberedImage)) return { image: rememberedImage, figure: rememberedImage.closest<HTMLElement>("figure") };
+    if (!savedSelection.current) return null;
     const container = savedSelection.current.startContainer;
     const element = container.nodeType === Node.TEXT_NODE ? container.parentElement : container as HTMLElement;
     const figure = element?.closest<HTMLElement>("figure") || (element?.matches("figure") ? element : null);
@@ -1235,28 +1566,64 @@ export default function Home() {
     if (!decorative && !alt.trim()) { toast.error("Add alternative text or mark the image as decorative"); return false; }
     const { image, figure } = context;
     image.setAttribute("alt", decorative ? "" : alt.trim());
-    if (decorative) { image.setAttribute("role", "presentation"); image.setAttribute("aria-hidden", "true"); }
-    else { image.removeAttribute("role"); image.removeAttribute("aria-hidden"); }
+    if (decorative) { image.setAttribute("role", "presentation"); image.setAttribute("aria-hidden", "true"); image.setAttribute("data-ultrapage-decorative", "true"); image.setAttribute("data-ultrapage-alt-status", "decorative"); }
+    else { image.removeAttribute("role"); image.removeAttribute("aria-hidden"); image.removeAttribute("data-ultrapage-decorative"); image.setAttribute("data-ultrapage-alt-status", "described"); }
     image.style.maxWidth = `${Math.min(100, Math.max(10, width))}%`; image.style.width = "auto"; image.style.height = "auto";
     let figcaption = figure?.querySelector<HTMLElement>("figcaption") || null;
     if (caption.trim()) {
       if (!figcaption && figure) { figcaption = document.createElement("figcaption"); figure.appendChild(figcaption); }
       if (figcaption) figcaption.textContent = caption.trim();
     } else figcaption?.remove();
-    setHtml(editor.current.innerHTML); setSaved(false); toast.success("Image properties updated"); return true;
+    selectedImageRef.current = image;
+    const images = Array.from(editor.current.querySelectorAll<HTMLImageElement>("img"));
+    setSelectedImageSummary({ index: Math.max(0, images.indexOf(image)) + 1, total: images.length, status: decorative ? "decorative" : "described" });
+    setHtml(editor.current.innerHTML); setSaved(false); toast.success("Image accessibility updated"); return true;
   };
   const arrangeSelectedImage = (action: "left" | "center" | "right" | "full" | "delete") => {
     if (!editor.current) return;
     const context = selectedImageContext();
     if (!context) { toast.error("Select an image first"); return; }
     const { image, figure } = context;
-    if (action === "delete") { (figure || image).remove(); setSelectionContext(null); setRibbonTab("home"); }
+    if (action === "delete") { (figure || image).remove(); selectedImageRef.current = null; setSelectedImageSummary(null); setSelectionContext(null); setRibbonTab("home"); }
     else if (action === "full") { image.style.width = "100%"; image.style.maxWidth = "100%"; image.style.margin = "0 auto"; }
     else {
       image.style.display = "block"; image.style.width = "auto";
       image.style.marginLeft = action === "left" ? "0" : "auto"; image.style.marginRight = action === "right" ? "0" : "auto";
     }
     setHtml(editor.current.innerHTML); setSaved(false); toast.success(action === "delete" ? "Image removed" : "Image layout updated");
+  };
+  const toggleSelectedImageDecorative = () => {
+    if (!editor.current) return;
+    const current = getSelectedImageData();
+    if (!current) { toast.error("Select an image first"); return; }
+    if (current.decorative) {
+      const context = selectedImageContext();
+      if (!context) return;
+      context.image.removeAttribute("role");
+      context.image.removeAttribute("aria-hidden");
+      context.image.removeAttribute("data-ultrapage-decorative");
+      context.image.setAttribute("data-ultrapage-alt-status", "pending");
+      setSelectedImageSummary((summary) => summary ? { ...summary, status: "needs-alt" } : summary);
+      setHtml(editor.current.innerHTML); setSaved(false);
+      toast.warning("Image changed to informative", { description: "Open Alt Text and add a meaningful description." });
+      return;
+    }
+    updateSelectedImage({ ...current, alt: "", decorative: true });
+  };
+  const selectNextImageIssue = () => {
+    if (!editor.current) return;
+    const images = Array.from(editor.current.querySelectorAll<HTMLImageElement>("img"));
+    const currentIndex = selectedImageRef.current ? images.indexOf(selectedImageRef.current) : -1;
+    const needsReview = (image: HTMLImageElement) => {
+      const decorative = image.getAttribute("role") === "presentation" || image.getAttribute("aria-hidden") === "true" || image.getAttribute("data-ultrapage-decorative") === "true";
+      return (!decorative && !image.getAttribute("alt")?.trim()) || (decorative && Boolean(image.getAttribute("alt")?.trim()));
+    };
+    const ordered = [...images.slice(currentIndex + 1), ...images.slice(0, currentIndex + 1)];
+    const issue = ordered.find(needsReview);
+    if (!issue) { toast.success("All images have an accessibility decision"); return; }
+    selectEditorContext(issue, "picture", true);
+    issue.scrollIntoView({ behavior: "smooth", block: "center" });
+    toast.info("Image selected", { description: "Use Alt Text or Mark Decorative in the Picture Ribbon." });
   };
   const insertLocalImageFile = async (file: File, source: "clipboard" | "drop") => {
     const validType = /^image\/(png|jpeg|gif|webp|avif)$/i.test(file.type);
@@ -1346,8 +1713,8 @@ export default function Home() {
   const save = () => {
     const currentHtml = mode === "visual" ? editor.current?.innerHTML || html : html;
     htmlRef.current = currentHtml; setHtml(currentHtml);
-    localStorage.setItem(DRAFT_KEY, JSON.stringify({ html: currentHtml, title, fileName: documentFileName, language: documentLanguage, lmsProfile, author: documentAuthor, description: documentDescription, updatedAt: new Date().toISOString() }));
-    const snapshot: DraftSnapshot = { id: crypto.randomUUID?.() || String(Date.now()), html: currentHtml, title, fileName: documentFileName, language: documentLanguage, lmsProfile, author: documentAuthor, description: documentDescription, savedAt: new Date().toISOString() };
+    localStorage.setItem(DRAFT_KEY, JSON.stringify({ html: currentHtml, title, fileName: documentFileName, language: documentLanguage, lmsProfile, author: documentAuthor, description: documentDescription, pageSetup, updatedAt: new Date().toISOString() }));
+    const snapshot: DraftSnapshot = { id: crypto.randomUUID?.() || String(Date.now()), html: currentHtml, title, fileName: documentFileName, language: documentLanguage, lmsProfile, author: documentAuthor, description: documentDescription, pageSetup, savedAt: new Date().toISOString() };
     try {
       const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]") as DraftSnapshot[];
       if (history[0]?.html !== currentHtml || history[0]?.title !== title) localStorage.setItem(HISTORY_KEY, JSON.stringify([snapshot, ...history].slice(0, 10)));
@@ -1355,9 +1722,9 @@ export default function Home() {
     setSaved(true); toast.success("Page saved", { description: "The draft will remain available after closing or refreshing the browser." });
   };
   const restoreSnapshot = (snapshot: DraftSnapshot) => {
-    htmlRef.current = snapshot.html; setHtml(snapshot.html); setTitle(snapshot.title); setDocumentFileName(snapshot.fileName); if (snapshot.language) setDocumentLanguage(snapshot.language); if (isLmsProfile(snapshot.lmsProfile)) setLmsProfile(snapshot.lmsProfile); setDocumentAuthor(snapshot.author || ""); setDocumentDescription(snapshot.description || ""); setMode("visual"); setSaved(true);
+    htmlRef.current = snapshot.html; setHtml(snapshot.html); setTitle(snapshot.title); setDocumentFileName(snapshot.fileName); if (snapshot.language) setDocumentLanguage(snapshot.language); if (isLmsProfile(snapshot.lmsProfile)) setLmsProfile(snapshot.lmsProfile); setDocumentAuthor(snapshot.author || ""); setDocumentDescription(snapshot.description || ""); if (isPageSetup(snapshot.pageSetup)) setPageSetup(snapshot.pageSetup); setMode("visual"); setSaved(true);
     if (editor.current) editor.current.innerHTML = snapshot.html;
-    localStorage.setItem(DRAFT_KEY, JSON.stringify({ html: snapshot.html, title: snapshot.title, fileName: snapshot.fileName, language: snapshot.language || documentLanguage, lmsProfile: snapshot.lmsProfile || lmsProfile, author: snapshot.author || "", description: snapshot.description || "", updatedAt: new Date().toISOString() }));
+    localStorage.setItem(DRAFT_KEY, JSON.stringify({ html: snapshot.html, title: snapshot.title, fileName: snapshot.fileName, language: snapshot.language || documentLanguage, lmsProfile: snapshot.lmsProfile || lmsProfile, author: snapshot.author || "", description: snapshot.description || "", pageSetup: snapshot.pageSetup || pageSetup, updatedAt: new Date().toISOString() }));
     toast.success("Version restored", { description: snapshot.title });
   };
   const copyHtml = async () => {
@@ -1402,11 +1769,16 @@ export default function Home() {
     const importedLmsProfile = parsedFile?.querySelector('meta[name="ultrapage-lms-profile"]')?.getAttribute("content");
     const importedAuthor = parsedFile?.querySelector('meta[name="author"]')?.getAttribute("content") || "";
     const importedDescription = parsedFile?.querySelector('meta[name="description"]')?.getAttribute("content") || "";
+    const importedPageSetup: PageSetup = {
+      size: parsedFile?.querySelector('meta[name="ultrapage-page-size"]')?.getAttribute("content") === "a4" ? "a4" : "letter",
+      orientation: parsedFile?.querySelector('meta[name="ultrapage-page-orientation"]')?.getAttribute("content") === "landscape" ? "landscape" : "portrait",
+      margin: (parsedFile?.querySelector('meta[name="ultrapage-page-margin"]')?.getAttribute("content") as PageMargin) || "normal",
+    };
     const extracted = content.match(/<main[^>]*class=["'][^"']*ultra-page[^"']*["'][^>]*>([\s\S]*?)<\/main>/i)?.[1] || content.match(/<body[^>]*>([\s\S]*?)<\/body>/i)?.[1] || content;
     const body = plainTextFile
       ? extracted.split(/\n{2,}/).map((paragraph) => `<p>${escapeHtml(paragraph).replace(/\n/g, "<br>")}</p>`).join("")
       : sanitizePastedHtml(extracted);
-    setHtml(body); setDocumentFileName(name); setTitle(name.replace(/\.(html?|txt)$/i, "")); if (importedLanguage === "en-US" || importedLanguage === "es-PR") setDocumentLanguage(importedLanguage); if (isLmsProfile(importedLmsProfile)) setLmsProfile(importedLmsProfile); setDocumentAuthor(importedAuthor); setDocumentDescription(importedDescription); setMode("visual"); setSaved(true);
+    setHtml(body); setDocumentFileName(name); setTitle(name.replace(/\.(html?|txt)$/i, "")); if (importedLanguage === "en-US" || importedLanguage === "es-PR") setDocumentLanguage(importedLanguage); if (isLmsProfile(importedLmsProfile)) setLmsProfile(importedLmsProfile); setDocumentAuthor(importedAuthor); setDocumentDescription(importedDescription); if (isPageSetup(importedPageSetup)) setPageSetup(importedPageSetup); setMode("visual"); setSaved(true);
     if (editor.current) editor.current.innerHTML = body;
     toast.success("File opened safely", { description: `${name} is ready to edit.` });
   };
@@ -1439,7 +1811,7 @@ export default function Home() {
       }
       const content = await file.text();
       if (/\.json$/i.test(file.name)) {
-        const project = JSON.parse(content) as { format?: string; version?: number; html?: string; title?: string; fileName?: string; language?: string; lmsProfile?: string; author?: string; description?: string };
+        const project = JSON.parse(content) as { format?: string; version?: number; html?: string; title?: string; fileName?: string; language?: string; lmsProfile?: string; author?: string; description?: string; pageSetup?: PageSetup };
         if (project.format !== "ultrapage-project" || project.version !== 1 || typeof project.html !== "string") throw new Error("Invalid UltraPage project");
         const body = sanitizePastedHtml(project.html);
         const projectLanguage: DocumentLanguage = project.language === "en-US" ? "en-US" : "es-PR";
@@ -1453,6 +1825,7 @@ export default function Home() {
         if (isLmsProfile(project.lmsProfile)) setLmsProfile(project.lmsProfile);
         setDocumentAuthor(typeof project.author === "string" ? project.author : "");
         setDocumentDescription(typeof project.description === "string" ? project.description : "");
+        if (isPageSetup(project.pageSetup)) setPageSetup(project.pageSetup);
         setMode("visual");
         setSaved(true);
         if (editor.current) editor.current.innerHTML = body;
@@ -1467,7 +1840,7 @@ export default function Home() {
     if (!name) return;
     const validName = /\.(html?|txt)$/i.test(name) ? name : `${name}.html`;
     const content = "";
-    setDocumentFileName(validName); setTitle(validName.replace(/\.(html?|txt)$/i, "")); setHtml(content); setDocumentAuthor(""); setDocumentDescription(""); setDocumentLanguage("es-PR"); setMode("visual"); setSaved(false);
+    setDocumentFileName(validName); setTitle(validName.replace(/\.(html?|txt)$/i, "")); setHtml(content); setDocumentAuthor(""); setDocumentDescription(""); setDocumentLanguage("es-PR"); setPageSetup({ size: "letter", orientation: "portrait", margin: "normal" }); setMode("visual"); setSaved(false);
     if (editor.current) editor.current.innerHTML = content;
     toast.success("New document created");
   };
@@ -1522,15 +1895,16 @@ export default function Home() {
       }
     }
     const packagedHtml = root.innerHTML;
-    const fileContent = `<!doctype html><html lang="${documentLanguage}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="color-scheme" content="light"><meta name="generator" content="UltraPage Studio"><meta name="ultrapage-lms-profile" content="${lmsProfile}"><title>${safeTitle}</title>${safeAuthor ? `<meta name="author" content="${safeAuthor}">` : ""}${safeDescription ? `<meta name="description" content="${safeDescription}">` : ""}<style>${exportedPageStyles}</style></head><body><main class="ultra-page">${packagedHtml}</main></body></html>`;
+    const packageStyles = `${exportedPageStyles}\n${pagePrintCss(pageSetup)}`;
+    const fileContent = `<!doctype html><html lang="${documentLanguage}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="color-scheme" content="light"><meta name="generator" content="UltraPage Studio"><meta name="ultrapage-lms-profile" content="${lmsProfile}"><meta name="ultrapage-page-size" content="${pageSetup.size}"><meta name="ultrapage-page-orientation" content="${pageSetup.orientation}"><meta name="ultrapage-page-margin" content="${pageSetup.margin}"><title>${safeTitle}</title>${safeAuthor ? `<meta name="author" content="${safeAuthor}">` : ""}${safeDescription ? `<meta name="description" content="${safeDescription}">` : ""}<style>${packageStyles}</style></head><body><main class="ultra-page">${packagedHtml}</main></body></html>`;
     const lmsFragment = buildLmsHtml(packagedHtml, documentLanguage, lmsProfile);
     const accessibilityChecks = accessibilityReport(packagedHtml, title, documentLanguage);
     const generatedAt = new Date().toISOString();
     zip.file("index.html", fileContent);
     zip.file("lms-fragment.html", `<!-- Generated for ${lmsProfiles[lmsProfile].label} by UltraPage Studio -->\n${lmsFragment}`);
-    zip.file("styles/ultrapage.css", exportedPageStyles.trim());
+    zip.file("styles/ultrapage.css", packageStyles.trim());
     zip.file("accessibility-report.txt", [`UltraPage Studio Accessibility Report`, `Generated: ${generatedAt}`, `Document: ${title}`, `Language: ${documentLanguage}`, `Target LMS: ${lmsProfiles[lmsProfile].label}`, "", ...accessibilityChecks.map((check) => `${check.ok ? "PASS" : "REVIEW"}: ${check.text}`)].join("\n"));
-    zip.file("manifest.json", JSON.stringify({ format: "ultrapage-html-package", version: 1, generatedAt, title, language: documentLanguage, lmsProfile, author: documentAuthor, description: documentDescription, entryPoint: "index.html", lmsFragment: "lms-fragment.html", styleReference: "styles/ultrapage.css", assets, summary: { bundledAssets, externalAssets } }, null, 2));
+    zip.file("manifest.json", JSON.stringify({ format: "ultrapage-html-package", version: 1, generatedAt, title, language: documentLanguage, lmsProfile, author: documentAuthor, description: documentDescription, pageSetup, entryPoint: "index.html", lmsFragment: "lms-fragment.html", styleReference: "styles/ultrapage.css", assets, summary: { bundledAssets, externalAssets } }, null, 2));
     zip.file("README.txt", [`UltraPage Studio HTML Package`, `=============================`, "", `Open index.html to view the responsive page.`, `Use lms-fragment.html when pasting source code into ${lmsProfiles[lmsProfile].label}.`, `The images folder contains resources that could be packaged safely.`, `manifest.json lists every image and identifies any external reference that could not be downloaded because of server access or CORS restrictions.`, `accessibility-report.txt contains the automated accessibility results at export time.`, "", `Keep index.html and the images folder together when uploading this package to a web server or LMS file area.`].join("\n"));
     const packageBlob = await zip.generateAsync({ type: "blob", compression: "DEFLATE", compressionOptions: { level: 6 }, mimeType: "application/zip" });
     const fileName = exportFileName(title, "html-package.zip");
@@ -1631,6 +2005,11 @@ export default function Home() {
           changes += 1;
         });
       }
+      table.querySelectorAll<HTMLTableCellElement>("th").forEach((header) => {
+        if (["col", "row", "colgroup", "rowgroup"].includes((header.getAttribute("scope") || "").toLowerCase())) return;
+        header.setAttribute("scope", header.closest("thead") || header.cellIndex > 0 ? "col" : "row");
+        changes += 1;
+      });
     });
 
     root.querySelectorAll<HTMLAnchorElement>('a[target="_blank"]').forEach((link) => {
@@ -1673,6 +2052,7 @@ export default function Home() {
   const accessibilityScore = Math.round((pageChecks.filter((check) => check.ok).length / pageChecks.length) * 100);
   const accessibilityIssueCount = pageChecks.reduce((total, check) => check.ok ? total : total + Math.max(1, check.locations?.length || (check.location ? 1 : 0)), 0);
   const accessibilityIssueMap = pageChecks.flatMap((check) => check.ok ? [] : (check.locations?.length ? check.locations : check.location ? [check.location] : []).map((location) => ({ check, location })));
+  const previewIssueMap = previewAuditChecks.filter((check) => !check.ok && check.location);
   const locateAccessibilityIssue = (check: AccessibilityCheck, requestedLocation?: AccessibilityLocation) => {
     const location = requestedLocation || check.locations?.[0] || check.location;
     if (!location) { toast.info("This recommendation applies to the document as a whole"); return; }
@@ -1735,10 +2115,26 @@ export default function Home() {
       if (!root) return;
       const target = Array.from(root.querySelectorAll<HTMLElement>(location.selector))[location.index];
       if (!target) { toast.error("The affected preview element is no longer available", { description: "Run Preview Audit again to refresh the result." }); return; }
+      if (target.matches("img") || target.querySelector("img")) selectEditorContext(target, "picture", true);
+      else if (target.matches("table,th,td") || target.querySelector("table")) selectEditorContext(target.matches("th,td") ? target : target.querySelector<HTMLElement>("th,td") || target, "table");
+      else if (target.matches("a") || target.querySelector("a")) selectEditorContext(target.matches("a") ? target : target.querySelector<HTMLElement>("a") || target, "link", true);
       setAccessibilitySpotlight(null);
       setAccessibilityHighlight({ location: { ...location, view: "design" }, requestId: Date.now() });
       toast.warning(`Inspecting: ${location.label}`, { description: check.detail });
     }, 60));
+  };
+  const navigatePreviewIssue = (direction: 1 | -1) => {
+    if (!previewIssueMap.length) { toast.success("No Design Preview issues are pending"); return; }
+    const next = previewIssueCursor < 0 ? (direction === 1 ? 0 : previewIssueMap.length - 1) : (previewIssueCursor + direction + previewIssueMap.length) % previewIssueMap.length;
+    setPreviewIssueCursor(next);
+    inspectPreviewIssue(previewIssueMap[next]);
+    toast.info(`Preview issue ${next + 1} of ${previewIssueMap.length}`);
+  };
+  const runBlackboardPreviewAudit = () => {
+    setLmsProfile("blackboard");
+    setSaved(false);
+    runPreviewAudit(true, "blackboard");
+    toast.info("Target LMS changed to Blackboard Ultra", { description: "The quality gate used the Blackboard conversion profile." });
   };
   const plainText = html.replace(/<[^>]+>/g, " ").replace(/&nbsp;|&amp;|&lt;|&gt;|&#39;|&quot;/g, " ").replace(/\s+/g, " ").trim();
   const wordCount = plainText ? plainText.split(" ").length : 0;
@@ -1805,8 +2201,40 @@ export default function Home() {
     setRightPanel(false);
     toast.success("Design Preview reset");
   };
+  const downloadPreviewAuditReport = () => {
+    if (!previewAuditChecks.length) {
+      runPreviewAudit(true);
+      toast.info("Preview Audit was refreshed", { description: "Select Download Report again when the results appear." });
+      return;
+    }
+    const generatedAt = new Date().toISOString();
+    const passed = previewAuditChecks.filter((check) => check.ok).length;
+    const dimensions = pageDimensions(pageSetup);
+    const lines = [
+      "UltraPage Studio — Design Preview Audit",
+      "========================================",
+      `Generated: ${generatedAt}`,
+      `Document: ${title || "Untitled document"}`,
+      `Target LMS: ${lmsProfiles[lmsProfile].label}`,
+      `Language: ${languageLabels[documentLanguage]}`,
+      `Page: ${pageSizes[pageSetup.size].label} · ${dimensions.width} × ${dimensions.height} in · ${pageSetup.orientation} · ${pageMargins[pageSetup.margin].label} margins`,
+      `Active preview: ${device} at ${zoom}%`,
+      `Result: ${passed}/${previewAuditChecks.length} checks passed`,
+      "",
+      "Responsive device matrix",
+      ...previewDeviceResults.map((result) => `${result.ok ? "PASS" : "REVIEW"} · ${result.label} (${result.width}px): ${result.detail}`),
+      "",
+      "Audit checks",
+      ...previewAuditChecks.map((check, index) => `${index + 1}. ${check.ok ? "PASS" : "REVIEW"} · ${check.label}: ${check.detail}${check.location ? ` · Location: ${check.location.label}` : ""}`),
+      "",
+      "Automated results support review but do not guarantee legal or LMS conformance.",
+    ];
+    downloadBlob(new Blob([lines.join("\n")], { type: "text/plain;charset=utf-8" }), exportFileName(title, "preview-audit.txt"));
+    toast.success("Preview Audit report downloaded", { description: `${passed}/${previewAuditChecks.length} checks passed.` });
+  };
   const handleEditorInput = (event: React.FormEvent<HTMLDivElement>) => {
     applyAutomaticFirstLineIndentation(event.currentTarget, documentLanguage);
+    applyPreviewKeyboardSemantics(event.currentTarget);
     const next = event.currentTarget.innerHTML;
     htmlRef.current = next;
     setHtml(next);
@@ -1835,7 +2263,12 @@ export default function Home() {
       "new document": newDocument, "open document": () => localFileInput.current?.click(), "save document": save,
       "home tools": () => openRibbonTab("home"), "insert content": () => openRibbonTab("insert"), "page layout": () => openRibbonTab("layout"),
       "references": () => openRibbonTab("references"), "review": () => openRibbonTab("review"), "view": () => openRibbonTab("view"), "native tools": () => openRibbonTab("tools"),
+      "open estiloapa": () => { window.location.href = "/tools#apa"; },
+      "open txt test generator": () => { window.location.href = "/tools#txt"; },
+      "open qti 2.1": () => { window.location.href = "/tools#qti"; },
       "accessibility review": () => { setSidePanelTab("review"); setRightPanel(true); }, "preview audit": () => runPreviewAudit(true), "document outline": () => { setSidePanelTab("outline"); setRightPanel(true); },
+      "blackboard audit": runBlackboardPreviewAudit, "next preview issue": () => navigatePreviewIssue(1), "previous preview issue": () => navigatePreviewIssue(-1),
+      "inspect selection html": inspectDesignSelectionInHtml, "open split view": openHtmlSplit,
       "table tools": () => selectionContext === "table" ? openRibbonTab("table") : toast.info("Select a table cell first"),
       "picture tools": () => selectionContext === "picture" ? openRibbonTab("picture") : toast.info("Select an image first"),
       "link tools": () => selectionContext === "link" ? openRibbonTab("link") : toast.info("Select a link first"),
@@ -1844,6 +2277,7 @@ export default function Home() {
       "show formatting marks": () => setShowFormattingMarks(true), "hide formatting marks": () => setShowFormattingMarks(false),
       "show structure map": () => setShowSemanticMap(true), "hide structure map": () => setShowSemanticMap(false),
       "compare previews": () => setPreviewCompareOpen(true), "read aloud": toggleReadAloud, "stop reading": toggleReadAloud,
+      "download preview report": downloadPreviewAuditReport,
       "focus mode": () => { if (!focusMode) toggleFocusMode(); }, "exit focus mode": () => { if (focusMode) toggleFocusMode(); },
       "page width": fitPageWidth, "reset view": resetPreview,
       "table of contents": generateTableOfContents, "clear formatting": clearFormatting, "copy": () => command("copy"), "cut": () => command("cut"), "paste plain text": pastePlainText, "format painter": useFormatPainter,
@@ -1854,10 +2288,29 @@ export default function Home() {
   };
 
   const activeLms = lmsProfiles[lmsProfile];
+  const configuredPage = pageDimensions(pageSetup);
+  const configuredMargin = pageMargins[pageSetup.margin];
+  const pageCanvasStyle = {
+    zoom: `${zoom}%`,
+    "--page-ratio": configuredPage.height / configuredPage.width,
+    "--page-margin-x": `${(configuredMargin.horizontal / configuredPage.width) * 100}%`,
+    "--page-margin-y": `calc(100cqw * ${configuredMargin.vertical / configuredPage.width})`,
+  } as React.CSSProperties;
   const finalPreviewMarkup = lmsHtml;
-  const finalPreviewDocument = `<!doctype html><html lang="${documentLanguage}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)}</title><style>*{box-sizing:border-box}html{background:#f3f4f7}body{margin:0;padding:32px;background:#fff;color:#242a36;font-family:Arial,'Segoe UI',sans-serif;min-height:100vh}@media(max-width:600px){body{padding:20px 16px}}</style></head><body>${finalPreviewMarkup}</body></html>`;
-  const sourcePreviewDocument = `<!doctype html><html lang="${documentLanguage}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)}</title><style>${exportedPageStyles}</style></head><body><main class="ultra-page">${html}</main></body></html>`;
+  const liveSelectionStyles = `[data-ultrapage-live-selected="true"]{outline:4px solid #6b38d1!important;outline-offset:4px!important;background-color:rgba(255,237,153,.42)!important;box-shadow:0 0 0 8px rgba(107,56,209,.13)!important;scroll-margin:80px}`;
+  const finalPreviewDocument = `<!doctype html><html lang="${documentLanguage}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)}</title><style>*{box-sizing:border-box}html{background:#f3f4f7}body{margin:0;padding:32px;background:#fff;color:#242a36;font-family:Arial,'Segoe UI',sans-serif;min-height:100vh}${liveSelectionStyles}@media(max-width:600px){body{padding:20px 16px}}</style></head><body>${finalPreviewMarkup}</body></html>`;
+  const sourcePreviewDocument = `<!doctype html><html lang="${documentLanguage}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)}</title><style>${exportedPageStyles}${liveSelectionStyles}</style></head><body><main class="ultra-page">${html}</main></body></html>`;
   const activeCode = codeView === "lms" ? formatHtmlFragment(lmsHtml) : html;
+  useEffect(() => {
+    setLiveSelection((current) => {
+      if (!current) return null;
+      const opening = findOpeningTagByOrdinal(activeCode, current.tag, current.ordinal);
+      if (!opening) return null;
+      const refreshed = current.selectedText ? findTextWithinElement(activeCode, opening, current.tag, current.selectedText) || opening : opening;
+      const position = sourcePosition(activeCode, refreshed.offset);
+      return { ...current, offset: refreshed.offset, length: refreshed.length, line: position.line, column: position.column };
+    });
+  }, [activeCode, codeView]);
   const codeLineCount = activeCode ? activeCode.split(/\r?\n/).length : 0;
   const htmlDiagnostics = useMemo(() => analyzeHtmlSource(activeCode), [activeCode]);
   const htmlErrors = htmlDiagnostics.filter((item) => item.severity === "error").length;
@@ -1865,9 +2318,10 @@ export default function Home() {
   const htmlTagPath = useMemo(() => getHtmlTagPath(activeCode, Math.min(codeCaret, activeCode.length)), [activeCode, codeCaret]);
   const codePreviewDocument = codeView === "lms" ? finalPreviewDocument : sourcePreviewDocument;
   const previewChecksPassed = previewAuditChecks.filter((check) => check.ok).length;
-  const previewChecksTotal = previewAuditChecks.length || 15;
+  const previewChecksTotal = previewAuditChecks.length || PREVIEW_AUDIT_CHECK_COUNT;
 
   return <main className={`min-h-screen bg-[#f4f6f9] text-[#172033] ${focusMode ? "focus-mode" : ""}`}>
+    <style>{pagePrintCss(pageSetup)}</style>
     <Toaster position="bottom-right" richColors />
     <input ref={localFileInput} className="sr-only" type="file" accept=".html,.htm,.txt,.docx,.ultrapage.json,.json,text/html,text/plain,application/json,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onChange={(event) => importLocalDocument(event.target.files?.[0])} aria-label="Open an HTML, TXT, Word, or UltraPage project file"/>
     <header className="topbar">
@@ -1886,12 +2340,12 @@ export default function Home() {
               {mode === "visual" && <div className="ribbon-tabs" role="tablist" aria-label="Editor ribbon">
                 {availableRibbonTabs.map((tab) => <button key={tab} id={`ribbon-tab-${tab}`} type="button" role="tab" data-ribbon-tab={tab} data-contextual={tab === "table" || tab === "picture" || tab === "link" ? tab : undefined} aria-controls="ribbon-panel" aria-selected={ribbonTab === tab} tabIndex={ribbonTab === tab ? 0 : -1} className={`${ribbonTab === tab ? "active" : ""} ${tab === "table" || tab === "picture" || tab === "link" ? `contextual ${tab}` : ""}`.trim()} onKeyDown={handleRibbonKeyDown} onClick={() => { setRibbonTab(tab); setRibbonCollapsed(false); }}>{tab[0].toUpperCase() + tab.slice(1)}{(tab === "table" || tab === "picture" || tab === "link") && <span className="sr-only"> contextual tools</span>}</button>)}
               </div>}
-              {mode === "visual" && <form className="ribbon-command-search" onSubmit={executeRibbonCommand} role="search"><Search aria-hidden="true"/><label className="sr-only" htmlFor="ribbon-command-input">Search ribbon commands</label><input id="ribbon-command-input" list="ribbon-command-options" value={ribbonCommand} onChange={(event) => setRibbonCommand(event.target.value)} placeholder="Search commands" autoComplete="off"/><datalist id="ribbon-command-options">{["New document","Open document","Save document","Home tools","Insert content","Page layout","References","Review","View","Native tools","Table tools","Picture tools","Link tools","Accessibility review","Preview audit","Document outline","Final preview","HTML editor","Desktop preview","Tablet preview","Mobile preview","Compare previews","Read aloud","Stop reading","Focus mode","Exit focus mode","Page width","Reset view","Show rulers","Hide rulers","Show margin guides","Hide margin guides","Show formatting marks","Hide formatting marks","Show structure map","Hide structure map","Table of contents","Copy","Cut","Paste plain text","Format painter","Clear formatting"].map((item) => <option key={item} value={item}/>)}</datalist></form>}
+              {mode === "visual" && <form className="ribbon-command-search" onSubmit={executeRibbonCommand} role="search"><Search aria-hidden="true"/><label className="sr-only" htmlFor="ribbon-command-input">Search ribbon commands</label><input id="ribbon-command-input" list="ribbon-command-options" value={ribbonCommand} onChange={(event) => setRibbonCommand(event.target.value)} placeholder="Search commands" autoComplete="off"/><datalist id="ribbon-command-options">{["New document","Open document","Save document","Home tools","Insert content","Page layout","References","Review","View","Native tools","Open EstiloAPA","Open TXT Test Generator","Open QTI 2.1","Table tools","Picture tools","Link tools","Accessibility review","Preview audit","Blackboard audit","Next preview issue","Previous preview issue","Download preview report","Document outline","Final preview","HTML editor","Desktop preview","Tablet preview","Mobile preview","Compare previews","Read aloud","Stop reading","Focus mode","Exit focus mode","Page width","Reset view","Show rulers","Hide rulers","Show margin guides","Hide margin guides","Show formatting marks","Hide formatting marks","Show structure map","Hide structure map","Table of contents","Copy","Cut","Paste plain text","Format painter","Clear formatting"].map((item) => <option key={item} value={item}/>)}</datalist></form>}
               {mode === "visual" && <div className="ribbon-quick" role="group" aria-label="Quick access"><button type="button" onClick={() => command("undo")} aria-label="Undo" title="Undo"><Undo2 /></button><button type="button" onClick={() => command("redo")} aria-label="Redo" title="Redo"><Redo2 /></button><button type="button" className={ribbonCollapsed ? "collapsed" : ""} aria-expanded={!ribbonCollapsed} aria-controls="ribbon-panel" onClick={() => setRibbonCollapsed((collapsed) => !collapsed)} aria-label={ribbonCollapsed ? "Expand ribbon" : "Collapse ribbon"} title={ribbonCollapsed ? "Expand ribbon" : "Collapse ribbon"}><ChevronDown /></button></div>}
             </div>
             {mode === "visual" && !ribbonCollapsed && <div id="ribbon-panel" className="ribbon-panel" role="tabpanel" aria-labelledby={`ribbon-tab-${ribbonTab}`}>
               {ribbonTab === "file" && <>
-                <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row"><button type="button" className="ribbon-command" onClick={newDocument}><FilePlus2/><span>New</span></button><button type="button" className="ribbon-command" onClick={() => localFileInput.current?.click()}><Upload/><span>Open</span></button><button type="button" className="ribbon-command" onClick={save}><Save/><span>Save</span></button><ExportDialog ribbon html={html} title={title} language={documentLanguage} lmsProfile={lmsProfile} author={documentAuthor} description={documentDescription} downloadHtml={downloadDocument}/><button type="button" className="ribbon-command" onClick={() => window.print()}><Printer/><span>Print</span></button></div><span className="ribbon-group-label">Document</span></div>
+                <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row"><button type="button" className="ribbon-command" onClick={newDocument}><FilePlus2/><span>New</span></button><button type="button" className="ribbon-command" onClick={() => localFileInput.current?.click()}><Upload/><span>Open</span></button><button type="button" className="ribbon-command" onClick={save}><Save/><span>Save</span></button><ExportDialog ribbon html={html} title={title} language={documentLanguage} lmsProfile={lmsProfile} author={documentAuthor} description={documentDescription} pageSetup={pageSetup} downloadHtml={downloadDocument}/><button type="button" className="ribbon-command" onClick={() => window.print()}><Printer/><span>Print</span></button></div><span className="ribbon-group-label">Document</span></div>
                 <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row"><button type="button" className="ribbon-command" onClick={copyHtml}><Copy/><span>Copy for {activeLms.shortLabel}</span></button></div><span className="ribbon-group-label">Publish</span></div>
                 <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row"><HistoryDialog restoreSnapshot={restoreSnapshot} ribbon/><DocumentPropertiesDialog author={documentAuthor} description={documentDescription} setAuthor={setDocumentAuthor} setDescription={setDocumentDescription} ribbon/></div><span className="ribbon-group-label">Information</span></div>
               </>}
@@ -1905,12 +2359,12 @@ export default function Home() {
               {ribbonTab === "insert" && <>
                 <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row"><LinkDialog insertLink={insertAccessibleLink}/><ImageDialog insertImage={insertAccessibleImage}/><MediaDialog insertMedia={insertAccessibleMedia}/><EquationDialog insertEquation={insertAccessibleEquation}/></div><span className="ribbon-group-label">Media & Links</span></div>
                 <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row"><TableDialog insertMarkup={insertMarkup} language={documentLanguage}/></div><span className="ribbon-group-label">Tables</span></div>
-                <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row"><ContentDialog documentLanguage={documentLanguage} documentAuthor={documentAuthor} documentDescription={documentDescription} trigger={<button className="ribbon-command" aria-label="Insert from Content Collection"><ImagePlus/><span>Content</span></button>} search={search} setSearch={setSearch} files={filteredFiles} insertFile={insertFile} documentHtml={html} documentFileName={documentFileName} openDocument={openDocument} newDocument={newDocument}/><button type="button" className="ribbon-command" onClick={() => command("insertHTML", documentLanguage === "es-PR" ? '<div class="callout"><strong>Importante</strong><p>Escriba aquí la información destacada.</p></div>' : '<div class="callout"><strong>Important</strong><p>Enter the highlighted information here.</p></div>')}><Plus/><span>Callout</span></button><button type="button" className="ribbon-command" onClick={() => command("insertHorizontalRule")}><Minus/><span>Divider</span></button><button type="button" className="ribbon-command" onClick={() => command("formatBlock", "blockquote")}><Quote/><span>Quote</span></button></div><span className="ribbon-group-label">Elements</span></div>
+                <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row"><ContentDialog documentLanguage={documentLanguage} documentAuthor={documentAuthor} documentDescription={documentDescription} pageSetup={pageSetup} trigger={<button className="ribbon-command" aria-label="Insert from Content Collection"><ImagePlus/><span>Content</span></button>} search={search} setSearch={setSearch} files={filteredFiles} insertFile={insertFile} documentHtml={html} documentFileName={documentFileName} openDocument={openDocument} newDocument={newDocument}/><button type="button" className="ribbon-command" onClick={() => command("insertHTML", documentLanguage === "es-PR" ? '<div class="callout"><strong>Importante</strong><p>Escriba aquí la información destacada.</p></div>' : '<div class="callout"><strong>Important</strong><p>Enter the highlighted information here.</p></div>')}><Plus/><span>Callout</span></button><button type="button" className="ribbon-command" onClick={() => command("insertHorizontalRule")}><Minus/><span>Divider</span></button><button type="button" className="ribbon-command" onClick={() => command("formatBlock", "blockquote")}><Quote/><span>Quote</span></button></div><span className="ribbon-group-label">Elements</span></div>
                 <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row"><button type="button" className="ribbon-command" onClick={() => command("insertHTML", documentLanguage === "es-PR" ? '<h2>Objetivos de aprendizaje</h2><ul><li>Objetivo 1</li><li>Objetivo 2</li></ul>' : '<h2>Learning Objectives</h2><ul><li>Objective 1</li><li>Objective 2</li></ul>')}><List/><span>Objectives</span></button><button type="button" className="ribbon-command" onClick={() => command("insertHTML", documentLanguage === "es-PR" ? '<div class="callout"><strong>Instrucciones</strong><p>Complete los siguientes pasos.</p></div>' : '<div class="callout"><strong>Instructions</strong><p>Complete the following steps.</p></div>')}><FileText/><span>Instructions</span></button><ModuleTemplateDialog insertMarkup={insertMarkup} hasH1={/<h1\b/i.test(html)} language={documentLanguage} ribbon/></div><span className="ribbon-group-label">Templates</span></div>
                 <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row"><button type="button" className="ribbon-command" onClick={() => { const now = new Date(); command("insertHTML", `<time datetime="${now.toISOString()}">${new Intl.DateTimeFormat(documentLanguage, { dateStyle: "long", timeStyle: "short" }).format(now)}</time>`); }}><CalendarDays/><span>Date & Time</span></button><button type="button" className="ribbon-command" onClick={() => command("insertHTML", '<hr class="ultrapage-page-break" style="break-after:page;page-break-after:always" aria-label="Page break">')}><FileText/><span>Page Break</span></button></div><span className="ribbon-group-label">Document Parts</span></div>
               </>}
               {ribbonTab === "layout" && <>
-                <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row"><WatermarkDialog applyWatermark={applyWatermark} removeWatermark={removeWatermark}/></div><span className="ribbon-group-label">Page</span></div>
+                <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row"><PageSetupDialog value={pageSetup} onChange={(next) => { setPageSetup(next); setSaved(false); }}/><WatermarkDialog applyWatermark={applyWatermark} removeWatermark={removeWatermark}/></div><span className="ribbon-group-label">Page</span></div>
                 <div className="ribbon-group"><div className="ribbon-group-body ribbon-layout-fields"><div className="ribbon-select-row"><label className="toolbar-select-label line-spacing-select"><span className="sr-only">Line spacing</span><select defaultValue="" onChange={(event) => applyLineSpacing(event.target.value)} aria-label="Line spacing"><option value="" disabled>Line spacing</option><option value="1">1.0</option><option value="1.15">1.15</option><option value="1.5">1.5</option><option value="2">2.0 double</option><option value="2.5">2.5</option></select></label><label className="toolbar-select-label indentation-select"><span className="sr-only">Paragraph indentation</span><select defaultValue="" onChange={(event) => applyIndentation(event.target.value)} aria-label="Paragraph indentation"><option value="" disabled>Indentation</option><option value="first-line">First line (0.5″)</option><option value="left">Entire paragraph (0.5″)</option><option value="hanging">Hanging indent (0.5″)</option><option value="none">Remove indentation</option></select></label></div><label className="toolbar-select-label paragraph-spacing-select"><span className="sr-only">Space after paragraph</span><select defaultValue="" onChange={(event) => applyParagraphSpacing(event.target.value)} aria-label="Space after selected paragraphs"><option value="" disabled>Space after paragraph</option><option value="default">Theme default</option><option value="0">0 px</option><option value="8">8 px</option><option value="12">12 px</option><option value="16">16 px</option><option value="24">24 px</option></select></label><p className="ribbon-hint">Paragraphs with 4+ sentences receive an automatic 0.5″ first-line indent.</p></div><span className="ribbon-group-label">Paragraph Layout</span></div>
               </>}
               {ribbonTab === "references" && <>
@@ -1926,13 +2380,15 @@ export default function Home() {
                 <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row"><button type="button" className={`ribbon-command ${device === "desktop" ? "is-active" : ""}`} aria-pressed={device === "desktop"} onClick={() => setDevice("desktop")}><Monitor/><span>Desktop</span></button><button type="button" className={`ribbon-command ${device === "tablet" ? "is-active" : ""}`} aria-pressed={device === "tablet"} onClick={() => setDevice("tablet")}><Tablet/><span>Tablet</span></button><button type="button" className={`ribbon-command ${device === "mobile" ? "is-active" : ""}`} aria-pressed={device === "mobile"} onClick={() => setDevice("mobile")}><Smartphone/><span>Mobile</span></button></div><span className="ribbon-group-label">Responsive Preview</span></div>
                 <div className="ribbon-group"><div className="ribbon-group-body ribbon-zoom-controls"><button type="button" onClick={() => setZoom((value) => Math.max(50, value - 10))} aria-label="Zoom out"><ZoomOut/></button><label><span className="sr-only">Document zoom</span><select value={zoom} onChange={(event) => setZoom(Number(event.target.value))} aria-label="Document zoom"><option value="50">50%</option><option value="75">75%</option><option value="90">90%</option><option value="100">100%</option><option value="110">110%</option><option value="125">125%</option><option value="150">150%</option></select></label><button type="button" onClick={() => setZoom((value) => Math.min(150, value + 10))} aria-label="Zoom in"><ZoomIn/></button><button type="button" onClick={() => setZoom(100)}>100%</button><button type="button" className="fit-width-button" onClick={fitPageWidth}>Page Width</button><button type="button" className="reset-view-button" onClick={resetPreview}>Reset</button></div><span className="ribbon-group-label">Zoom</span></div>
                 <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row"><button type="button" className={`ribbon-command ${showRulers ? "is-active" : ""}`} aria-pressed={showRulers} onClick={() => setShowRulers((visible) => !visible)}><Columns3/><span>Rulers</span></button><button type="button" className={`ribbon-command ${showMarginGuides ? "is-active" : ""}`} aria-pressed={showMarginGuides} onClick={() => setShowMarginGuides((visible) => !visible)}><Rows3/><span>Margins</span></button><button type="button" className={`ribbon-command ${showFormattingMarks ? "is-active" : ""}`} aria-pressed={showFormattingMarks} onClick={() => setShowFormattingMarks((visible) => !visible)}><Pilcrow/><span>Marks</span></button><button type="button" className={`ribbon-command ${showSemanticMap ? "is-active" : ""}`} aria-pressed={showSemanticMap} onClick={() => setShowSemanticMap((visible) => !visible)}><Eye/><span>Structure</span></button><button type="button" className="ribbon-command" onClick={() => setRulerUnit((current) => current === "in" ? "cm" : "in")}><Columns3/><span>{rulerUnit === "in" ? "Inches" : "Centimeters"}</span></button></div><span className="ribbon-group-label">Show</span></div>
-                <div className="ribbon-group ribbon-preview-quality"><div className="ribbon-group-body ribbon-command-row"><button type="button" className={`ribbon-preview-score ${previewAuditChecks.length > 0 && previewChecksPassed === previewChecksTotal ? "ready" : "attention"}`} onClick={() => runPreviewAudit(true)} aria-label={`Run Preview Audit. ${previewChecksPassed} of ${previewChecksTotal} checks passed`}><span>{previewChecksPassed}/{previewChecksTotal}</span><strong>Preview Audit</strong><small>{previewAuditChecks.length ? "Quality gate" : "Run quality gate"}</small></button><PreviewCompareDialog open={previewCompareOpen} onOpenChange={setPreviewCompareOpen} sourceDocument={sourcePreviewDocument} lmsDocument={finalPreviewDocument} lmsLabel={activeLms.label}/></div><span className="ribbon-group-label">Preview Quality</span></div>
+                <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row"><button type="button" className="ribbon-command" onClick={inspectDesignSelectionInHtml} title="Locate the current Design selection in editable HTML"><Search/><span>Inspect HTML</span></button><button type="button" className="ribbon-command" onClick={openHtmlSplit}><Columns3/><span>Open Split</span></button></div><span className="ribbon-group-label">Design to Code</span></div>
+                <div className="ribbon-group ribbon-preview-quality"><div className="ribbon-group-body ribbon-command-row"><button type="button" className={`ribbon-preview-score ${previewAuditChecks.length > 0 && previewChecksPassed === previewChecksTotal ? "ready" : "attention"}`} onClick={() => runPreviewAudit(true)} aria-label={`Run Preview Audit. ${previewChecksPassed} of ${previewChecksTotal} checks passed`}><span>{previewChecksPassed}/{previewChecksTotal}</span><strong>Preview Audit</strong><small>{previewAuditChecks.length ? "Quality gate" : "Run quality gate"}</small></button><PreviewCompareDialog open={previewCompareOpen} onOpenChange={setPreviewCompareOpen} sourceDocument={sourcePreviewDocument} lmsDocument={finalPreviewDocument} lmsLabel={activeLms.label}/><button type="button" className="ribbon-command" onClick={downloadPreviewAuditReport}><Download/><span>Audit Report</span></button></div><span className="ribbon-group-label">Preview Quality</span></div>
+                <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row"><button type="button" className="ribbon-command" disabled={!previewIssueMap.length} onClick={() => navigatePreviewIssue(-1)}><ChevronDown className="issue-previous"/><span>Previous</span></button><button type="button" className="ribbon-command" disabled={!previewIssueMap.length} onClick={() => navigatePreviewIssue(1)}><ChevronDown/><span>Next Issue</span></button><button type="button" className={`ribbon-command ${lmsProfile === "blackboard" ? "is-active" : ""}`} aria-pressed={lmsProfile === "blackboard"} onClick={runBlackboardPreviewAudit}><Stamp/><span>Blackboard Check</span></button></div><span className="ribbon-group-label">Quality Navigation</span></div>
                 <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row"><button type="button" className={`ribbon-command ${rightPanel ? "is-active" : ""}`} aria-pressed={rightPanel} onClick={() => setRightPanel((visible) => !visible)}><PanelRight/><span>Insights</span></button><button type="button" className="ribbon-command" onClick={() => { setSidePanelTab("outline"); setRightPanel(true); }}><Heading2/><span>Outline</span></button><button type="button" className={`ribbon-command ${focusMode ? "is-active" : ""}`} aria-pressed={focusMode} onClick={toggleFocusMode}><Maximize2/><span>{focusMode ? "Exit Focus" : "Focus"}</span></button><KeyboardShortcutsDialog ribbon/></div><span className="ribbon-group-label">Workspace</span></div>
               </>}
               {ribbonTab === "tools" && <>
                 <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row ribbon-native-tools"><a className="ribbon-command" href="/tools#apa"><BookOpen/><span>EstiloAPA</span></a><a className="ribbon-command" href="/tools#txt"><FileText/><span>TXT Tests</span></a><a className="ribbon-command" href="/tools#qti"><Table2/><span>QTI 2.1</span></a></div><span className="ribbon-group-label">Native UltraPage Tools</span></div>
-                <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row"><ContentDialog documentLanguage={documentLanguage} documentAuthor={documentAuthor} documentDescription={documentDescription} trigger={<button className="ribbon-command" aria-label="Open Content Collection"><Cloud/><span>WebDAV</span></button>} search={search} setSearch={setSearch} files={filteredFiles} insertFile={insertFile} documentHtml={html} documentFileName={documentFileName} openDocument={openDocument} newDocument={newDocument}/></div><span className="ribbon-group-label">Connected Services</span></div>
-                <div className="ribbon-group"><div className="ribbon-group-body ribbon-tool-summary"><strong>3 native tools</strong><span>APA 7, Blackboard TXT and QTI 2.1</span><small>Original repositories remain independent.</small></div><span className="ribbon-group-label">Studio Integration</span></div>
+                <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row"><ContentDialog documentLanguage={documentLanguage} documentAuthor={documentAuthor} documentDescription={documentDescription} pageSetup={pageSetup} trigger={<button className="ribbon-command" aria-label="Open Content Collection"><Cloud/><span>WebDAV</span></button>} search={search} setSearch={setSearch} files={filteredFiles} insertFile={insertFile} documentHtml={html} documentFileName={documentFileName} openDocument={openDocument} newDocument={newDocument}/></div><span className="ribbon-group-label">Connected Services</span></div>
+                <div className="ribbon-group"><div className="ribbon-group-body ribbon-tool-summary"><strong>3 audited native tools</strong><span>DOCX · PDF · HTML · TXT · GIFT · QTI 1.2/2.1</span><small>Open files, compare LMS compatibility, validate, export, and download reports. Original repositories remain independent.</small></div><span className="ribbon-group-label">Studio Integration</span></div>
               </>}
               {ribbonTab === "table" && <>
                 <div className="ribbon-group ribbon-context-summary"><div className="ribbon-group-body"><span className="context-badge"><Table2/> Table selected</span></div><span className="ribbon-group-label">Context</span></div>
@@ -1941,8 +2397,9 @@ export default function Home() {
                 <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row"><button type="button" className="ribbon-command" onClick={() => editSelectedTable("grid")}><Table2/><span>All Borders</span></button><button type="button" className="ribbon-command" onClick={() => editSelectedTable("apa7")}><BookOpen/><span>APA 7</span></button><TableEditDialog editTable={editSelectedTable}/></div><span className="ribbon-group-label">Table Style</span></div>
               </>}
               {ribbonTab === "picture" && <>
-                <div className="ribbon-group ribbon-context-summary picture-context"><div className="ribbon-group-body"><span className="context-badge"><FileImage/> Picture selected</span></div><span className="ribbon-group-label">Context</span></div>
-                <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row"><ImagePropertiesDialog getImage={getSelectedImageData} updateImage={updateSelectedImage}/><button type="button" className="ribbon-command" onClick={() => arrangeSelectedImage("full")}><ImagePlus/><span>Full Width</span></button></div><span className="ribbon-group-label">Accessibility & Size</span></div>
+                <div className="ribbon-group ribbon-context-summary picture-context"><div className="ribbon-group-body"><span className="context-badge"><FileImage/> Picture {selectedImageSummary ? `${selectedImageSummary.index} of ${selectedImageSummary.total}` : "selected"}</span></div><span className="ribbon-group-label">Context</span></div>
+                <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row"><div className={`picture-access-status ${selectedImageSummary?.status || "needs-alt"}`}><span>{selectedImageSummary?.status === "described" ? <Check/> : selectedImageSummary?.status === "decorative" ? <Eraser/> : <AlertTriangle/>}</span><strong>{selectedImageSummary?.status === "described" ? "Alt text ready" : selectedImageSummary?.status === "decorative" ? "Decorative" : "Needs alt text"}</strong><small>{selectedImageSummary?.status === "needs-alt" ? "Not yet accessible" : "Accessibility set"}</small></div><ImagePropertiesDialog getImage={getSelectedImageData} updateImage={updateSelectedImage}/><button type="button" className={`ribbon-command ${selectedImageSummary?.status === "decorative" ? "is-active" : ""}`} onClick={toggleSelectedImageDecorative}><Eraser/><span>{selectedImageSummary?.status === "decorative" ? "Informative" : "Decorative"}</span></button><button type="button" className="ribbon-command" onClick={selectNextImageIssue}><Accessibility/><span>Next Issue</span></button></div><span className="ribbon-group-label">Accessibility</span></div>
+                <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row"><button type="button" className="ribbon-command" onClick={() => arrangeSelectedImage("full")}><ImagePlus/><span>Full Width</span></button></div><span className="ribbon-group-label">Size</span></div>
                 <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row"><button type="button" className="ribbon-command" onClick={() => arrangeSelectedImage("left")}><AlignLeft/><span>Left</span></button><button type="button" className="ribbon-command" onClick={() => arrangeSelectedImage("center")}><AlignCenter/><span>Center</span></button><button type="button" className="ribbon-command" onClick={() => arrangeSelectedImage("right")}><AlignRight/><span>Right</span></button></div><span className="ribbon-group-label">Image Alignment</span></div>
                 <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row"><button type="button" className="ribbon-command ribbon-danger" onClick={() => arrangeSelectedImage("delete")}><Trash2/><span>Remove</span></button></div><span className="ribbon-group-label">Picture</span></div>
               </>}
@@ -1953,7 +2410,7 @@ export default function Home() {
               </>}
             </div>}
           </div>
-          <TabsContent value="visual" className="canvas-wrap"><div className={`device-frame ${device}`} style={{ zoom: `${zoom}%` }}><div className="ultra-label"><span className="mini-logo" aria-hidden="true"><img src="/brand/ultrapage-mark.svg" alt="" /></span><span>Design Preview</span><span className="design-state">{device[0].toUpperCase() + device.slice(1)} · {zoom}%</span><span className="design-state design-editable">Editable</span>{showSemanticMap && <span className="design-state design-structure">Structure map</span>}{device === "desktop" && <span className="design-state design-paper">Letter · 8.5 × 11 in minimum</span>}<button type="button" className={`design-audit-pill ${previewAuditChecks.length > 0 && previewAuditChecks.every((check) => check.ok) ? "ready" : "attention"}`} onClick={() => runPreviewAudit(true)} aria-label="Open Design Preview audit" title={previewAuditTime ? `Last checked ${previewAuditTime}` : "Run Preview Audit"}><Eye/>{previewChecksPassed}/{previewChecksTotal}</button><span className="ruler-status">{showRulers ? `Rulers: ${rulerUnit === "in" ? "inches" : "centimeters"}` : "Rulers hidden"}</span></div><EditorRulers unit={rulerUnit} device={device} onToggle={() => setRulerUnit((current) => current === "in" ? "cm" : "in")} showRulers={showRulers} showMarginGuides={showMarginGuides}><div ref={attachEditor} className={`page-canvas ${imageDragActive ? "image-drag-active" : ""} ${showFormattingMarks ? "show-formatting-marks" : ""} ${showSemanticMap ? "show-semantic-map" : ""}`} contentEditable role="textbox" aria-multiline="true" aria-describedby="design-editor-help" lang={documentLanguage} spellCheck={spellCheckEnabled} suppressContentEditableWarning onClick={handleEditorClick} onPaste={handlePaste} onDragEnter={handleImageDragOver} onDragOver={handleImageDragOver} onDragLeave={() => setImageDragActive(false)} onDrop={handleImageDrop} onInput={handleEditorInput} aria-label="Editable page content" />{accessibilitySpotlight && <div className="accessibility-spotlight" style={{ top: accessibilitySpotlight.top, left: accessibilitySpotlight.left, width: accessibilitySpotlight.width, height: accessibilitySpotlight.height }} aria-hidden="true"><span>{accessibilitySpotlight.label}</span></div>}<span id="design-editor-help" className="sr-only">Rich text editing area. Click an image, link, or table cell to open its contextual Ribbon tools. Use the Ribbon to format content, insert accessible elements, and review the document.</span></EditorRulers></div></TabsContent>
+          <TabsContent value="visual" className="canvas-wrap"><div className={`device-frame ${device}`} style={pageCanvasStyle}><div className="ultra-label"><span className="mini-logo" aria-hidden="true"><img src="/brand/ultrapage-mark.svg" alt="" /></span><span>Design Preview</span><span className="design-state">{device[0].toUpperCase() + device.slice(1)} · {zoom}%</span><span className="design-state design-editable">Editable</span>{showSemanticMap && <span className="design-state design-structure">Structure map</span>}{device === "desktop" && <span className="design-state design-paper">{pageSizes[pageSetup.size].label} · {configuredPage.width} × {configuredPage.height} in · {pageSetup.orientation}</span>}<button type="button" className={`design-audit-pill ${previewAuditChecks.length > 0 && previewAuditChecks.every((check) => check.ok) ? "ready" : "attention"}`} onClick={() => runPreviewAudit(true)} aria-label="Open Design Preview audit" title={previewAuditTime ? `Last checked ${previewAuditTime}` : "Run Preview Audit"}><Eye/>{previewChecksPassed}/{previewChecksTotal}</button><span className="ruler-status">{showRulers ? `Rulers: ${rulerUnit === "in" ? "inches" : "centimeters"}` : "Rulers hidden"}</span></div><EditorRulers unit={rulerUnit} device={device} pageWidth={configuredPage.width} pageHeight={configuredPage.height} onToggle={() => setRulerUnit((current) => current === "in" ? "cm" : "in")} showRulers={showRulers} showMarginGuides={showMarginGuides}><div ref={attachEditor} className={`page-canvas ${imageDragActive ? "image-drag-active" : ""} ${showFormattingMarks ? "show-formatting-marks" : ""} ${showSemanticMap ? "show-semantic-map" : ""}`} contentEditable role="textbox" aria-multiline="true" aria-describedby="design-editor-help" lang={documentLanguage} spellCheck={spellCheckEnabled} suppressContentEditableWarning onClick={handleEditorClick} onPaste={handlePaste} onDragEnter={handleImageDragOver} onDragOver={handleImageDragOver} onDragLeave={() => setImageDragActive(false)} onDrop={handleImageDrop} onInput={handleEditorInput} aria-label="Editable page content" />{accessibilitySpotlight && <div className="accessibility-spotlight" style={{ top: accessibilitySpotlight.top, left: accessibilitySpotlight.left, width: accessibilitySpotlight.width, height: accessibilitySpotlight.height }} aria-hidden="true"><span>{accessibilitySpotlight.label}</span></div>}<span id="design-editor-help" className="sr-only">Rich text editing area. Select text or click an image, link, or table cell, then use View → Inspect HTML to locate its exact source in Split view. Use the Ribbon to format content, insert accessible elements, and review the document.</span></EditorRulers></div></TabsContent>
           <TabsContent value="ultra" className="blackboard-preview-wrap"><div className={`device-frame ${device}`} style={{ zoom: `${zoom}%` }}><div className="ultra-label"><span className="mini-logo" aria-hidden="true"><img src="/brand/ultrapage-mark.svg" alt="" /></span><span>Exact {activeLms.label} output</span><span className="final-preview-badge">Read only</span></div><iframe className="blackboard-preview-frame" title={`Final preview of content prepared for ${activeLms.label}`} srcDoc={finalPreviewDocument} sandbox="allow-scripts allow-same-origin allow-presentation"/><p className="final-preview-help">This preview uses the exact fragment generated by <strong>Copy for {activeLms.shortLabel}</strong>. {activeLms.guidance} Desktop, tablet, and mobile controls adjust the test width.</p></div></TabsContent>
           <TabsContent value="html" className={`code-wrap code-workspace-${codeWorkspace}`}>
             <div className="code-header">
@@ -1964,17 +2421,19 @@ export default function Home() {
             <div className="code-authoring-bar" role="toolbar" aria-label="HTML authoring tools">
               <div className="html-ribbon-group"><span className="html-ribbon-label">Code</span><button type="button" onClick={organizeSourceHtml} disabled={codeView !== "source"} title={codeView === "source" ? "Normalize indentation and organize nested tags" : "Switch to Edit Source to organize HTML"}><Code2/> Format</button><button type="button" className={codeWrapEnabled ? "active" : ""} aria-pressed={codeWrapEnabled} onClick={() => setCodeWrapEnabled((enabled) => !enabled)}><Rows3/> Wrap</button></div>
               <div className="html-ribbon-group"><span className="html-ribbon-label">Quality</span><button type="button" className={htmlErrors ? "diagnostic-error" : htmlWarnings ? "diagnostic-warning" : "diagnostic-pass"} onClick={validateHtmlSource}><Check/> Validate <b>{htmlErrors + htmlWarnings}</b></button><button type="button" className={showCodeDiagnostics ? "active" : ""} aria-pressed={showCodeDiagnostics} onClick={() => setShowCodeDiagnostics((visible) => !visible)}><AlertTriangle/> Problems</button></div>
+              <div className="html-ribbon-group"><span className="html-ribbon-label">Live Sync</span><span className={`live-sync-badge ${liveSelection ? "matched" : "ready"}`}><PlugZap/>{liveSelection ? `Ln ${liveSelection.line}` : "Auto"}</span><button type="button" disabled={!liveSelection} onClick={locateLiveSelection} title={liveSelection ? `Locate ${liveSelection.label} at line ${liveSelection.line}` : "Select text or an element in Live Preview first"}><Search/> Locate</button><button type="button" disabled={!liveSelection} onClick={clearLiveSelection}><X/> Clear</button></div>
               <div className="html-ribbon-group html-insert-group"><span className="html-ribbon-label">Insert accessible HTML</span><button type="button" disabled={codeView !== "source"} onClick={() => insertHtmlSnippet('<figure>\n  <img src="" alt="Descriptive alternative text">\n  <figcaption>Figure caption</figcaption>\n</figure>')}><ImagePlus/> Image</button><button type="button" disabled={codeView !== "source"} onClick={() => insertHtmlSnippet('<a href="https://">Descriptive link text</a>')}><Link2/> Link</button><button type="button" disabled={codeView !== "source"} onClick={() => insertHtmlSnippet('<table data-table-style="grid">\n  <caption>Descriptive table title</caption>\n  <thead>\n    <tr><th scope="col">Header 1</th><th scope="col">Header 2</th></tr>\n  </thead>\n  <tbody>\n    <tr><td>Data</td><td>Data</td></tr>\n  </tbody>\n</table>')}><Table2/> Table</button><button type="button" disabled={codeView !== "source"} onClick={() => insertHtmlSnippet('<!-- Add an author note here -->')}><Quote/> Comment</button></div>
               <span className="syntax-legend" aria-label="Syntax color legend"><span><i className="tag-color"/>Tags</span><span><i className="attribute-color"/>Attributes</span><span><i className="value-color"/>Values</span><span><i className="comment-color"/>Comments</span></span>
             </div>
             <nav className="code-tag-navigator" aria-label="Current HTML tag path"><span>DOM</span><button type="button" onClick={() => goToCodeLocation(0)}>&lt;fragment&gt;</button>{htmlTagPath.map((item, index) => <span className="tag-crumb" key={`${item.offset}-${item.name}`}><i>/</i><button type="button" onClick={() => goToCodeLocation(item.offset, item.name.length + 2)}>&lt;{item.name}&gt;</button>{index === htmlTagPath.length - 1 && <small>current</small>}</span>)}</nav>
+            {liveSelection && <div className="live-selection-map" role="status" aria-live="polite"><span><PlugZap/>Live → HTML</span><strong>{liveSelection.label}</strong><code>Ln {liveSelection.line}, Col {liveSelection.column}</code><button type="button" onClick={locateLiveSelection}><Search/>Focus match</button></div>}
             <div className="dreamweaver-workspace">
               {codeWorkspace !== "live" && <section className="code-pane" aria-label="HTML code pane"><div className="pane-label"><Code2/>Code <span>{codeView === "source" ? "Editable · Syntax colors · Auto-close tags" : "Read only · Syntax colors on"}</span></div><div className={`code-editor-shell ${codeWrapEnabled ? "wrap-enabled" : "wrap-disabled"}`}><div ref={codeLineNumbers} className="code-line-numbers" aria-hidden="true">{Array.from({ length: Math.max(1, codeLineCount) }, (_, index) => <span key={index}>{index + 1}</span>)}</div><div className="code-editor-stack"><pre ref={codeHighlightLayer} className="code-highlight-layer" aria-hidden="true"><code>{highlightHtmlSyntax(activeCode)}{"\n"}</code></pre><Textarea ref={codeEditor} value={activeCode} readOnly={codeView === "lms"} wrap={codeWrapEnabled ? "soft" : "off"} onScroll={(event) => { if (codeLineNumbers.current) codeLineNumbers.current.scrollTop = event.currentTarget.scrollTop; if (codeHighlightLayer.current) { codeHighlightLayer.current.scrollTop = event.currentTarget.scrollTop; codeHighlightLayer.current.scrollLeft = event.currentTarget.scrollLeft; } }} onKeyDown={handleCodeKeyDown} onSelect={(event) => setCodeCaret(event.currentTarget.selectionStart)} onClick={(event) => setCodeCaret(event.currentTarget.selectionStart)} onChange={(e) => { if (codeView === "source") updateSourceCode(e.target.value); }} className={`code-editor ${codeView === "lms" ? "compatible" : ""}`} spellCheck={false} aria-label={codeView === "lms" ? `${activeLms.label}-compatible HTML` : "Editable source HTML"} /></div></div></section>}
-              {codeWorkspace !== "code" && <section className="live-code-pane" aria-label="Live HTML preview pane"><div className="pane-label"><Eye/>Live Preview <span>{device[0].toUpperCase() + device.slice(1)}</span></div><iframe className="dreamweaver-live-frame" title={`Live preview of ${codeView === "source" ? "source HTML" : `${activeLms.label} HTML`}`} srcDoc={codePreviewDocument} sandbox="allow-scripts allow-same-origin allow-presentation"/></section>}
+              {codeWorkspace !== "code" && <section className="live-code-pane" aria-label="Live HTML preview pane"><div className="pane-label"><Eye/>Live Preview <span>{liveSelection ? `Matched <${liveSelection.tag}> · Ln ${liveSelection.line}` : `${device[0].toUpperCase() + device.slice(1)} · Select content to locate HTML`}</span></div><iframe ref={livePreviewFrame} onLoad={(event) => connectLiveSelection(event.currentTarget)} className="dreamweaver-live-frame" title={`Live preview of ${codeView === "source" ? "source HTML" : `${activeLms.label} HTML`}`} srcDoc={codePreviewDocument} sandbox="allow-scripts allow-same-origin allow-presentation"/></section>}
             </div>
             {showCodeDiagnostics && <section className="html-diagnostics" aria-label="HTML validation problems"><header><span><AlertTriangle/> Problems</span><strong className={htmlErrors ? "has-errors" : htmlWarnings ? "has-warnings" : "is-clean"}>{htmlErrors} errors · {htmlWarnings} warnings</strong></header>{htmlDiagnostics.length ? <ol>{htmlDiagnostics.map((item, index) => <li key={`${item.offset}-${item.message}-${index}`} className={item.severity}><button type="button" onClick={() => goToCodeLocation(item.offset, item.length)}><span>{item.severity === "error" ? <X/> : <AlertTriangle/>}</span><strong>Ln {item.line}, Col {item.column}</strong><p>{item.message}</p></button></li>)}</ol> : <div className="diagnostics-empty"><Check/><span><strong>No HTML problems detected</strong><small>Tags are balanced and built-in LMS safety checks passed.</small></span></div>}</section>}
-            <div className="code-status" role="status"><span>Ln {sourcePosition(activeCode, Math.min(codeCaret, activeCode.length)).line}, Col {sourcePosition(activeCode, Math.min(codeCaret, activeCode.length)).column}</span><span>{codeLineCount} line{codeLineCount === 1 ? "" : "s"}</span><span>{activeCode.length} characters</span><span className={htmlErrors ? "code-errors" : htmlWarnings ? "code-warnings" : "code-valid"}>{htmlErrors ? `${htmlErrors} HTML error${htmlErrors === 1 ? "" : "s"}` : htmlWarnings ? `${htmlWarnings} warning${htmlWarnings === 1 ? "" : "s"}` : "Valid HTML"}</span><span>{codeView === "source" ? "Live synchronization enabled" : `${activeLms.shortLabel} output locked`}</span></div>
-            <p className="code-help">{codeView === "lms" ? `This is the same fragment used by Copy for ${activeLms.shortLabel}. Review it in Live or Split view before pasting it into the LMS HTML source editor.` : "Edit the source while Split or Live view renders every change. Return to Design without losing content."}</p>
+            <div className="code-status" role="status" aria-live="polite"><span>Ln {sourcePosition(activeCode, Math.min(codeCaret, activeCode.length)).line}, Col {sourcePosition(activeCode, Math.min(codeCaret, activeCode.length)).column}</span><span>{codeLineCount} line{codeLineCount === 1 ? "" : "s"}</span><span>{activeCode.length} characters</span><span className={htmlErrors ? "code-errors" : htmlWarnings ? "code-warnings" : "code-valid"}>{htmlErrors ? `${htmlErrors} HTML error${htmlErrors === 1 ? "" : "s"}` : htmlWarnings ? `${htmlWarnings} warning${htmlWarnings === 1 ? "" : "s"}` : "Valid HTML"}</span><span>{liveSelection ? `Live match: ${liveSelection.label} · line ${liveSelection.line}` : codeView === "source" ? "Live selection synchronization enabled" : `${activeLms.shortLabel} output locked · Live selection synchronization enabled`}</span></div>
+            <p className="code-help">{codeView === "lms" ? `This is the same fragment used by Copy for ${activeLms.shortLabel}. Review it in Live or Split view before pasting it into the LMS HTML source editor. Select text or click an element in Live Preview to locate its HTML.` : "Edit the source while Split or Live view renders every change. Select text or click an image or element in Live Preview to highlight its opening tag and exact line in HTML. Return to Design without losing content."}</p>
           </TabsContent>
         </Tabs>
         <div className="editor-status-bar" role="status" aria-live="polite">
@@ -1982,7 +2441,7 @@ export default function Home() {
           <div className="status-cluster status-context"><button type="button" onClick={() => { setSidePanelTab("review"); setRightPanel(true); }}><Accessibility size={14}/>{accessibilityScore}% accessible · {accessibilityIssueCount} issue{accessibilityIssueCount === 1 ? "" : "s"}</button><span>{languageLabels[documentLanguage]}</span><span>{activeLms.shortLabel}</span><span>{device[0].toUpperCase() + device.slice(1)}</span><div className="status-zoom" role="group" aria-label="Document zoom"><button type="button" onClick={() => setZoom((value) => Math.max(50, value - 10))} aria-label="Zoom out"><Minus size={13}/></button><span>{zoom}%</span><button type="button" onClick={() => setZoom((value) => Math.min(150, value + 10))} aria-label="Zoom in"><Plus size={13}/></button></div></div>
         </div>
       </section>
-      {rightPanel && <><button type="button" className="panel-backdrop" onClick={() => setRightPanel(false)} aria-label="Close auxiliary panel"/><aside id="editor-side-panel" className="right-panel" aria-label="Document insights panel"><div className="mobile-panel-heading"><strong>Document insights</strong><button type="button" onClick={() => setRightPanel(false)} aria-label="Close panel"><X size={18}/></button></div><Tabs value={sidePanelTab} onValueChange={(value) => setSidePanelTab(value as "review" | "outline" | "preview")}><TabsList className="side-tabs"><TabsTrigger value="review">Accessibility</TabsTrigger><TabsTrigger value="preview">Preview</TabsTrigger><TabsTrigger value="outline">Outline</TabsTrigger></TabsList><TabsContent value="review"><div className="score-card"><div className="score-ring">{accessibilityScore}</div><div><strong>{accessibilityScore === 100 ? "Accessibility ready" : "Review required"}</strong><span>{accessibilityIssueCount} exact issue{accessibilityIssueCount === 1 ? "" : "s"} pending</span></div></div><button type="button" className="accessibility-repair" onClick={repairAccessibility}><Accessibility size={18}/><span><strong>Safe Fix</strong><small>Repairs structure, tables, links, and HTML without inventing descriptions.</small></span></button><div className="accessibility-location-help"><Eye/><span><strong>Element-level issue map</strong><small>Every affected location is listed separately. Use Locate to highlight that exact element in Design Preview or source line in HTML.</small></span></div>{pageChecks.map((check) => <AccessibilityReviewItem key={check.text} check={check} onLocate={locateAccessibilityIssue}/>)}</TabsContent><TabsContent value="preview"><PreviewAudit checks={previewAuditChecks} deviceResults={previewDeviceResults} device={device} zoom={zoom} auditedAt={previewAuditTime} onRun={() => runPreviewAudit(true)} onSelectDevice={setDevice} onInspect={inspectPreviewIssue}/></TabsContent><TabsContent value="outline"><DocumentOutline items={documentOutline} onSelect={focusHeading}/></TabsContent></Tabs></aside></>}
+      {rightPanel && <><button type="button" className="panel-backdrop" onClick={() => setRightPanel(false)} aria-label="Close auxiliary panel"/><aside id="editor-side-panel" className="right-panel" aria-label="Document insights panel"><div className="mobile-panel-heading"><strong>Document insights</strong><button type="button" onClick={() => setRightPanel(false)} aria-label="Close panel"><X size={18}/></button></div><Tabs value={sidePanelTab} onValueChange={(value) => setSidePanelTab(value as "review" | "outline" | "preview")}><TabsList className="side-tabs"><TabsTrigger value="review">Accessibility</TabsTrigger><TabsTrigger value="preview">Preview</TabsTrigger><TabsTrigger value="outline">Outline</TabsTrigger></TabsList><TabsContent value="review"><div className="score-card"><div className="score-ring">{accessibilityScore}</div><div><strong>{accessibilityScore === 100 ? "Accessibility ready" : "Review required"}</strong><span>{accessibilityIssueCount} exact issue{accessibilityIssueCount === 1 ? "" : "s"} pending</span></div></div><button type="button" className="accessibility-repair" onClick={repairAccessibility}><Accessibility size={18}/><span><strong>Safe Fix</strong><small>Repairs structure, tables, links, and HTML without inventing descriptions.</small></span></button><div className="accessibility-location-help"><Eye/><span><strong>Element-level issue map</strong><small>Every affected location is listed separately. Use Locate to highlight that exact element in Design Preview or source line in HTML.</small></span></div>{pageChecks.map((check) => <AccessibilityReviewItem key={check.text} check={check} onLocate={locateAccessibilityIssue}/>)}</TabsContent><TabsContent value="preview"><PreviewAudit checks={previewAuditChecks} deviceResults={previewDeviceResults} device={device} zoom={zoom} auditedAt={previewAuditTime} onRun={() => runPreviewAudit(true)} onDownload={downloadPreviewAuditReport} onSelectDevice={setDevice} onInspect={inspectPreviewIssue} onPrevious={() => navigatePreviewIssue(-1)} onNext={() => navigatePreviewIssue(1)}/></TabsContent><TabsContent value="outline"><DocumentOutline items={documentOutline} onSelect={focusHeading}/></TabsContent></Tabs></aside></>}
     </div>
   </main>;
 }
@@ -2005,11 +2464,23 @@ function ModuleTemplateDialog({ insertMarkup, hasH1, language, ribbon = false }:
   return <Dialog open={open} onOpenChange={setOpen}><DialogTrigger asChild>{ribbon ? <button className="ribbon-command"><BookOpen/><span>Module</span></button> : <button className="template-card"><span className="template-icon blue"><BookOpen/></span><span><strong>Complete Module</strong><small>Accessible LMS structure</small></span><Plus size={16}/></button>}</DialogTrigger><DialogContent className="module-template-dialog"><DialogHeader><DialogTitle>Create Module Structure</DialogTitle><DialogDescription>Generates an organized template and automatically adjusts heading levels.</DialogDescription></DialogHeader><div className="module-template-fields"><label>Number or identifier<Input value={moduleNumber} onChange={(event) => setModuleNumber(event.target.value)} placeholder="4"/></label><label>Module title<Input value={moduleTitle} onChange={(event) => setModuleTitle(event.target.value)} placeholder="Technology, People, and Processes"/></label></div>{hasH1 && <p className="field-help">The document already has an H1; the module will begin with H2 to preserve hierarchy.</p>}<div className="apa-actions"><Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button><Button onClick={insert}><BookOpen size={16}/> Create Module</Button></div></DialogContent></Dialog>;
 }
 
-function EditorRulers({ unit, device, onToggle, showRulers, showMarginGuides, children }: { unit: "in" | "cm"; device: "desktop" | "tablet" | "mobile"; onToggle: () => void; showRulers: boolean; showMarginGuides: boolean; children: React.ReactNode }) {
-  const horizontalMax = unit === "in" ? (device === "desktop" ? 8.5 : device === "tablet" ? 7 : 4) : (device === "desktop" ? 21.6 : device === "tablet" ? 18 : 10);
-  const verticalMax = unit === "in" ? 11 : 28;
+function PageSetupDialog({ value, onChange }: { value: PageSetup; onChange: (value: PageSetup) => void }) {
+  const [open, setOpen] = useState(false);
+  const [draft, setDraft] = useState<PageSetup>(value);
+  useEffect(() => { if (open) setDraft(value); }, [open, value]);
+  const dimensions = pageDimensions(draft);
+  const margin = pageMargins[draft.margin];
+  const apply = () => { onChange(draft); setOpen(false); toast.success("Page setup applied", { description: `${pageSizes[draft.size].label} · ${draft.orientation} · ${margin.label} margins` }); };
+  return <Dialog open={open} onOpenChange={setOpen}><DialogTrigger asChild><button type="button" className="ribbon-command"><Settings2/><span>Page Setup</span></button></DialogTrigger><DialogContent className="page-setup-dialog"><DialogHeader><DialogTitle>Page Setup</DialogTitle><DialogDescription>Choose the paper used by Design Preview, rulers, printing, and Word, PDF, HTML, and project exports.</DialogDescription></DialogHeader><div className="page-setup-grid"><div className="page-setup-fields"><label>Paper size<select value={draft.size} onChange={(event) => setDraft((current) => ({ ...current, size: event.target.value as PageSize }))}><option value="letter">Letter (8.5 × 11 in)</option><option value="a4">A4 (8.27 × 11.69 in)</option></select></label><label>Orientation<select value={draft.orientation} onChange={(event) => setDraft((current) => ({ ...current, orientation: event.target.value as PageOrientation }))}><option value="portrait">Portrait</option><option value="landscape">Landscape</option></select></label><label>Margins<select value={draft.margin} onChange={(event) => setDraft((current) => ({ ...current, margin: event.target.value as PageMargin }))}><option value="normal">Normal (0.75 in)</option><option value="narrow">Narrow (0.5 in)</option><option value="wide">Wide (1 in)</option></select></label></div><div className="page-setup-preview"><div style={{ aspectRatio: `${dimensions.width}/${dimensions.height}` }}><span style={{ inset: `${(margin.vertical / dimensions.height) * 100}% ${(margin.horizontal / dimensions.width) * 100}%` }}>Content area</span></div><small>{dimensions.width} × {dimensions.height} in</small></div></div><div className="apa-actions"><Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button><Button onClick={apply}><Check size={16}/> Apply</Button></div></DialogContent></Dialog>;
+}
+
+function EditorRulers({ unit, device, pageWidth, pageHeight, onToggle, showRulers, showMarginGuides, children }: { unit: "in" | "cm"; device: "desktop" | "tablet" | "mobile"; pageWidth: number; pageHeight: number; onToggle: () => void; showRulers: boolean; showMarginGuides: boolean; children: React.ReactNode }) {
+  const widthInches = device === "desktop" ? pageWidth : device === "tablet" ? 7 : 4;
+  const heightInches = device === "desktop" ? pageHeight : 11;
+  const horizontalMax = unit === "in" ? widthInches : Number((widthInches * 2.54).toFixed(1));
+  const verticalMax = unit === "in" ? heightInches : Number((heightInches * 2.54).toFixed(1));
   const horizontalLabels = [...Array.from({ length: Math.floor(horizontalMax) + 1 }, (_, index) => index), ...(Number.isInteger(horizontalMax) ? [] : [horizontalMax])];
-  const verticalLabels = Array.from({ length: verticalMax + 1 }, (_, index) => index);
+  const verticalLabels = [...Array.from({ length: Math.floor(verticalMax) + 1 }, (_, index) => index), ...(Number.isInteger(verticalMax) ? [] : [verticalMax])];
   const horizontalStyle = { "--ruler-segments": horizontalMax, "--ruler-minor-segments": horizontalMax * (unit === "in" ? 4 : 2) } as React.CSSProperties;
   const verticalStyle = { "--ruler-segments": verticalMax, "--ruler-minor-segments": verticalMax * (unit === "in" ? 4 : 2) } as React.CSSProperties;
   return <div className={`editor-rulers ${showRulers ? "" : "rulers-hidden"}`} data-unit={unit}><button type="button" className="ruler-corner" onClick={onToggle} aria-label={`Change rulers to ${unit === "in" ? "centimeters" : "inches"}`} title="Change measurement unit">{unit}</button><div className="horizontal-ruler" style={horizontalStyle} aria-hidden="true">{horizontalLabels.map((value) => <span key={value} style={{ left: `${(value / horizontalMax) * 100}%` }}>{value}</span>)}</div><div className="vertical-ruler" style={verticalStyle} aria-hidden="true">{verticalLabels.map((value) => <span key={value} style={{ top: `${(value / verticalMax) * 100}%` }}>{value}</span>)}</div><div className="measurement-page">{showMarginGuides && <div className="margin-guides" aria-hidden="true"/>}{children}</div></div>;
@@ -2022,12 +2493,14 @@ function AccessibilityReviewItem({ check, onLocate }: { check: AccessibilityChec
   return <div className={`review-item accessibility-review-item ${check.ok ? "ok" : "warn"}`}><span>{check.ok ? <Check size={15}/> : <AlertTriangle size={13}/>}</span><div className="accessibility-review-copy"><p>{check.text}</p>{!check.ok && locations.length > 0 && <div className="accessibility-occurrences"><small><strong>{locations.length} affected location{locations.length === 1 ? "" : "s"}</strong></small>{locations.map((location, index) => <div className="accessibility-occurrence" key={`${location.selector}-${location.index}-${location.label}`}><span><strong>{index + 1}.</strong> {location.label}</span><button type="button" className="accessibility-locate" onClick={() => onLocate(check, location)}><Eye/> Locate</button></div>)}</div>}</div></div>;
 }
 
-function PreviewAudit({ checks, deviceResults, device, zoom, auditedAt, onRun, onSelectDevice, onInspect }: { checks: PreviewAuditCheck[]; deviceResults: PreviewDeviceResult[]; device: "desktop" | "tablet" | "mobile"; zoom: number; auditedAt: string; onRun: () => void; onSelectDevice: (device: "desktop" | "tablet" | "mobile") => void; onInspect: (check: PreviewAuditCheck) => void }) {
+function PreviewAudit({ checks, deviceResults, device, zoom, auditedAt, onRun, onDownload, onSelectDevice, onInspect, onPrevious, onNext }: { checks: PreviewAuditCheck[]; deviceResults: PreviewDeviceResult[]; device: "desktop" | "tablet" | "mobile"; zoom: number; auditedAt: string; onRun: () => void; onDownload: () => void; onSelectDevice: (device: "desktop" | "tablet" | "mobile") => void; onInspect: (check: PreviewAuditCheck) => void; onPrevious: () => void; onNext: () => void }) {
   const passed = checks.filter((check) => check.ok).length;
   const ready = checks.length > 0 && passed === checks.length;
+  const locatedIssues = checks.filter((check) => !check.ok && check.location).length;
   return <section className="preview-audit-panel" aria-label="Design Preview audit results">
-    <div className={`preview-audit-summary ${ready ? "ready" : "attention"}`}><Eye/><span><strong>{ready ? "Preview ready" : "Preview review"}</strong><small>{passed}/{checks.length || 15} checks passed · {device} at {zoom}%{auditedAt ? ` · checked ${auditedAt}` : ""}</small></span></div>
-    <button type="button" className="preview-audit-run" onClick={onRun}><Eye/> Run audit again</button>
+    <div className={`preview-audit-summary ${ready ? "ready" : "attention"}`}><Eye/><span><strong>{ready ? "Preview ready" : "Preview review"}</strong><small>{passed}/{checks.length || PREVIEW_AUDIT_CHECK_COUNT} checks passed · {device} at {zoom}%{auditedAt ? ` · checked ${auditedAt}` : ""}</small></span></div>
+    <div className="preview-audit-actions"><button type="button" className="preview-audit-run" onClick={onRun}><Eye/> Run audit again</button><button type="button" className="preview-audit-download" onClick={onDownload}><Download/> Download report</button></div>
+    <div className="preview-issue-navigation" role="group" aria-label="Preview issue navigation"><button type="button" onClick={onPrevious} disabled={!locatedIssues}><ChevronDown className="issue-previous"/> Previous issue</button><span>{locatedIssues ? `${locatedIssues} locatable issue${locatedIssues === 1 ? "" : "s"}` : "No locatable issues"}</span><button type="button" onClick={onNext} disabled={!locatedIssues}>Next issue <ChevronDown/></button></div>
     <div className="preview-device-matrix" role="group" aria-label="Responsive device audit">{deviceResults.map((result) => <button type="button" key={result.device} className={`${result.ok ? "ok" : "warn"} ${device === result.device ? "active" : ""}`} aria-pressed={device === result.device} onClick={() => onSelectDevice(result.device)}><span>{result.device === "desktop" ? <Monitor/> : result.device === "tablet" ? <Tablet/> : <Smartphone/>}</span><strong>{result.label}</strong><small>{result.width}px · {result.ok ? "Passed" : "Review"}</small></button>)}</div>
     <div className="preview-audit-list">{checks.map((check) => <div className={`preview-audit-item ${check.ok ? "ok" : "warn"}`} key={check.label}><span>{check.ok ? <Check/> : <AlertTriangle/>}</span><div><strong>{check.label}</strong><small>{check.detail}</small>{!check.ok && check.location && <small className="preview-location">Where: {check.location.label}</small>}</div>{!check.ok && check.location && <button type="button" className="preview-inspect" onClick={() => onInspect(check)}><Eye/> Inspect</button>}</div>)}</div>
     <p className="preview-audit-note">The matrix tests all three viewports during every audit. Select a device card to inspect it on the canvas. Wide tables remain keyboard-accessible through horizontal scrolling.</p>
@@ -2098,6 +2571,8 @@ function accessibilityReport(html: string, title: string, language: DocumentLang
   const tableLabel = (table: string, index: number) => `Table ${index + 1} — ${cleanText(table.match(/<caption\b[^>]*>([\s\S]*?)<\/caption>/i)?.[1] || "", "no caption")}`;
   const headerlessTableLocations = tables.flatMap((table, index) => /<th\b/i.test(table) ? [] : [locate("table", index, tableLabel(table, index), "table")]);
   const unnamedTableLocations = tables.flatMap((table, index) => /<caption\b/i.test(table) || /aria-label=["'][^"']+["']/i.test(table) ? [] : [locate("table", index, tableLabel(table, index), "table")]);
+  const tableHeaders = Array.from(html.matchAll(/<th\b([^>]*)>([\s\S]*?)<\/th>/gi), (match) => ({ attributes: match[1], text: match[2] }));
+  const unscopedTableHeaderLocations = tableHeaders.flatMap((header, index) => /\bscope=["'](?:col|row|colgroup|rowgroup)["']/i.test(header.attributes) ? [] : [locate("th", index, `Table header ${index + 1} — ${cleanText(header.text, "missing row or column scope")}`, "table")]);
   const media = Array.from(html.matchAll(/<figure\b[^>]*data-accessible-media=["']true["'][^>]*>[\s\S]*?<\/figure>/gi), (match) => match[0]);
   const inaccessibleMediaLocations = media.flatMap((item, index) => /<iframe\b[^>]*title=["'][^"']+["']/i.test(item) && (/data-captions=["']true["']/i.test(item) || /class=["'][^"']*media-transcript/i.test(item)) ? [] : [locate('figure[data-accessible-media="true"]', index, `Video ${index + 1} — missing title, captions, or transcript`)]);
   const unsafeMatches = Array.from(html.matchAll(/<\/?(?:script|object|embed|form|input|button)\b|\son\w+\s*=|(?:href|src)\s*=\s*["']javascript:/gi));
@@ -2106,6 +2581,12 @@ function accessibilityReport(html: string, title: string, language: DocumentLang
   const fixedWidthLocations = fixedWidthMatches.map((match, index) => { const position = sourcePosition(html, match.index || 0); return locate('[style*="min-width"]', index, `Fixed-width element ${index + 1} · HTML line ${position.line}, column ${position.column}`); });
   const ids = Array.from(html.matchAll(/\bid=["']([^"']+)["']/gi), (match) => match[1]);
   const duplicateIdLocations = ids.flatMap((id, index) => ids.indexOf(id) === index ? [] : [locate("[id]", index, `Element ${index + 1} with duplicate ID “${id}”`)]);
+  const brokenInternalLinkLocations = links.flatMap((link, index) => {
+    if (!link.href.startsWith("#") || link.href === "#") return [];
+    let targetId = link.href.slice(1);
+    try { targetId = decodeURIComponent(targetId); } catch { /* Keep malformed fragments available for exact location. */ }
+    return ids.includes(targetId) ? [] : [locate("a", index, `Link ${index + 1} — target “#${targetId || "missing"}” does not exist`, "link")];
+  });
   return [
     { ok: Boolean(title.trim()), text: "The document has an identifiable title", locations: title.trim() ? [] : [locate("@title", 0, "Document title field is empty", undefined, "settings")] },
     { ok: h1Count === 1, text: h1Count === 1 ? "There is exactly one H1 heading" : `There must be exactly one H1; currently there are ${h1Count}`, locations: h1Count === 0 ? [locate("@editor-start", 0, "Beginning of the document · H1 is missing")] : extraH1Locations },
@@ -2117,19 +2598,21 @@ function accessibilityReport(html: string, title: string, language: DocumentLang
     { ok: insecureLinkLocations.length === 0, text: "Links opened in new tabs include security protection", locations: insecureLinkLocations },
     { ok: headerlessTableLocations.length === 0, text: tables.length ? "Tables include header cells" : "No tables require headers", locations: headerlessTableLocations },
     { ok: unnamedTableLocations.length === 0, text: tables.length ? "All tables have a caption or accessible name" : "No tables require a caption", locations: unnamedTableLocations },
+    { ok: unscopedTableHeaderLocations.length === 0, text: tableHeaders.length ? "Table headers identify their row or column scope" : "No table headers require scope attributes", locations: unscopedTableHeaderLocations },
     { ok: inaccessibleMediaLocations.length === 0, text: media.length ? "Videos have a title and captions or a transcript" : "No videos require review", locations: inaccessibleMediaLocations },
     { ok: unsafeLocations.length === 0, text: "The HTML contains no executable or unsafe code", locations: unsafeLocations },
     { ok: fixedWidthLocations.length === 0, text: fixedWidthLocations.length ? "Remove fixed minimum widths of 400 px or more to improve mobile display" : "The content does not impose minimum widths that overflow mobile screens", locations: fixedWidthLocations },
     { ok: duplicateIdLocations.length === 0, text: duplicateIdLocations.length ? "Duplicate identifiers may break the table of contents" : "Internal identifiers are unique", locations: duplicateIdLocations },
+    { ok: brokenInternalLinkLocations.length === 0, text: brokenInternalLinkLocations.length ? "Internal links must point to an existing element ID" : "Internal links point to existing destinations", locations: brokenInternalLinkLocations },
     { ok: true, text: `The primary language is set to ${languageLabels[language]}` },
   ];
 }
 
-async function requestExport(format: "docx" | "pdf", html: string, title: string, language: DocumentLanguage = "es-PR", author = "", description = "") {
+async function requestExport(format: "docx" | "pdf", html: string, title: string, language: DocumentLanguage = "es-PR", author = "", description = "", pageSetup: PageSetup = { size: "letter", orientation: "portrait", margin: "normal" }) {
   const response = await fetch("/api/export", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ format, html, title, author: author.trim() || "UltraPage Studio", description: description.trim(), language }),
+    body: JSON.stringify({ format, html, title, author: author.trim() || "UltraPage Studio", description: description.trim(), language, pageSetup }),
   });
   if (!response.ok) {
     const problem = await response.json().catch(() => ({})) as { error?: string };
@@ -2157,7 +2640,7 @@ function arrayBufferToBase64(buffer: ArrayBuffer) {
   return btoa(binary);
 }
 
-function ExportDialog({ html, title, language, lmsProfile, author, description, downloadHtml, ribbon = false }: { html: string; title: string; language: DocumentLanguage; lmsProfile: LmsProfile; author: string; description: string; downloadHtml: () => Promise<HtmlPackageResult>; ribbon?: boolean }) {
+function ExportDialog({ html, title, language, lmsProfile, author, description, pageSetup, downloadHtml, ribbon = false }: { html: string; title: string; language: DocumentLanguage; lmsProfile: LmsProfile; author: string; description: string; pageSetup: PageSetup; downloadHtml: () => Promise<HtmlPackageResult>; ribbon?: boolean }) {
   const [open, setOpen] = useState(false);
   const [exporting, setExporting] = useState<"docx" | "pdf" | "html" | "">("");
   const portableHtml = normalizeAutomaticIndentationHtml(html, language);
@@ -2174,6 +2657,7 @@ function ExportDialog({ html, title, language, lmsProfile, author, description, 
       lmsProfile,
       author,
       description,
+      pageSetup,
       html: portableHtml,
     };
     const blob = new Blob([JSON.stringify(project, null, 2)], { type: "application/json;charset=utf-8" });
@@ -2184,7 +2668,7 @@ function ExportDialog({ html, title, language, lmsProfile, author, description, 
   const exportDocument = async (format: "docx" | "pdf") => {
     setExporting(format);
     try {
-      const blob = await requestExport(format, portableHtml, title, language, author, description);
+      const blob = await requestExport(format, portableHtml, title, language, author, description, pageSetup);
       downloadBlob(blob, exportFileName(title, format));
       toast.success(format === "docx" ? "Word document downloaded" : "Accessible PDF descargado", { description: "Document structure, language, and metadata were preserved." });
       setOpen(false);
@@ -2279,7 +2763,7 @@ function ImagePropertiesDialog({ getImage, updateImage }: { getImage: () => Sele
     setOpen(nextOpen);
   };
   const apply = () => { if (updateImage({ alt, caption, decorative, width })) setOpen(false); };
-  return <Dialog open={open} onOpenChange={changeOpen}><DialogTrigger asChild><button type="button" className="ribbon-command"><FileImage/><span>Properties</span></button></DialogTrigger><DialogContent className="image-dialog"><DialogHeader><DialogTitle>Edit Picture Properties</DialogTitle><DialogDescription>Update accessibility information, caption, and responsive width without replacing the image.</DialogDescription></DialogHeader><div className="image-dialog-grid"><label>Alternative text<Input value={alt} disabled={decorative} onChange={(event) => setAlt(event.target.value)} placeholder="Describe the purpose of the image"/></label><label>Optional caption<Input value={caption} onChange={(event) => setCaption(event.target.value)} placeholder="Figure 1. Description"/></label><label className="checkbox-label"><input type="checkbox" checked={decorative} onChange={(event) => setDecorative(event.target.checked)}/> The image is decorative</label><label className="image-width-label">Maximum width <span>{Math.round(width)}%</span><Input type="range" min="10" max="100" step="5" value={width} onChange={(event) => setWidth(Number(event.target.value))}/></label></div><div className="apa-actions"><Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button><Button onClick={apply}><Check size={16}/> Apply Changes</Button></div></DialogContent></Dialog>;
+  return <Dialog open={open} onOpenChange={changeOpen}><DialogTrigger asChild><button type="button" className="ribbon-command"><Accessibility/><span>Alt Text</span></button></DialogTrigger><DialogContent className="image-dialog"><DialogHeader><DialogTitle>Picture Accessibility & Properties</DialogTitle><DialogDescription>Describe an informative image or explicitly mark it decorative. The selection stays attached while this window is open.</DialogDescription></DialogHeader><div className="image-dialog-grid"><label>Alternative text<Input value={alt} disabled={decorative} onChange={(event) => setAlt(event.target.value)} placeholder="Describe the image's purpose in context"/></label><p className="field-help">Do not repeat nearby captions. Describe the information or function a learner would otherwise miss.</p><label>Optional caption<Input value={caption} onChange={(event) => setCaption(event.target.value)} placeholder="Figure 1. Description"/></label><label className="checkbox-label"><input type="checkbox" checked={decorative} onChange={(event) => setDecorative(event.target.checked)}/> Decorative — hide this image from assistive technology</label><label className="image-width-label">Maximum width <span>{Math.round(width)}%</span><Input type="range" min="10" max="100" step="5" value={width} onChange={(event) => setWidth(Number(event.target.value))}/></label></div><div className="apa-actions"><Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button><Button onClick={apply}><Check size={16}/> Apply Accessibility</Button></div></DialogContent></Dialog>;
 }
 
 function MediaDialog({ insertMedia }: { insertMedia: (options: { url: string; title: string; transcript: string; captions: boolean }) => boolean }) {
@@ -2464,9 +2948,10 @@ type ContentDialogProps = {
   documentLanguage: DocumentLanguage;
   documentAuthor: string;
   documentDescription: string;
+  pageSetup: PageSetup;
 };
 
-function ContentDialog({ trigger, search, setSearch, files, insertFile, documentHtml, documentFileName, openDocument, newDocument, documentLanguage, documentAuthor, documentDescription }: ContentDialogProps) {
+function ContentDialog({ trigger, search, setSearch, files, insertFile, documentHtml, documentFileName, openDocument, newDocument, documentLanguage, documentAuthor, documentDescription, pageSetup }: ContentDialogProps) {
   const defaultUrl = "";
   const [dialogOpen, setDialogOpen] = useState(false);
   const [url, setUrl] = useState(defaultUrl);
@@ -2601,7 +3086,7 @@ function ContentDialog({ trigger, search, setSearch, files, insertFile, document
       const portableHtml = normalizeAutomaticIndentationHtml(documentHtml, documentLanguage);
       let payload: Record<string, string> = { action: "write", url, username, password, fileName: remoteName, content: portableHtml };
       if (remoteFormat === "docx" || remoteFormat === "pdf") {
-        const exported = await requestExport(remoteFormat, portableHtml, remoteName.replace(/\.(docx|pdf)$/i, ""), documentLanguage, documentAuthor, documentDescription);
+        const exported = await requestExport(remoteFormat, portableHtml, remoteName.replace(/\.(docx|pdf)$/i, ""), documentLanguage, documentAuthor, documentDescription, pageSetup);
         payload = { action: "writeBinary", url, username, password, fileName: remoteName, dataBase64: arrayBufferToBase64(await exported.arrayBuffer()) };
       }
       const response = await fetch("/api/webdav", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });

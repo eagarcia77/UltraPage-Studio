@@ -3,7 +3,7 @@ const DOCX_ENHANCE_VERSION = "3.1";
 async function waitDocx(timeoutMs = 12000) {
   const started = Date.now();
   while (!window.docx) {
-    if (Date.now() - started > timeoutMs) throw new Error("No se pudo cargar la biblioteca DOCX.");
+    if (Date.now() - started > timeoutMs) throw new Error("The DOCX library could not be loaded.");
     await new Promise((resolve) => setTimeout(resolve, 60));
   }
   return window.docx;
@@ -28,7 +28,7 @@ async function imageDimensions(src, maxWidth = 580, maxHeight = 650) {
       const ratio = Math.min(maxWidth / image.naturalWidth, maxHeight / image.naturalHeight, 1);
       resolve({ width: Math.max(1, Math.round(image.naturalWidth * ratio)), height: Math.max(1, Math.round(image.naturalHeight * ratio)) });
     };
-    image.onerror = () => reject(new Error("No se pudo leer una figura extraída del PDF."));
+    image.onerror = () => reject(new Error("A figure extracted from the PDF could not be read."));
     image.src = src;
   });
 }
@@ -324,8 +324,8 @@ async function enhancedDocxExport() {
   const status = document.querySelector("#status");
   if (status) {
     status.textContent = institutional
-      ? `DOCX generado con APA 7 v${DOCX_ENHANCE_VERSION}; ${orderedListCounter} lista(s) numerada(s) con secuencias independientes.`
-      : `DOCX generado con PDF Smart v${DOCX_ENHANCE_VERSION}; listas numeradas reiniciadas correctamente.`;
+      ? `DOCX generated with APA 7 v${DOCX_ENHANCE_VERSION}; ${orderedListCounter} numbered list(s) use independent sequences.`
+      : `DOCX generated with PDF Smart v${DOCX_ENHANCE_VERSION}; numbered lists restart correctly.`;
     status.className = "status success";
   }
   return true;
@@ -345,7 +345,7 @@ document.addEventListener("click", (event) => {
     console.error("DOCX formatter", error);
     const status = document.querySelector("#status");
     if (status) {
-      status.textContent = `No se pudo generar el DOCX mejorado: ${error?.message || error}`;
+      status.textContent = `The enhanced DOCX could not be generated: ${error?.message || error}`;
       status.className = "status error";
     }
   });

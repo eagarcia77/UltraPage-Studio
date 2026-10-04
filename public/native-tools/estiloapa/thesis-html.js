@@ -54,8 +54,8 @@ a { color: inherit; text-decoration: underline; }
   setTimeout(() => URL.revokeObjectURL(url), 1000);
   const status = document.querySelector("#status");
   if (status) {
-    const extra = mode === "module-like" ? " Se detectó contenido de módulo; no se interpretó como preliminares de tesis." : "";
-    status.textContent = `${degree} exportada en HTML con perfil institucional v${THESIS_HTML_VERSION}; párrafos alineados a la izquierda.${extra}`;
+    const extra = mode === "module-like" ? " Module content was detected and was not interpreted as thesis preliminary pages." : "";
+    status.textContent = `${degree} exported as HTML with institutional profile v${THESIS_HTML_VERSION}; paragraphs are left aligned.${extra}`;
     status.className = mode === "module-like" ? "status error" : "status success";
   }
 }

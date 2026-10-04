@@ -215,8 +215,8 @@ function mediaAudit() {
   tableItem.dataset.apaMediaAudit = "table";
   tableItem.className = badTableTitles.length ? "warn" : "ok";
   tableItem.textContent = badTableTitles.length
-    ? `Tablas APA 7 v${APA_MEDIA_VERSION}: ${badTableTitles.length} título(s) requieren revisión; deben ir a la izquierda, en cursiva y sin negrita.`
-    : `Tablas APA 7 v${APA_MEDIA_VERSION}: títulos de tabla alineados a la izquierda, en cursiva y sin negrita.`;
+    ? `APA 7 tables v${APA_MEDIA_VERSION}: ${badTableTitles.length} title(s) require review; they must be left aligned, italic, and not bold.`
+    : `APA 7 tables v${APA_MEDIA_VERSION}: table titles are left aligned, italic, and not bold.`;
   list.append(tableItem);
 
   if (figures.length) {
@@ -224,8 +224,8 @@ function mediaAudit() {
     figureItem.dataset.apaMediaAudit = "figure";
     figureItem.className = placeholderTitles.length || generatedAlt.length ? "warn" : "ok";
     figureItem.textContent = placeholderTitles.length || generatedAlt.length
-      ? `Figuras APA 7 v${APA_MEDIA_VERSION}: ${figures.length} imagen(es) conservada(s); ${placeholderTitles.length} título(s) y ${generatedAlt.length} texto(s) alternativo(s) requieren revisión.`
-      : `Figuras APA 7 v${APA_MEDIA_VERSION}: ${figures.length} imagen(es) conservada(s) con número, título y texto alternativo; las notas existentes se preservan.`;
+      ? `APA 7 figures v${APA_MEDIA_VERSION}: ${figures.length} image(s) preserved; ${placeholderTitles.length} title(s) and ${generatedAlt.length} alt text value(s) require review.`
+      : `APA 7 figures v${APA_MEDIA_VERSION}: ${figures.length} image(s) preserved with number, title, and alt text; existing notes were retained.`;
     list.append(figureItem);
   }
 }
@@ -301,7 +301,7 @@ function initializeMediaNormalizer() {
   root.addEventListener("input", scheduleMediaNormalization);
   document.querySelector("#reauditBtn")?.addEventListener("click", () => setTimeout(mediaAudit, 120));
   document.addEventListener("click", (event) => {
-    if (event.target?.closest?.("#downloadDocxBtn,#downloadHtmlBtn")) normalizeMedia();
+    if (event.target?.closest?.("#downloadDocxBtn,#downloadHtmlBtn,#downloadPdfBtn")) normalizeMedia();
   }, true);
   setTimeout(() => { normalizeMedia(); mediaAudit(); }, 300);
 }

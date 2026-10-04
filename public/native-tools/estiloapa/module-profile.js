@@ -360,7 +360,7 @@ function applyModuleProfile({ announce = false } = {}) {
   if (announce) {
     const status = document.querySelector("#status");
     if (status) {
-      status.textContent = `Perfil APA 7 estricto v${MODULE_PROFILE_VERSION} aplicado según la estructura del módulo institucional.`;
+      status.textContent = `Strict APA 7 profile v${MODULE_PROFILE_VERSION} applied according to the institutional module structure.`;
       status.className = "status success";
     }
   }

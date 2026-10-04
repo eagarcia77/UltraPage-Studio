@@ -6,6 +6,9 @@
     "node": ">=22.0.0"
   },
   "scripts": {
+    "audit:design-preview": "node scripts/audit-design-preview.mjs",
+    "audit:native-tools": "node scripts/audit-native-tools.mjs",
+    "audit:qti21": "node scripts/audit-qti21.mjs",
     "dev": "next dev",
     "build": "next build",
     "start": "next start -H 0.0.0.0 -p $PORT",

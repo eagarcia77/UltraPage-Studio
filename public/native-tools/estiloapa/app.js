@@ -1,4 +1,4 @@
-const APP_VERSION = "2.0";
+const APP_VERSION = "3.4.8";
 const PDFJS_VERSION = "6.1.200";
 const PDFJS_URL = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_VERSION}/build/pdf.mjs`;
 const PDFJS_WORKER_URL = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_VERSION}/build/pdf.worker.mjs`;
@@ -23,6 +23,7 @@ const els = {
   preview: document.querySelector("#preview"),
   downloadDocxBtn: document.querySelector("#downloadDocxBtn"),
   downloadHtmlBtn: document.querySelector("#downloadHtmlBtn"),
+  downloadPdfBtn: document.querySelector("#downloadPdfBtn"),
   downloadAuditBtn: document.querySelector("#downloadAuditBtn"),
 };
 
@@ -71,7 +72,7 @@ function updateFileList() {
 function setFiles(fileList) {
   selectedFiles = Array.from(fileList || []);
   updateFileList();
-  setStatus(selectedFiles.length ? `${selectedFiles.length} archivo(s) listo(s) para procesar.` : "");
+  setStatus(selectedFiles.length ? `${selectedFiles.length} file(s) ready to process.` : "");
 }
 
 els.files.addEventListener("change", (event) => setFiles(event.target.files));
@@ -106,6 +107,7 @@ els.reauditBtn.addEventListener("click", runAudit);
 els.clearBtn.addEventListener("click", clearAll);
 els.downloadHtmlBtn.addEventListener("click", downloadHtml);
 els.downloadDocxBtn.addEventListener("click", downloadDocx);
+els.downloadPdfBtn.addEventListener("click", downloadAccessiblePdf);
 els.downloadAuditBtn.addEventListener("click", downloadAudit);
 els.preview.addEventListener("input", debounce(() => {
   if (hasFormattedContent()) runAudit(false);
@@ -122,7 +124,7 @@ function debounce(fn, delay) {
 async function waitForGlobal(name, timeoutMs = 12000) {
   const started = Date.now();
   while (!window[name]) {
-    if (Date.now() - started > timeoutMs) throw new Error(`No se pudo cargar la biblioteca ${name}. Verifique su conexión a Internet.`);
+    if (Date.now() - started > timeoutMs) throw new Error(`The ${name} library could not be loaded. Check your internet connection.`);
     await new Promise((resolve) => setTimeout(resolve, 60));
   }
   return window[name];
@@ -230,7 +232,7 @@ async function readFile(file) {
   if (extension === "pdf") return readPdf(file);
   if (["html", "htm"].includes(extension)) return sanitizeHtml(await file.text());
   if (["txt", "md"].includes(extension)) return textToHtml(await file.text());
-  throw new Error(`Formato no compatible: ${file.name}`);
+  throw new Error(`Unsupported format: ${file.name}`);
 }
 
 function replaceDivsWithParagraphs(root) {
@@ -448,65 +450,65 @@ function auditDocument(root) {
   const unmatchedCitations = citations.filter((citation) => !referenceKeys.has(citation.key));
   const uncitedReferences = references.filter((ref) => ref.key && !citationKeys.has(ref.key));
 
-  findings.push({ level: "ok", text: "Márgenes de 1 pulgada e interlineado doble configurados para la exportación." });
-  findings.push({ level: "ok", text: `Fuente APA compatible seleccionada: ${els.fontFamily.value}.` });
-  if (els.pageNumbers.checked) findings.push({ level: "ok", text: "La exportación DOCX incluirá numeración de página en el encabezado." });
+  findings.push({ level: "ok", text: "One-inch margins and double spacing are configured for export." });
+  findings.push({ level: "ok", text: `APA-compatible font selected: ${els.fontFamily.value}.` });
+  if (els.pageNumbers.checked) findings.push({ level: "ok", text: "The DOCX export will include page numbers in the header." });
 
   const refsHeading = root.querySelector(".apa-references-heading");
   if (refsHeading) {
     points += 10;
-    findings.push({ level: "ok", text: "Se identificó una sección de Referencias." });
+    findings.push({ level: "ok", text: "A References section was identified." });
   } else {
-    findings.push({ level: "warn", text: "No se identificó una sección titulada Referencias/References." });
+    findings.push({ level: "warn", text: "No section titled References or Referencias was identified." });
   }
 
   if (references.length) {
     points += 10;
-    findings.push({ level: "ok", text: `${references.length} referencia(s) detectada(s) con sangría francesa.` });
+    findings.push({ level: "ok", text: `${references.length} reference(s) detected with a hanging indent.` });
     const missingYear = references.filter((ref) => !ref.hasYear);
-    if (missingYear.length) findings.push({ level: "warn", text: `${missingYear.length} referencia(s) no muestran año, “n.d.” o “s.f.” fácilmente detectable.` });
+    if (missingYear.length) findings.push({ level: "warn", text: `${missingYear.length} reference(s) do not show an easily detected year, “n.d.,” or “s.f.”` });
     else points += 5;
 
     const malformedDoi = references.filter((ref) => /\bdoi:\s*10\./i.test(ref.text) && !/https?:\/\/doi\.org\//i.test(ref.text));
-    if (malformedDoi.length) findings.push({ level: "warn", text: `${malformedDoi.length} referencia(s) usan “doi:” en lugar del formato URL https://doi.org/... recomendado en APA 7.` });
+    if (malformedDoi.length) findings.push({ level: "warn", text: `${malformedDoi.length} reference(s) use “doi:” instead of the APA 7 recommended https://doi.org/... URL format.` });
   } else if (refsHeading) {
-    findings.push({ level: "error", text: "La sección de Referencias está vacía o no pudo interpretarse." });
+    findings.push({ level: "error", text: "The References section is empty or could not be interpreted." });
   }
 
   if (citations.length) {
     points += 10;
-    findings.push({ level: "ok", text: `${citations.length} cita(s) autor-año detectada(s) en el contenido.` });
+    findings.push({ level: "ok", text: `${citations.length} author-date citation(s) detected in the content.` });
   } else {
-    findings.push({ level: "warn", text: "No se detectaron citas autor-año. Revise si el contenido requiere fuentes académicas." });
+    findings.push({ level: "warn", text: "No author-date citations were detected. Review whether the content requires academic sources." });
   }
 
   if (citations.length && references.length) {
     if (!unmatchedCitations.length) {
       points += 15;
-      findings.push({ level: "ok", text: "Todas las citas detectadas tienen una referencia coincidente por autor principal y año." });
+      findings.push({ level: "ok", text: "Every detected citation has a matching reference by primary author and year." });
     } else {
       const examples = unmatchedCitations.slice(0, 4).map((c) => `“${c.raw}”`).join(", ");
-      findings.push({ level: "error", text: `${unmatchedCitations.length} cita(s) no tienen una referencia coincidente. Ejemplos: ${examples}.` });
+      findings.push({ level: "error", text: `${unmatchedCitations.length} citation(s) do not have a matching reference. Examples: ${examples}.` });
     }
     if (uncitedReferences.length) {
-      const examples = uncitedReferences.slice(0, 3).map((r) => `“${r.author || r.text.slice(0, 40)} (${r.year || "sin año"})”`).join(", ");
-      findings.push({ level: "warn", text: `${uncitedReferences.length} referencia(s) no tienen una cita coincidente detectada. Ejemplos: ${examples}.` });
+      const examples = uncitedReferences.slice(0, 3).map((r) => `“${r.author || r.text.slice(0, 40)} (${r.year || "no year"})”`).join(", ");
+      findings.push({ level: "warn", text: `${uncitedReferences.length} reference(s) do not have a detected matching citation. Examples: ${examples}.` });
     } else {
       points += 5;
     }
   }
 
   const missingAlt = root.querySelectorAll("img[data-missing-alt='true']").length;
-  if (missingAlt) findings.push({ level: "error", text: `${missingAlt} imagen(es) no tienen texto alternativo detectable.` });
+  if (missingAlt) findings.push({ level: "error", text: `${missingAlt} image(s) do not have detectable alternative text.` });
   else if (root.querySelector("img")) {
     points += 5;
-    findings.push({ level: "ok", text: "Las imágenes importadas conservan texto alternativo detectable." });
+    findings.push({ level: "ok", text: "Imported images preserve detectable alternative text." });
   } else {
     points += 5;
   }
 
   const longUrls = references.filter((ref) => ref.hasUrl).length;
-  if (longUrls) findings.push({ level: "ok", text: `${longUrls} referencia(s) contienen URL o DOI enlazable.` });
+  if (longUrls) findings.push({ level: "ok", text: `${longUrls} reference(s) contain a linkable URL or DOI.` });
 
   const score = Math.max(0, Math.min(100, points));
   return {
@@ -533,10 +535,10 @@ function renderAudit(result) {
     els.auditList.append(li);
   }
   els.metrics.innerHTML = `
-    <span><strong>${result.metrics.citations}</strong> citas</span>
-    <span><strong>${result.metrics.references}</strong> referencias</span>
-    <span><strong>${result.metrics.unmatchedCitations}</strong> sin referencia</span>
-    <span><strong>${result.metrics.uncitedReferences}</strong> sin cita</span>`;
+    <span><strong>${result.metrics.citations}</strong> citations</span>
+    <span><strong>${result.metrics.references}</strong> references</span>
+    <span><strong>${result.metrics.unmatchedCitations}</strong> unmatched citations</span>
+    <span><strong>${result.metrics.uncitedReferences}</strong> uncited references</span>`;
   els.downloadAuditBtn.disabled = false;
 }
 
@@ -544,22 +546,22 @@ function runAudit(announce = true) {
   if (!hasFormattedContent()) return;
   applyPreviewStyles();
   renderAudit(auditDocument(els.preview));
-  if (announce) setStatus("Auditoría actualizada.", "success");
+  if (announce) setStatus("Audit updated.", "success");
 }
 
 async function formatSelectedFiles() {
   if (!selectedFiles.length) {
-    setStatus("Seleccione por lo menos un archivo o use “Probar ejemplo”.", "error");
+    setStatus("Select at least one file or use “Try sample.”", "error");
     els.files.focus();
     return;
   }
   els.formatBtn.disabled = true;
-  setStatus("Procesando documentos…");
+  setStatus("Processing documents…");
   try {
     const wrapper = document.createElement("div");
     for (let i = 0; i < selectedFiles.length; i += 1) {
       const file = selectedFiles[i];
-      setStatus(`Procesando ${i + 1} de ${selectedFiles.length}: ${file.name}`);
+      setStatus(`Processing ${i + 1} of ${selectedFiles.length}: ${file.name}`);
       const html = await readFile(file);
       const section = document.createElement("section");
       section.dataset.sourceFile = file.name;
@@ -577,11 +579,11 @@ async function formatSelectedFiles() {
     applyPreviewStyles();
     renderAudit(auditDocument(els.preview));
     enableDownloads();
-    setStatus("Formato aplicado. Revise la auditoría y edite la vista previa si es necesario.", "success");
+    setStatus("Formatting applied. Review the audit and edit the preview if needed.", "success");
     els.preview.focus();
   } catch (error) {
     console.error(error);
-    setStatus(error?.message || "Ocurrió un error al procesar los documentos.", "error");
+    setStatus(error?.message || "An error occurred while processing the documents.", "error");
   } finally {
     els.formatBtn.disabled = false;
   }
@@ -603,7 +605,7 @@ function loadDemo() {
   applyPreviewStyles();
   renderAudit(auditDocument(els.preview));
   enableDownloads();
-  setStatus(`Ejemplo ejecutado correctamente en APA7 Module Formatter v${APP_VERSION}.`, "success");
+  setStatus(`Sample processed successfully in APA7 Module Formatter v${APP_VERSION}.`, "success");
 }
 
 function hasFormattedContent() {
@@ -613,6 +615,7 @@ function hasFormattedContent() {
 function enableDownloads() {
   els.downloadDocxBtn.disabled = false;
   els.downloadHtmlBtn.disabled = false;
+  els.downloadPdfBtn.disabled = false;
   els.downloadAuditBtn.disabled = false;
   els.reauditBtn.disabled = false;
 }
@@ -622,12 +625,13 @@ function clearAll() {
   lastAudit = null;
   els.files.value = "";
   updateFileList();
-  els.preview.innerHTML = '<p class="placeholder">El contenido formateado aparecerá aquí.</p>';
-  els.auditList.innerHTML = "<li>Cargue uno o más archivos o presione “Probar ejemplo”.</li>";
+  els.preview.innerHTML = '<p class="placeholder">Formatted content will appear here.</p>';
+  els.auditList.innerHTML = "<li>Load one or more files or select “Try sample.”</li>";
   els.metrics.innerHTML = "";
   els.score.textContent = "—";
   els.downloadDocxBtn.disabled = true;
   els.downloadHtmlBtn.disabled = true;
+  els.downloadPdfBtn.disabled = true;
   els.downloadAuditBtn.disabled = true;
   els.reauditBtn.disabled = true;
   setStatus("");
@@ -658,19 +662,57 @@ function downloadAudit() {
   if (!lastAudit) return;
   const lines = [
     `APA7 Module Formatter v${APP_VERSION}`,
-    `Puntuación heurística: ${lastAudit.score}%`,
+    `Heuristic score: ${lastAudit.score}%`,
     "",
-    `Citas detectadas: ${lastAudit.metrics.citations}`,
-    `Referencias detectadas: ${lastAudit.metrics.references}`,
-    `Citas sin referencia: ${lastAudit.metrics.unmatchedCitations}`,
-    `Referencias sin cita: ${lastAudit.metrics.uncitedReferences}`,
+    `Citations detected: ${lastAudit.metrics.citations}`,
+    `References detected: ${lastAudit.metrics.references}`,
+    `Citations without a reference: ${lastAudit.metrics.unmatchedCitations}`,
+    `References without a citation: ${lastAudit.metrics.uncitedReferences}`,
     "",
-    "Observaciones:",
+    "Findings:",
     ...lastAudit.findings.map((item) => `- [${item.level.toUpperCase()}] ${item.text}`),
     "",
-    "Nota: esta auditoría es heurística y requiere revisión académica humana."
+    "Note: this audit is heuristic and requires human academic review."
   ];
-  downloadBlob(new Blob([lines.join("\n")], { type: "text/plain;charset=utf-8" }), "auditoria-APA7.txt");
+  downloadBlob(new Blob([lines.join("\n")], { type: "text/plain;charset=utf-8" }), "APA7-audit.txt");
+}
+
+async function downloadAccessiblePdf() {
+  if (!hasFormattedContent()) {
+    setStatus("There is no formatted content to save as PDF.", "error");
+    return;
+  }
+  els.preview.blur();
+  runAudit(false);
+  els.downloadPdfBtn.disabled = true;
+  setStatus("Generating accessible PDF…");
+  try {
+    const clone = cleanExportClone();
+    const title = clone.querySelector("h1")?.textContent?.trim() || "APA7 Academic Document";
+    const response = await fetch("/api/export", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        format: "pdf",
+        html: clone.innerHTML,
+        title,
+        author: "UltraPage Studio",
+        language: "es-PR",
+        description: "Academic document with APA 7 formatting and accessible structure.",
+        pageSetup: { size: "letter", orientation: "portrait", margin: "wide" },
+      }),
+    });
+    if (!response.ok) {
+      const problem = await response.json().catch(() => ({}));
+      throw new Error(problem.error || "The accessible PDF could not be generated.");
+    }
+    downloadBlob(await response.blob(), "accessible-APA7-document.pdf");
+    setStatus("Accessible PDF generated successfully.", "success");
+  } catch (error) {
+    setStatus(error?.message || "The accessible PDF could not be generated.", "error");
+  } finally {
+    els.downloadPdfBtn.disabled = false;
+  }
 }
 
 function downloadHtml() {
@@ -679,7 +721,7 @@ function downloadHtml() {
   const fontSize = fontSettings[font].cssSize;
   const html = `<!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Documento formateado APA 7</title><style>
+<title>APA 7 formatted document</title><style>
 @page { size: letter; margin: 1in; }
 body { margin: 0; font-family: "${font}", serif; font-size: ${fontSize}; line-height: 2; color: #000; }
 section[data-source-file] { display: contents; }
@@ -689,7 +731,7 @@ h1,h2,h3,h4,h5,h6 { font: inherit; margin: 1em 0 0; }
 .apa-reference { ${els.hangingReferences.checked ? "padding-left: .5in; text-indent: -.5in;" : "padding-left: 0; text-indent: 0;"} }
 .apa-heading,.apa-figure-label,.apa-note { text-indent: 0; }.apa-figure-label { font-weight: 700; }a { color: inherit; }
 </style></head><body>${clone.innerHTML}</body></html>`;
-  downloadBlob(new Blob([html], { type: "text/html;charset=utf-8" }), "modulo-APA7.html");
+  downloadBlob(new Blob([html], { type: "text/html;charset=utf-8" }), "APA7-module.html");
 }
 
 function textRunsFromNode(node, api, font, size, inherited = {}) {
@@ -782,7 +824,7 @@ async function downloadDocx() {
         continue;
       }
       if (element.tagName === "FIGURE" || element.tagName === "IMG") {
-        children.push(new Paragraph({ children: [new TextRun({ text: `[Figura: ${element.getAttribute("alt") || "revise la imagen en el original"}]`, font, size, italics: true })], spacing: { line: 480 } }));
+        children.push(new Paragraph({ children: [new TextRun({ text: `[Figure: ${element.getAttribute("alt") || "review the image in the original document"}]`, font, size, italics: true })], spacing: { line: 480 } }));
         continue;
       }
       const paragraph = domBlockToDocxParagraph(element, api, font, size);
@@ -807,16 +849,16 @@ async function downloadDocx() {
       }],
     });
     const blob = await Packer.toBlob(doc);
-    downloadBlob(blob, "modulo-APA7.docx");
-    setStatus("Documento DOCX generado correctamente.", "success");
+    downloadBlob(blob, "APA7-module.docx");
+    setStatus("DOCX document generated successfully.", "success");
   } catch (error) {
     console.error(error);
-    setStatus(`No se pudo generar el DOCX: ${error?.message || error}`, "error");
+    setStatus(`The DOCX could not be generated: ${error?.message || error}`, "error");
   }
 }
 
 window.addEventListener("error", (event) => {
-  if (event?.message) setStatus(`Error de ejecución: ${event.message}`, "error");
+  if (event?.message) setStatus(`Runtime error: ${event.message}`, "error");
 });
 
-setStatus(`APA7 Module Formatter v${APP_VERSION} listo para ejecutar.`);
+setStatus(`APA7 Module Formatter v${APP_VERSION} is ready.`);

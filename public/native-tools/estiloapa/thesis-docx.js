@@ -11,7 +11,7 @@ function thesisExportEnabled() {
 async function thesisWaitDocx(timeoutMs = 12000) {
   const started = Date.now();
   while (!window.docx) {
-    if (Date.now() - started > timeoutMs) throw new Error("No se pudo cargar la biblioteca DOCX.");
+    if (Date.now() - started > timeoutMs) throw new Error("The DOCX library could not be loaded.");
     await new Promise((resolve) => setTimeout(resolve, 60));
   }
   return window.docx;
@@ -386,12 +386,12 @@ async function exportThesisDocx() {
 
   const status = document.querySelector("#status");
   if (status) {
-    let detail = `preliminares/cuerpo conservados; ${numberingState.counter} lista(s) numerada(s) con secuencias independientes`;
-    if (split.mode === "module-like") detail = `módulo detectado: cuerpo académico desde página 1; ${numberingState.counter} lista(s) reiniciada(s) correctamente`;
-    else if (split.mode === "body-only") detail = `cuerpo académico desde página 1; ${numberingState.counter} lista(s) reiniciada(s) correctamente`;
-    else if (split.mode === "body-with-chapter") detail = `Capítulo I desde página 1; ${numberingState.counter} lista(s) reiniciada(s) correctamente`;
-    else if (split.mode === "prelim-only") detail = `solo preliminares detectados; ${numberingState.counter} lista(s) reiniciada(s) correctamente`;
-    status.textContent = `DOCX generado con perfil institucional v${THESIS_DOCX_VERSION}; ${detail}.`;
+    let detail = `preliminary pages/body preserved; ${numberingState.counter} numbered list(s) use independent sequences`;
+    if (split.mode === "module-like") detail = `module detected: academic body content starts on page 1; ${numberingState.counter} list(s) restarted correctly`;
+    else if (split.mode === "body-only") detail = `academic body content starts on page 1; ${numberingState.counter} list(s) restarted correctly`;
+    else if (split.mode === "body-with-chapter") detail = `Chapter I starts on page 1; ${numberingState.counter} list(s) restarted correctly`;
+    else if (split.mode === "prelim-only") detail = `only preliminary pages detected; ${numberingState.counter} list(s) restarted correctly`;
+    status.textContent = `DOCX generated with institutional profile v${THESIS_DOCX_VERSION}; ${detail}.`;
     status.className = split.moduleLike ? "status error" : "status success";
   }
 }
@@ -406,7 +406,7 @@ document.addEventListener("click", (event) => {
     console.error("Thesis DOCX export", error);
     const status = document.querySelector("#status");
     if (status) {
-      status.textContent = `No se pudo generar la tesis en DOCX: ${error?.message || error}`;
+      status.textContent = `The thesis DOCX could not be generated: ${error?.message || error}`;
       status.className = "status error";
     }
   });

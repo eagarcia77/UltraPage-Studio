@@ -9,6 +9,7 @@ import {
   HeadingLevel,
   ImageRun,
   LevelFormat,
+  PageOrientation as DocxPageOrientation,
   Packer,
   Paragraph,
   Table,
@@ -32,7 +33,18 @@ type ExportRequest = {
   author?: string;
   language?: string;
   description?: string;
+  pageSetup?: { size?: "letter" | "a4"; orientation?: "portrait" | "landscape"; margin?: "normal" | "narrow" | "wide" };
 };
+
+type ExportPageSetup = { size: "letter" | "a4"; orientation: "portrait" | "landscape"; margin: "normal" | "narrow" | "wide" };
+
+function normalizedPageSetup(value?: ExportRequest["pageSetup"]): ExportPageSetup {
+  return {
+    size: value?.size === "a4" ? "a4" : "letter",
+    orientation: value?.orientation === "landscape" ? "landscape" : "portrait",
+    margin: value?.margin === "narrow" || value?.margin === "wide" ? value.margin : "normal",
+  };
+}
 
 const MAX_HTML_LENGTH = 24 * 1024 * 1024;
 const MAX_EMBEDDED_IMAGE_BYTES = 10 * 1024 * 1024;
@@ -307,7 +319,9 @@ function docxBlocks(html: string, language: string) {
   return blocks;
 }
 
-async function createDocx(html: string, title: string, author: string, language: string, description: string) {
+async function createDocx(html: string, title: string, author: string, language: string, description: string, pageSetup: ExportPageSetup) {
+  const portraitSize = pageSetup.size === "a4" ? { width: 11906, height: 16838 } : { width: 12240, height: 15840 };
+  const margin = pageSetup.margin === "narrow" ? 720 : pageSetup.margin === "wide" ? 1440 : 1080;
   const document = new Document({
     creator: author,
     title,
@@ -329,19 +343,21 @@ async function createDocx(html: string, title: string, author: string, language:
       config: [{ reference: "ordered-list", levels: [{ level: 0, format: LevelFormat.DECIMAL, text: "%1.", alignment: AlignmentType.LEFT, style: { paragraph: { indent: { left: 720, hanging: 360 } } } }] }],
     },
     sections: [{
-      properties: { page: { margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 } } },
+      properties: { page: { size: { ...portraitSize, orientation: pageSetup.orientation === "landscape" ? DocxPageOrientation.LANDSCAPE : DocxPageOrientation.PORTRAIT }, margin: { top: margin, right: margin, bottom: margin, left: margin } } },
       children: docxBlocks(html, language),
     }],
   });
   return Packer.toBuffer(document);
 }
 
-function createPdf(html: string, title: string, author: string, language: string, description: string) {
+function createPdf(html: string, title: string, author: string, language: string, description: string, pageSetup: ExportPageSetup) {
   return new Promise<Buffer>((resolve, reject) => {
     const chunks: Buffer[] = [];
+    const margin = pageSetup.margin === "narrow" ? 36 : pageSetup.margin === "wide" ? 72 : 54;
     const pdf = new PDFDocument({
-      size: "LETTER",
-      margins: { top: 72, right: 72, bottom: 72, left: 72 },
+      size: pageSetup.size === "a4" ? "A4" : "LETTER",
+      layout: pageSetup.orientation,
+      margins: { top: margin, right: margin, bottom: margin, left: margin },
       tagged: true,
       subset: "PDF/UA" as never,
       pdfVersion: "1.7",
@@ -361,7 +377,7 @@ function createPdf(html: string, title: string, author: string, language: string
     pdf.addStructure(root);
     const $ = load(`<body>${html}</body>`);
   $("section,nav.ultrapage-toc").each((_, container) => { const element = $(container); element.replaceWith(element.contents()); });
-    const bodyWidth = 468;
+    const bodyWidth = pdf.page.width - pdf.page.margins.left - pdf.page.margins.right;
     const pdfFormatting = (element: Element, defaultSize: number, defaultColor: string) => {
       const blockCss = cssProperties(element.attribs?.style);
       const inline = $(element).find("font,span[style]").first();
@@ -501,10 +517,11 @@ export async function POST(request: NextRequest) {
     const author = cleanText(body.author || "UltraPage Studio").slice(0, 120);
     const language = body.language === "en-US" ? "en-US" : "es-PR";
     const description = cleanText(body.description || "").slice(0, 300);
+    const pageSetup = normalizedPageSetup(body.pageSetup);
     if ((format !== "docx" && format !== "pdf") || !html || html.length > MAX_HTML_LENGTH) {
       return NextResponse.json({ error: "Formato o contenido no válido." }, { status: 400 });
     }
-    const data = format === "docx" ? await createDocx(html, title, author, language, description) : await createPdf(html, title, author, language, description);
+    const data = format === "docx" ? await createDocx(html, title, author, language, description, pageSetup) : await createPdf(html, title, author, language, description, pageSetup);
     const name = `${safeFileName(title)}.${format}`;
     return new NextResponse(new Uint8Array(data), {
       headers: {

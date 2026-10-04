@@ -145,8 +145,8 @@ function listAudit() {
   li.dataset.apaListAudit = "true";
   li.className = loose.length || wrongStart.length ? "warn" : "ok";
   li.textContent = loose.length || wrongStart.length
-    ? `Listas numeradas v${APA_LIST_VERSION}: ${ordered.length} lista(s), ${itemCount} elemento(s). Se detectaron ${loose.length} párrafo(s) numerado(s) suelto(s) y ${wrongStart.length} lista(s) con inicio irregular.`
-    : `Listas numeradas v${APA_LIST_VERSION}: ${ordered.length} lista(s), ${itemCount} elemento(s); cada lista independiente reinicia correctamente en 1.`;
+    ? `Numbered lists v${APA_LIST_VERSION}: ${ordered.length} list(s), ${itemCount} item(s). Detected ${loose.length} loose numbered paragraph(s) and ${wrongStart.length} list(s) with an irregular start.`
+    : `Numbered lists v${APA_LIST_VERSION}: ${ordered.length} list(s), ${itemCount} item(s); each independent list restarts correctly at 1.`;
   audit.append(li);
 }
 
@@ -165,7 +165,7 @@ function initializeListNormalizer() {
   root.addEventListener("input", scheduleListNormalization);
   document.querySelector("#reauditBtn")?.addEventListener("click", () => setTimeout(listAudit, 80));
   document.addEventListener("click", (event) => {
-    if (!event.target?.closest?.("#downloadDocxBtn,#downloadHtmlBtn")) return;
+    if (!event.target?.closest?.("#downloadDocxBtn,#downloadHtmlBtn,#downloadPdfBtn")) return;
     normalizeNumberedLists();
   }, true);
   setTimeout(() => { normalizeNumberedLists(); listAudit(); }, 250);

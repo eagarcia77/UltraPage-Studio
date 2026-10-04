@@ -81,5 +81,5 @@ function synchronizeApaEditorForExport() {
 }
 
 document.addEventListener("click", (event) => {
-  if (event.target?.closest?.("#downloadDocxBtn,#downloadHtmlBtn")) synchronizeApaEditorForExport();
+  if (event.target?.closest?.("#downloadDocxBtn,#downloadHtmlBtn,#downloadPdfBtn")) synchronizeApaEditorForExport();
 }, true);
