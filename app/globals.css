@@ -1633,8 +1633,65 @@
 }
 
 .device-frame.desktop .vertical-ruler {
-  min-height: 590px;
-  align-self: stretch;
+  min-height: 180px;
+}
+
+/* Keep both measurement axes visible while the Design Preview page scrolls. */
+.editor-rulers {
+  --ruler-thickness: 28px;
+  --ruler-scroll-y: 0px;
+  --ruler-viewport-height: clamp(180px, calc(100vh - 330px), 590px);
+  grid-template-columns: var(--ruler-thickness) minmax(0, 1fr);
+  grid-template-rows: var(--ruler-thickness) auto;
+  container-type: inline-size;
+}
+
+.ruler-corner,
+.horizontal-ruler {
+  top: 0;
+  align-self: start;
+  backface-visibility: hidden;
+}
+
+.vertical-ruler {
+  position: sticky;
+  top: var(--ruler-thickness);
+  align-self: start;
+  width: var(--ruler-thickness);
+  height: var(--ruler-viewport-height);
+  min-height: 180px;
+  max-height: calc(100vh - var(--ruler-thickness));
+  background-color: #f8f9fb;
+  background-image: none;
+  contain: paint;
+  z-index: 6;
+}
+
+.vertical-ruler-track {
+  position: absolute;
+  inset: 0 0 auto;
+  min-height: max(590px, calc((100cqw - var(--ruler-thickness)) * var(--page-ratio, 1.294117647)));
+  transform: translateY(calc(-1 * var(--ruler-scroll-y)));
+  background-image:
+    repeating-linear-gradient(to bottom, #aab1bd 0 1px, transparent 1px calc(100% / var(--ruler-minor-segments))),
+    repeating-linear-gradient(to bottom, #747e8e 0 1px, transparent 1px calc(100% / var(--ruler-segments)));
+  background-size: 8px 100%, 14px 100%;
+  background-position: right top;
+  background-repeat: no-repeat;
+  will-change: transform;
+}
+
+@media (max-width: 700px) {
+  .editor-rulers {
+    --ruler-thickness: 24px;
+    --ruler-viewport-height: clamp(160px, calc(100vh - 292px), 520px);
+    grid-template-columns: 22px minmax(0, 1fr);
+  }
+
+  .vertical-ruler {
+    width: 22px;
+    min-height: 160px;
+  }
 }
 
 .design-state {

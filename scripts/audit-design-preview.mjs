@@ -60,6 +60,11 @@ requireStyle('img[data-ultrapage-alt-status="pending"]', "visible pending-image 
 requireStyle('img[data-ultrapage-selected="true"]', "visible selected-image indicator");
 requireStyle(".picture-access-status", "Picture Ribbon accessibility status");
 requireStyle(".preview-issue-navigation", "Preview issue navigator styling");
+requireSource('onScroll={syncPinnedRulers}', "Design Preview ruler scroll synchronization");
+requireSource('style.setProperty("--ruler-scroll-y"', "vertical ruler measurement offset synchronization");
+requireStyle(".vertical-ruler-track", "independent vertical ruler measurement track");
+requireStyle("position: sticky;\n  top: var(--ruler-thickness);", "stationary vertical Design Preview ruler");
+requireStyle("align-self: start;\n  backface-visibility: hidden;", "stable sticky horizontal ruler alignment");
 
 const extractFunction = (name) => {
   const functionStart = page.indexOf(`function ${name}`);
