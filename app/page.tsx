@@ -175,6 +175,10 @@ function normalizeAutomaticIndentationHtml(sourceHtml: string, language: Documen
   const root = parsed.querySelector<HTMLElement>("#ultrapage-auto-indent-root");
   if (!root) return sourceHtml;
   applyAutomaticFirstLineIndentation(root, language);
+  root.querySelectorAll("[data-ultrapage-selected],[data-ultrapage-live-selected]").forEach((element) => {
+    element.removeAttribute("data-ultrapage-selected");
+    element.removeAttribute("data-ultrapage-live-selected");
+  });
   return root.innerHTML;
 }
 
