@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import JSZip from "jszip";
-import { Accessibility, AlertTriangle, AlignCenter, AlignJustify, AlignLeft, AlignRight, Bold, BookOpen, CalendarDays, Check, ChevronDown, ClipboardPaste, Cloud, Code2, Columns3, Copy, Download, Eraser, Eye, FileImage, FilePlus2, FileText, Folder, Heading2, Highlighter, History, ImagePlus, Italic, Keyboard, Link2, List, ListOrdered, Loader2, LockKeyhole, Maximize2, Minus, Monitor, MoreHorizontal, Palette, PanelRight, Pilcrow, PlugZap, Plus, Printer, Quote, Redo2, Rows3, Save, Scissors, Search, Settings2, Sigma, Smartphone, Stamp, Strikethrough, Subscript, Superscript, Table2, Tablet, Trash2, Underline, Undo2, Unlink, Upload, Video, Volume2, X, ZoomIn, ZoomOut } from "lucide-react";
+import { Accessibility, AlertTriangle, AlignCenter, AlignJustify, AlignLeft, AlignRight, Bold, BookOpen, CalendarDays, Check, ChevronDown, ClipboardPaste, Cloud, Code2, Columns3, Copy, Download, Eraser, Eye, FileImage, FilePlus2, FileText, Folder, Heading2, Highlighter, History, ImagePlus, Italic, Keyboard, Link2, List, ListOrdered, Loader2, LockKeyhole, Maximize2, Minus, Monitor, MoreHorizontal, Palette, PanelRight, Pilcrow, PlugZap, Plus, Printer, Quote, Redo2, Rows3, Save, Scissors, Search, Settings2, Sigma, Smartphone, Sparkles, Stamp, Strikethrough, Subscript, Superscript, Table2, Tablet, Trash2, Underline, Undo2, Unlink, Upload, Video, Volume2, X, ZoomIn, ZoomOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -39,6 +39,11 @@ type SelectedLinkData = { text: string; url: string; newTab: boolean };
 type PreviewAuditLocation = { selector: string; index: number; label: string };
 type PreviewAuditCheck = { ok: boolean; label: string; detail: string; location?: PreviewAuditLocation };
 type PreviewDeviceResult = { device: "desktop" | "tablet" | "mobile"; label: string; width: number; ok: boolean; detail: string };
+type LmsPreflightResult = { profile: LmsProfile; score: number; ready: boolean; outputBytes: number; checks: Array<{ label: string; ok: boolean; detail: string }> };
+type LearningExperienceMetric = { id: "structure" | "objectives" | "guidance" | "alignment" | "support" | "cognitive-load"; label: string; score: number; detail: string; recommendation: string };
+type LearningExperienceResult = { score: number; wordCount: number; readingMinutes: number; metrics: LearningExperienceMetric[] };
+type SemanticChangeItem = { label: string; before: number; after: number; delta: number; sensitive?: boolean };
+type SemanticChangeResult = { baselineTitle: string; baselineSavedAt: string; risk: "low" | "medium" | "high"; wordsAdded: number; wordsRemoved: number; accessibilityBefore: number; accessibilityAfter: number; sensitiveChanges: string[]; items: SemanticChangeItem[] };
 type HtmlDiagnostic = { severity: "error" | "warning"; message: string; line: number; column: number; offset: number; length: number };
 type HtmlTagCrumb = { name: string; offset: number };
 type HtmlLiveSelection = { tag: string; ordinal: number; offset: number; length: number; line: number; column: number; label: string; selectedText?: string };
@@ -608,6 +613,128 @@ function buildLmsHtml(sourceHtml: string, language: DocumentLanguage = "es-PR", 
   return root.outerHTML;
 }
 
+function createUniversalLmsPreflight(sourceHtml: string, language: DocumentLanguage): LmsPreflightResult[] {
+  const sourceDocument = new DOMParser().parseFromString(`<div id="ultrapage-preflight-source">${sourceHtml}</div>`, "text/html");
+  const source = sourceDocument.querySelector<HTMLElement>("#ultrapage-preflight-source");
+  if (!source) return [];
+  const normalizeText = (value: string | null | undefined) => (value || "").replace(/\s+/g, " ").trim();
+  const semanticSelectors = ["h1", "h2", "h3", "h4", "p", "ul", "ol", "li", "a", "img", "figure", "figcaption", "table", "caption", "thead", "tbody", "tr", "th", "td", "blockquote"];
+  const sourceImages = Array.from(source.querySelectorAll<HTMLImageElement>("img"));
+  const sourceLinks = Array.from(source.querySelectorAll<HTMLAnchorElement>("a[href]"), (link) => link.getAttribute("href") || "");
+
+  return (Object.keys(lmsProfiles) as LmsProfile[]).map((profile) => {
+    const outputHtml = buildLmsHtml(sourceHtml, language, profile);
+    const outputDocument = new DOMParser().parseFromString(outputHtml, "text/html");
+    const outputRoot = outputDocument.querySelector<HTMLElement>("#ultrapage-export");
+    const outputImages = Array.from(outputDocument.querySelectorAll<HTMLImageElement>("img"));
+    const outputLinks = Array.from(outputDocument.querySelectorAll<HTMLAnchorElement>("a[href]"), (link) => link.getAttribute("href") || "");
+    const contentParity = Boolean(outputRoot) && normalizeText(outputRoot?.textContent) === normalizeText(source.textContent);
+    const structureParity = Boolean(outputRoot) && semanticSelectors.every((selector) => (outputRoot?.querySelectorAll(selector).length ?? -1) >= source.querySelectorAll(selector).length);
+    const imageParity = outputImages.length === sourceImages.length && outputImages.every((image) => {
+      const decorative = image.getAttribute("role") === "presentation" || image.getAttribute("aria-hidden") === "true";
+      return decorative ? image.getAttribute("alt") === "" : Boolean(image.getAttribute("alt")?.trim());
+    });
+    const linkParity = sourceLinks.length === outputLinks.length && sourceLinks.every((href, index) => href === outputLinks[index]);
+    const cleanMarkup = !outputDocument.querySelector("script,style,object,embed,form,input,button,[data-ultrapage-image-id],[data-ultrapage-alt-status],[data-ultrapage-selected],[data-ultrapage-live-selected],[data-ultrapage-decorative]");
+    const checks = [
+      { label: "Content", ok: contentParity, detail: contentParity ? "Visible text is preserved." : "Visible text changes during conversion." },
+      { label: "Structure", ok: structureParity, detail: structureParity ? "Semantic elements remain available." : "A semantic element is removed or transformed." },
+      { label: "Images", ok: imageParity, detail: imageParity ? "Image alternatives survive conversion." : "Review image count or alternative text." },
+      { label: "Links", ok: linkParity, detail: linkParity ? "Link destinations are preserved." : "A link destination changes or is removed." },
+      { label: "Hygiene", ok: cleanMarkup, detail: cleanMarkup ? "Unsafe and editor-only markup is absent." : "Generated markup contains a blocked element or editor marker." },
+    ];
+    const score = Math.round((checks.filter((check) => check.ok).length / checks.length) * 100);
+    return { profile, score, ready: score === 100, outputBytes: new Blob([outputHtml]).size, checks };
+  });
+}
+
+function createLearningExperiencePulse(sourceHtml: string, language: DocumentLanguage): LearningExperienceResult {
+  const parsed = new DOMParser().parseFromString(`<main id="learning-experience-source">${sourceHtml}</main>`, "text/html");
+  const root = parsed.querySelector<HTMLElement>("#learning-experience-source");
+  const text = (root?.textContent || "").replace(/\s+/g, " ").trim();
+  const words = text ? text.split(/\s+/).filter(Boolean) : [];
+  const headings = Array.from(root?.querySelectorAll<HTMLElement>("h1,h2,h3,h4") || []);
+  const headingLevels = headings.map((heading) => Number(heading.tagName.slice(1)));
+  const hierarchyReady = headingLevels.every((level, index) => index === 0 || level <= headingLevels[index - 1] + 1);
+  const h1Count = headings.filter((heading) => heading.tagName === "H1").length;
+  const paragraphs = Array.from(root?.querySelectorAll<HTMLParagraphElement>("p") || []);
+  const longestParagraph = paragraphs.reduce((longest, paragraph) => Math.max(longest, (paragraph.textContent || "").trim().split(/\s+/).filter(Boolean).length), 0);
+  const lists = root?.querySelectorAll("ul,ol").length || 0;
+  const lowerText = text.toLocaleLowerCase(language);
+  const spanish = language === "es-PR";
+  const hasObjectives = spanish ? /objetiv(?:o|os)|resultados? de aprendizaje/.test(lowerText) : /learning objectives?|learning outcomes?/.test(lowerText);
+  const hasMeasurableVerb = spanish
+    ? /\b(analizar|aplicar|comparar|crear|describir|diseñar|evaluar|explicar|identificar|implementar|demostrar)\b/.test(lowerText)
+    : /\b(analyze|apply|compare|create|describe|design|evaluate|explain|identify|implement|demonstrate)\b/.test(lowerText);
+  const hasGuidance = spanish ? /instrucciones|pasos|actividades?|complete|revise|participe/.test(lowerText) : /instructions?|steps?|activities|complete|review|participate/.test(lowerText);
+  const hasAssessment = spanish ? /evaluaci[oó]n|evidencia|r[uú]brica|asignaci[oó]n|entrega/.test(lowerText) : /assessment|evidence|rubric|assignment|submission/.test(lowerText);
+  const hasSupport = spanish ? /apoyo|ayuda|contacte|asistencia|pr[oó]ximos pasos/.test(lowerText) : /support|help|contact|assistance|next steps/.test(lowerText);
+  const structureScore = Math.max(0, 100 - (h1Count === 1 ? 0 : 35) - (hierarchyReady ? 0 : 35) - (headings.length >= 3 ? 0 : 30));
+  const objectiveScore = hasObjectives ? (hasMeasurableVerb ? 100 : 65) : 0;
+  const guidanceScore = hasGuidance ? (lists ? 100 : 70) : lists ? 40 : 0;
+  const alignmentScore = hasObjectives && hasAssessment ? 100 : hasObjectives || hasAssessment ? 50 : 0;
+  const supportScore = hasSupport ? 100 : 0;
+  const cognitiveScore = words.length === 0 ? 0 : Math.max(0, 100 - (longestParagraph > 150 ? 45 : longestParagraph > 100 ? 20 : 0) - (headings.length && words.length / headings.length <= 300 ? 0 : 25) - (words.length > 2500 ? 20 : 0));
+  const metrics: LearningExperienceMetric[] = [
+    { id: "structure", label: "Learning structure", score: structureScore, detail: `${headings.length} headings · ${h1Count} H1 · ${hierarchyReady ? "continuous hierarchy" : "skipped level"}`, recommendation: h1Count === 1 && hierarchyReady && headings.length >= 3 ? "The page has a navigable learning structure." : "Use one H1 and organize major sections with sequential H2–H4 headings." },
+    { id: "objectives", label: "Measurable objectives", score: objectiveScore, detail: hasObjectives ? (hasMeasurableVerb ? "Objectives and measurable verbs detected." : "Objectives detected; measurable action verbs need review.") : "No learning-objective section detected.", recommendation: hasObjectives && hasMeasurableVerb ? "Objectives provide an observable learning direction." : "State measurable objectives with verbs such as analyze, apply, create, or evaluate." },
+    { id: "guidance", label: "Learner guidance", score: guidanceScore, detail: hasGuidance ? `${lists ? "Sequenced" : "Narrative"} instructions detected.` : "No explicit instructions or activity guidance detected.", recommendation: hasGuidance && lists ? "Learners receive sequenced directions." : "Add concise instructions and use a numbered list when order matters." },
+    { id: "alignment", label: "Assessment alignment", score: alignmentScore, detail: hasObjectives && hasAssessment ? "Objectives and assessment evidence are both present." : "Objectives and assessment evidence are not both visible.", recommendation: hasObjectives && hasAssessment ? "The page exposes both intended learning and evidence of achievement." : "Connect each objective to an activity, deliverable, rubric, or other evidence." },
+    { id: "support", label: "Learner support", score: supportScore, detail: hasSupport ? "Help or next-step language detected." : "No support or next-step guidance detected.", recommendation: hasSupport ? "The page provides a path forward when learners need help." : "Add support contact information and a clear next step." },
+    { id: "cognitive-load", label: "Cognitive load", score: cognitiveScore, detail: `${words.length} words · longest paragraph ${longestParagraph} words · ${headings.length ? Math.round(words.length / headings.length) : words.length} words per heading`, recommendation: cognitiveScore >= 80 ? "Content is appropriately chunked for scanning and study." : "Break long paragraphs into focused sections, lists, callouts, or progressive activities." },
+  ];
+  return { score: Math.round(metrics.reduce((total, metric) => total + metric.score, 0) / metrics.length), wordCount: words.length, readingMinutes: words.length ? Math.max(1, Math.ceil(words.length / 200)) : 0, metrics };
+}
+
+function createSemanticChangeImpact(currentHtml: string, baseline: DraftSnapshot, currentTitle: string, language: DocumentLanguage): SemanticChangeResult {
+  const parse = (markup: string) => new DOMParser().parseFromString(`<main id="semantic-change-root">${markup}</main>`, "text/html").querySelector<HTMLElement>("#semantic-change-root");
+  const before = parse(baseline.html);
+  const after = parse(currentHtml);
+  const count = (root: HTMLElement | null, selector: string) => root?.querySelectorAll(selector).length || 0;
+  const item = (label: string, selector: string, sensitive = false): SemanticChangeItem => {
+    const previous = count(before, selector);
+    const current = count(after, selector);
+    return { label, before: previous, after: current, delta: current - previous, sensitive };
+  };
+  const tokenize = (root: HTMLElement | null) => (root?.textContent || "").toLocaleLowerCase(language).match(/[\p{L}\p{N}]+/gu) || [];
+  const frequencies = (tokens: string[]) => tokens.reduce((map, token) => map.set(token, (map.get(token) || 0) + 1), new Map<string, number>());
+  const beforeWords = frequencies(tokenize(before));
+  const afterWords = frequencies(tokenize(after));
+  const vocabulary = new Set([...beforeWords.keys(), ...afterWords.keys()]);
+  let wordsAdded = 0;
+  let wordsRemoved = 0;
+  vocabulary.forEach((word) => {
+    const delta = (afterWords.get(word) || 0) - (beforeWords.get(word) || 0);
+    if (delta > 0) wordsAdded += delta;
+    else wordsRemoved += Math.abs(delta);
+  });
+  const items = [
+    item("Headings", "h1,h2,h3,h4", true),
+    item("Paragraphs", "p"),
+    item("Lists", "ul,ol"),
+    item("Links", "a[href]", true),
+    item("Images", "img", true),
+    item("Tables", "table", true),
+    item("Videos", "iframe", true),
+  ];
+  const beforeLinks = Array.from(before?.querySelectorAll<HTMLAnchorElement>("a[href]") || [], (link) => link.getAttribute("href") || "");
+  const afterLinks = Array.from(after?.querySelectorAll<HTMLAnchorElement>("a[href]") || [], (link) => link.getAttribute("href") || "");
+  const beforeAlts = Array.from(before?.querySelectorAll<HTMLImageElement>("img") || [], (image) => `${image.getAttribute("alt") || ""}|${image.getAttribute("role") || ""}|${image.getAttribute("aria-hidden") || ""}`);
+  const afterAlts = Array.from(after?.querySelectorAll<HTMLImageElement>("img") || [], (image) => `${image.getAttribute("alt") || ""}|${image.getAttribute("role") || ""}|${image.getAttribute("aria-hidden") || ""}`);
+  const beforeChecks = accessibilityReport(baseline.html, baseline.title, baseline.language || language);
+  const afterChecks = accessibilityReport(currentHtml, currentTitle, language);
+  const accessibilityBefore = Math.round((beforeChecks.filter((check) => check.ok).length / beforeChecks.length) * 100);
+  const accessibilityAfter = Math.round((afterChecks.filter((check) => check.ok).length / afterChecks.length) * 100);
+  const sensitiveChanges: string[] = [];
+  if (items[0].delta) sensitiveChanges.push("Heading structure changed");
+  if (beforeLinks.join("\n") !== afterLinks.join("\n")) sensitiveChanges.push("Link destinations changed");
+  if (beforeAlts.join("\n") !== afterAlts.join("\n")) sensitiveChanges.push("Image accessibility changed");
+  if (items.find((entry) => entry.label === "Tables")?.delta) sensitiveChanges.push("Table structure changed");
+  if (accessibilityAfter < accessibilityBefore) sensitiveChanges.push(`Accessibility decreased ${accessibilityBefore - accessibilityAfter} points`);
+  const risk = sensitiveChanges.length >= 3 || accessibilityAfter < accessibilityBefore - 10 ? "high" : sensitiveChanges.length ? "medium" : "low";
+  return { baselineTitle: baseline.title, baselineSavedAt: baseline.savedAt, risk, wordsAdded, wordsRemoved, accessibilityBefore, accessibilityAfter, sensitiveChanges, items };
+}
+
 export default function Home() {
   const editor = useRef<HTMLDivElement>(null);
   const codeEditor = useRef<HTMLTextAreaElement>(null);
@@ -639,6 +766,12 @@ export default function Home() {
   const [focusMode, setFocusMode] = useState(false);
   const [readingAloud, setReadingAloud] = useState(false);
   const [previewCompareOpen, setPreviewCompareOpen] = useState(false);
+  const [universalPreflightOpen, setUniversalPreflightOpen] = useState(false);
+  const [universalPreflightResults, setUniversalPreflightResults] = useState<LmsPreflightResult[]>([]);
+  const [learningPulseOpen, setLearningPulseOpen] = useState(false);
+  const [learningPulseResult, setLearningPulseResult] = useState<LearningExperienceResult | null>(null);
+  const [semanticChangeOpen, setSemanticChangeOpen] = useState(false);
+  const [semanticChangeResult, setSemanticChangeResult] = useState<SemanticChangeResult | null>(null);
   const [accessibilityIssueCursor, setAccessibilityIssueCursor] = useState(-1);
   const [previewIssueCursor, setPreviewIssueCursor] = useState(-1);
   const [rightPanel, setRightPanel] = useState(false);
@@ -2140,6 +2273,87 @@ export default function Home() {
     runPreviewAudit(true, "blackboard");
     toast.info("Target LMS changed to Blackboard Ultra", { description: "The quality gate used the Blackboard conversion profile." });
   };
+  const runUniversalLmsPreflight = () => {
+    const results = createUniversalLmsPreflight(htmlRef.current, documentLanguage);
+    setUniversalPreflightResults(results);
+    setUniversalPreflightOpen(true);
+    const ready = results.filter((result) => result.ready).length;
+    toast[ready === results.length ? "success" : "warning"](`Universal LMS Preflight: ${ready}/${results.length} profiles ready`);
+  };
+  const downloadUniversalPreflightReport = () => {
+    const results = universalPreflightResults.length ? universalPreflightResults : createUniversalLmsPreflight(htmlRef.current, documentLanguage);
+    const lines = [
+      "UltraPage Studio — Universal LMS Preflight",
+      "===========================================",
+      `Generated: ${new Date().toISOString()}`,
+      `Document: ${title || "Untitled document"}`,
+      `Language: ${languageLabels[documentLanguage]}`,
+      "",
+      ...results.flatMap((result) => [
+        `${result.ready ? "READY" : "REVIEW"} · ${lmsProfiles[result.profile].label} · ${result.score}% · ${result.outputBytes.toLocaleString()} bytes`,
+        ...result.checks.map((check) => `  ${check.ok ? "PASS" : "REVIEW"} · ${check.label}: ${check.detail}`),
+        "",
+      ]),
+      "Automated results support review but do not guarantee legal or LMS conformance.",
+    ];
+    downloadBlob(new Blob([lines.join("\n")], { type: "text/plain;charset=utf-8" }), exportFileName(title, "universal-lms-preflight.txt"));
+    toast.success("Universal LMS Preflight report downloaded");
+  };
+  const runLearningExperiencePulse = () => {
+    const result = createLearningExperiencePulse(htmlRef.current, documentLanguage);
+    setLearningPulseResult(result);
+    setLearningPulseOpen(true);
+    toast[result.score >= 80 ? "success" : "warning"](`Learning Experience Pulse: ${result.score}%`);
+  };
+  const downloadLearningExperienceReport = () => {
+    const result = learningPulseResult || createLearningExperiencePulse(htmlRef.current, documentLanguage);
+    const lines = [
+      "UltraPage Studio — Learning Experience Pulse",
+      "============================================",
+      `Generated: ${new Date().toISOString()}`,
+      `Document: ${title || "Untitled document"}`,
+      `Language: ${languageLabels[documentLanguage]}`,
+      `Overall experience score: ${result.score}%`,
+      `Length: ${result.wordCount} words · ${result.readingMinutes} minute${result.readingMinutes === 1 ? "" : "s"} estimated reading`,
+      "",
+      ...result.metrics.flatMap((metric) => [`${metric.score >= 80 ? "STRONG" : metric.score >= 50 ? "REVIEW" : "MISSING"} · ${metric.label} · ${metric.score}%`, `  Evidence: ${metric.detail}`, `  Recommendation: ${metric.recommendation}`, ""]),
+      "Automated instructional-design signals support expert review and do not replace faculty judgment.",
+    ];
+    downloadBlob(new Blob([lines.join("\n")], { type: "text/plain;charset=utf-8" }), exportFileName(title, "learning-experience-pulse.txt"));
+    toast.success("Learning Experience Pulse report downloaded");
+  };
+  const runSemanticChangeImpact = () => {
+    let history: DraftSnapshot[] = [];
+    try { history = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]") as DraftSnapshot[]; } catch { /* A damaged local history is treated as unavailable. */ }
+    const baseline = history[0];
+    if (!baseline) { toast.info("Save a version before using Change Impact", { description: "UltraPage compares the current page with the most recent manual save." }); return; }
+    const result = createSemanticChangeImpact(htmlRef.current, baseline, title, documentLanguage);
+    setSemanticChangeResult(result);
+    setSemanticChangeOpen(true);
+    toast[result.risk === "high" ? "warning" : "success"](`Semantic Change Impact: ${result.risk} risk`);
+  };
+  const downloadSemanticChangeReport = () => {
+    if (!semanticChangeResult) return;
+    const result = semanticChangeResult;
+    const lines = [
+      "UltraPage Studio — Semantic Change Impact",
+      "==========================================",
+      `Generated: ${new Date().toISOString()}`,
+      `Current document: ${title || "Untitled document"}`,
+      `Baseline: ${result.baselineTitle} · ${result.baselineSavedAt}`,
+      `Risk: ${result.risk.toUpperCase()}`,
+      `Words: +${result.wordsAdded} / -${result.wordsRemoved}`,
+      `Accessibility: ${result.accessibilityBefore}% → ${result.accessibilityAfter}%`,
+      "",
+      "Semantic inventory",
+      ...result.items.map((entry) => `${entry.sensitive ? "SENSITIVE" : "INFO"} · ${entry.label}: ${entry.before} → ${entry.after} (${entry.delta >= 0 ? "+" : ""}${entry.delta})`),
+      "",
+      "Sensitive changes",
+      ...(result.sensitiveChanges.length ? result.sensitiveChanges.map((change) => `REVIEW · ${change}`) : ["PASS · No sensitive structural or accessibility changes detected."]),
+    ];
+    downloadBlob(new Blob([lines.join("\n")], { type: "text/plain;charset=utf-8" }), exportFileName(title, "semantic-change-impact.txt"));
+    toast.success("Semantic Change Impact report downloaded");
+  };
   const plainText = html.replace(/<[^>]+>/g, " ").replace(/&nbsp;|&amp;|&lt;|&gt;|&#39;|&quot;/g, " ").replace(/\s+/g, " ").trim();
   const wordCount = plainText ? plainText.split(" ").length : 0;
   const characterCount = plainText.length;
@@ -2270,7 +2484,7 @@ export default function Home() {
       "open estiloapa": () => { window.location.href = "/tools#apa"; },
       "open txt test generator": () => { window.location.href = "/tools#txt"; },
       "open qti 2.1": () => { window.location.href = "/tools#qti"; },
-      "accessibility review": () => { setSidePanelTab("review"); setRightPanel(true); }, "preview audit": () => runPreviewAudit(true), "document outline": () => { setSidePanelTab("outline"); setRightPanel(true); },
+      "accessibility review": () => { setSidePanelTab("review"); setRightPanel(true); }, "preview audit": () => runPreviewAudit(true), "universal lms preflight": runUniversalLmsPreflight, "learning experience pulse": runLearningExperiencePulse, "semantic change impact": runSemanticChangeImpact, "document outline": () => { setSidePanelTab("outline"); setRightPanel(true); },
       "blackboard audit": runBlackboardPreviewAudit, "next preview issue": () => navigatePreviewIssue(1), "previous preview issue": () => navigatePreviewIssue(-1),
       "inspect selection html": inspectDesignSelectionInHtml, "open split view": openHtmlSplit,
       "table tools": () => selectionContext === "table" ? openRibbonTab("table") : toast.info("Select a table cell first"),
@@ -2327,6 +2541,9 @@ export default function Home() {
   return <main className={`min-h-screen bg-[#f4f6f9] text-[#172033] ${focusMode ? "focus-mode" : ""}`}>
     <style>{pagePrintCss(pageSetup)}</style>
     <Toaster position="bottom-right" richColors />
+    <UniversalLmsPreflightDialog open={universalPreflightOpen} onOpenChange={setUniversalPreflightOpen} results={universalPreflightResults} activeProfile={lmsProfile} onSelectProfile={(profile) => { setLmsProfile(profile); setSaved(false); setUniversalPreflightOpen(false); runPreviewAudit(true, profile); }} onDownload={downloadUniversalPreflightReport}/>
+    <LearningExperiencePulseDialog open={learningPulseOpen} onOpenChange={setLearningPulseOpen} result={learningPulseResult} onDownload={downloadLearningExperienceReport}/>
+    <SemanticChangeImpactDialog open={semanticChangeOpen} onOpenChange={setSemanticChangeOpen} result={semanticChangeResult} onDownload={downloadSemanticChangeReport}/>
     <input ref={localFileInput} className="sr-only" type="file" accept=".html,.htm,.txt,.docx,.ultrapage.json,.json,text/html,text/plain,application/json,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onChange={(event) => importLocalDocument(event.target.files?.[0])} aria-label="Open an HTML, TXT, Word, or UltraPage project file"/>
     <header className="topbar">
       <div className="brandmark" aria-hidden="true"><img src="/brand/ultrapage-mark.svg" alt="" /></div><div className="brandcopy"><strong>UltraPage Studio</strong><span>Accessible editor for every LMS</span></div>
@@ -2344,7 +2561,7 @@ export default function Home() {
               {mode === "visual" && <div className="ribbon-tabs" role="tablist" aria-label="Editor ribbon">
                 {availableRibbonTabs.map((tab) => <button key={tab} id={`ribbon-tab-${tab}`} type="button" role="tab" data-ribbon-tab={tab} data-contextual={tab === "table" || tab === "picture" || tab === "link" ? tab : undefined} aria-controls="ribbon-panel" aria-selected={ribbonTab === tab} tabIndex={ribbonTab === tab ? 0 : -1} className={`${ribbonTab === tab ? "active" : ""} ${tab === "table" || tab === "picture" || tab === "link" ? `contextual ${tab}` : ""}`.trim()} onKeyDown={handleRibbonKeyDown} onClick={() => { setRibbonTab(tab); setRibbonCollapsed(false); }}>{tab[0].toUpperCase() + tab.slice(1)}{(tab === "table" || tab === "picture" || tab === "link") && <span className="sr-only"> contextual tools</span>}</button>)}
               </div>}
-              {mode === "visual" && <form className="ribbon-command-search" onSubmit={executeRibbonCommand} role="search"><Search aria-hidden="true"/><label className="sr-only" htmlFor="ribbon-command-input">Search ribbon commands</label><input id="ribbon-command-input" list="ribbon-command-options" value={ribbonCommand} onChange={(event) => setRibbonCommand(event.target.value)} placeholder="Search commands" autoComplete="off"/><datalist id="ribbon-command-options">{["New document","Open document","Save document","Home tools","Insert content","Page layout","References","Review","View","Native tools","Open EstiloAPA","Open TXT Test Generator","Open QTI 2.1","Table tools","Picture tools","Link tools","Accessibility review","Preview audit","Blackboard audit","Next preview issue","Previous preview issue","Download preview report","Document outline","Final preview","HTML editor","Desktop preview","Tablet preview","Mobile preview","Compare previews","Read aloud","Stop reading","Focus mode","Exit focus mode","Page width","Reset view","Show rulers","Hide rulers","Show margin guides","Hide margin guides","Show formatting marks","Hide formatting marks","Show structure map","Hide structure map","Table of contents","Copy","Cut","Paste plain text","Format painter","Clear formatting"].map((item) => <option key={item} value={item}/>)}</datalist></form>}
+              {mode === "visual" && <form className="ribbon-command-search" onSubmit={executeRibbonCommand} role="search"><Search aria-hidden="true"/><label className="sr-only" htmlFor="ribbon-command-input">Search ribbon commands</label><input id="ribbon-command-input" list="ribbon-command-options" value={ribbonCommand} onChange={(event) => setRibbonCommand(event.target.value)} placeholder="Search commands" autoComplete="off"/><datalist id="ribbon-command-options">{["New document","Open document","Save document","Home tools","Insert content","Page layout","References","Review","View","Native tools","Open EstiloAPA","Open TXT Test Generator","Open QTI 2.1","Table tools","Picture tools","Link tools","Accessibility review","Preview audit","Universal LMS Preflight","Learning Experience Pulse","Semantic Change Impact","Blackboard audit","Next preview issue","Previous preview issue","Download preview report","Document outline","Final preview","HTML editor","Desktop preview","Tablet preview","Mobile preview","Compare previews","Read aloud","Stop reading","Focus mode","Exit focus mode","Page width","Reset view","Show rulers","Hide rulers","Show margin guides","Hide margin guides","Show formatting marks","Hide formatting marks","Show structure map","Hide structure map","Table of contents","Copy","Cut","Paste plain text","Format painter","Clear formatting"].map((item) => <option key={item} value={item}/>)}</datalist></form>}
               {mode === "visual" && <div className="ribbon-quick" role="group" aria-label="Quick access"><button type="button" onClick={() => command("undo")} aria-label="Undo" title="Undo"><Undo2 /></button><button type="button" onClick={() => command("redo")} aria-label="Redo" title="Redo"><Redo2 /></button><button type="button" className={ribbonCollapsed ? "collapsed" : ""} aria-expanded={!ribbonCollapsed} aria-controls="ribbon-panel" onClick={() => setRibbonCollapsed((collapsed) => !collapsed)} aria-label={ribbonCollapsed ? "Expand ribbon" : "Collapse ribbon"} title={ribbonCollapsed ? "Expand ribbon" : "Collapse ribbon"}><ChevronDown /></button></div>}
             </div>
             {mode === "visual" && !ribbonCollapsed && <div id="ribbon-panel" className="ribbon-panel" role="tabpanel" aria-labelledby={`ribbon-tab-${ribbonTab}`}>
@@ -2377,6 +2594,7 @@ export default function Home() {
               </>}
               {ribbonTab === "review" && <>
                 <div className="ribbon-group ribbon-review-score"><div className="ribbon-group-body"><button type="button" className="ribbon-score-button" onClick={() => { setSidePanelTab("review"); setRightPanel(true); }}><span>{accessibilityScore}</span><strong>Accessibility</strong><small>{accessibilityIssueCount} issue{accessibilityIssueCount === 1 ? "" : "s"}</small></button></div><span className="ribbon-group-label">Review</span></div>
+                <div className="ribbon-group ribbon-preflight-group"><div className="ribbon-group-body ribbon-command-row"><button type="button" className="ribbon-command ribbon-preflight-command" onClick={runUniversalLmsPreflight}><Sparkles/><span>LMS Preflight</span></button><button type="button" className="ribbon-command ribbon-learning-pulse-command" onClick={runLearningExperiencePulse}><BookOpen/><span>Learning Pulse</span></button><button type="button" className="ribbon-command ribbon-change-impact-command" onClick={runSemanticChangeImpact}><History/><span>Change Impact</span></button></div><span className="ribbon-group-label">Publishing Intelligence</span></div>
                 <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row"><button type="button" className="ribbon-command" onClick={repairAccessibility}><Accessibility/><span>Safe Fix</span></button><button type="button" className={`ribbon-command ${spellCheckEnabled ? "is-active" : ""}`} aria-pressed={spellCheckEnabled} onClick={() => setSpellCheckEnabled((enabled) => !enabled)}><Check/><span>Spelling</span></button><button type="button" className={`ribbon-command ${readingAloud ? "is-active" : ""}`} aria-pressed={readingAloud} onClick={toggleReadAloud}><Volume2/><span>{readingAloud ? "Stop Reading" : "Read Aloud"}</span></button></div><span className="ribbon-group-label">Proofing</span></div>
                 <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row"><button type="button" className="ribbon-command" disabled={!accessibilityIssueMap.length} onClick={() => navigateAccessibilityIssue(-1)}><ChevronDown className="issue-previous"/><span>Previous</span></button><button type="button" className="ribbon-command" disabled={!accessibilityIssueMap.length} onClick={() => navigateAccessibilityIssue(1)}><ChevronDown/><span>Next Issue</span></button><button type="button" className="ribbon-command" onClick={() => { setSidePanelTab("review"); setRightPanel(true); }}><Eye/><span>Issue Map</span></button></div><span className="ribbon-group-label">Accessibility Navigation</span></div>
               </>}
@@ -2524,6 +2742,23 @@ function PreviewAudit({ checks, deviceResults, device, zoom, auditedAt, onRun, o
     <div className="preview-audit-list">{checks.map((check) => <div className={`preview-audit-item ${check.ok ? "ok" : "warn"}`} key={check.label}><span>{check.ok ? <Check/> : <AlertTriangle/>}</span><div><strong>{check.label}</strong><small>{check.detail}</small>{!check.ok && check.location && <small className="preview-location">Where: {check.location.label}</small>}</div>{!check.ok && check.location && <button type="button" className="preview-inspect" onClick={() => onInspect(check)}><Eye/> Inspect</button>}</div>)}</div>
     <p className="preview-audit-note">The matrix tests all three viewports during every audit. Select a device card to inspect it on the canvas. Wide tables remain keyboard-accessible through horizontal scrolling.</p>
   </section>;
+}
+
+function UniversalLmsPreflightDialog({ open, onOpenChange, results, activeProfile, onSelectProfile, onDownload }: { open: boolean; onOpenChange: (open: boolean) => void; results: LmsPreflightResult[]; activeProfile: LmsProfile; onSelectProfile: (profile: LmsProfile) => void; onDownload: () => void }) {
+  const ready = results.filter((result) => result.ready).length;
+  return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent className="universal-preflight-dialog"><DialogHeader><DialogTitle>Universal LMS Preflight</DialogTitle><DialogDescription>One document, five destination profiles. UltraPage checks content, semantic structure, image accessibility, links, and markup hygiene before publishing.</DialogDescription></DialogHeader><div className={`universal-preflight-hero ${ready === results.length && results.length ? "ready" : "attention"}`}><span><Sparkles/></span><div><strong>{ready === results.length && results.length ? "Ready across every LMS" : "Cross-LMS review required"}</strong><small>{ready}/{results.length || Object.keys(lmsProfiles).length} profiles ready · 25 compatibility signals</small></div><div className="universal-preflight-score">{results.length ? Math.round(results.reduce((total, result) => total + result.score, 0) / results.length) : 0}%</div></div><div className="universal-preflight-matrix" role="table" aria-label="LMS compatibility matrix"><div className="universal-preflight-row universal-preflight-header" role="row"><span role="columnheader">Destination</span><span role="columnheader">Content</span><span role="columnheader">Structure</span><span role="columnheader">Images</span><span role="columnheader">Links</span><span role="columnheader">Hygiene</span><span role="columnheader">Readiness</span><span role="columnheader">Action</span></div>{results.map((result) => <div className={`universal-preflight-row ${result.ready ? "ready" : "attention"}`} role="row" key={result.profile}><span role="cell"><strong>{lmsProfiles[result.profile].shortLabel}</strong><small>{result.outputBytes.toLocaleString()} bytes{activeProfile === result.profile ? " · active" : ""}</small></span>{result.checks.map((check) => <span role="cell" key={check.label} className={check.ok ? "pass" : "review"} title={check.detail} aria-label={`${check.label}: ${check.ok ? "passed" : "review required"}`}>{check.ok ? <Check/> : <AlertTriangle/>}<small>{check.label}</small></span>)}<span role="cell" className="preflight-readiness"><strong>{result.score}%</strong><small>{result.ready ? "Ready" : "Review"}</small></span><span role="cell"><button type="button" onClick={() => onSelectProfile(result.profile)} disabled={activeProfile === result.profile}>{activeProfile === result.profile ? "Active" : "Use profile"}</button></span></div>)}</div><p className="universal-preflight-note"><Eye/> Select any signal for its accessible description. “Use profile” changes the target LMS and immediately runs the detailed 23-point Design Preview audit.</p><div className="apa-actions"><Button variant="outline" onClick={onDownload}><Download size={16}/> Download Matrix</Button><Button onClick={() => onOpenChange(false)}>Close</Button></div></DialogContent></Dialog>;
+}
+
+function LearningExperiencePulseDialog({ open, onOpenChange, result, onDownload }: { open: boolean; onOpenChange: (open: boolean) => void; result: LearningExperienceResult | null; onDownload: () => void }) {
+  if (!result) return null;
+  const status = result.score >= 80 ? "strong" : result.score >= 50 ? "review" : "foundational";
+  return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent className="learning-pulse-dialog"><DialogHeader><DialogTitle>Learning Experience Pulse</DialogTitle><DialogDescription>Evidence-based instructional-design signals for the current page. The Pulse explains what it detected and preserves faculty judgment.</DialogDescription></DialogHeader><div className={`learning-pulse-hero ${status}`}><div className="learning-pulse-ring" style={{ "--pulse-score": `${result.score * 3.6}deg` } as React.CSSProperties}><span>{result.score}</span><small>EXPERIENCE</small></div><div><strong>{status === "strong" ? "Strong learning experience" : status === "review" ? "Targeted improvements recommended" : "Foundational elements are missing"}</strong><p>{result.wordCount} words · approximately {result.readingMinutes} minute{result.readingMinutes === 1 ? "" : "s"} to read · six instructional-design dimensions</p></div></div><div className="learning-pulse-grid">{result.metrics.map((metric) => <article key={metric.id} className={`learning-pulse-card ${metric.score >= 80 ? "strong" : metric.score >= 50 ? "review" : "foundational"}`}><header><span>{metric.score >= 80 ? <Check/> : <AlertTriangle/>}</span><div><strong>{metric.label}</strong><small>{metric.score}%</small></div></header><div className="learning-pulse-meter" aria-label={`${metric.label}: ${metric.score}%`}><span style={{ width: `${metric.score}%` }}/></div><p>{metric.detail}</p><aside>{metric.recommendation}</aside></article>)}</div><p className="learning-pulse-note"><BookOpen/> The Pulse uses observable page evidence only. It does not grade teaching quality, invent course content, or replace instructor and instructional-designer review.</p><div className="apa-actions"><Button variant="outline" onClick={onDownload}><Download size={16}/> Download Report</Button><Button onClick={() => onOpenChange(false)}>Close</Button></div></DialogContent></Dialog>;
+}
+
+function SemanticChangeImpactDialog({ open, onOpenChange, result, onDownload }: { open: boolean; onOpenChange: (open: boolean) => void; result: SemanticChangeResult | null; onDownload: () => void }) {
+  if (!result) return null;
+  const savedAt = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(result.baselineSavedAt));
+  return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent className="semantic-change-dialog"><DialogHeader><DialogTitle>Semantic Change Impact</DialogTitle><DialogDescription>Compares the current page with the latest manual save and highlights changes that may affect learners, accessibility, or LMS output.</DialogDescription></DialogHeader><div className={`semantic-change-hero ${result.risk}`}><span><History/></span><div><strong>{result.risk === "high" ? "High-impact review required" : result.risk === "medium" ? "Sensitive changes detected" : "Low-impact changes"}</strong><small>Baseline: {result.baselineTitle} · saved {savedAt}</small></div><b>{result.risk.toUpperCase()}</b></div><div className="semantic-change-summary"><article><span>+{result.wordsAdded}</span><small>Words added</small></article><article><span>−{result.wordsRemoved}</span><small>Words removed</small></article><article><span>{result.accessibilityBefore}%</span><small>Accessibility before</small></article><article className={result.accessibilityAfter < result.accessibilityBefore ? "decreased" : ""}><span>{result.accessibilityAfter}%</span><small>Accessibility now</small></article></div><div className="semantic-change-inventory" role="table" aria-label="Semantic change inventory"><div role="row" className="semantic-change-row header"><span role="columnheader">Element</span><span role="columnheader">Saved</span><span role="columnheader">Current</span><span role="columnheader">Change</span></div>{result.items.map((entry) => <div role="row" className={`semantic-change-row ${entry.sensitive && entry.delta ? "sensitive" : ""}`} key={entry.label}><span role="cell">{entry.label}{entry.sensitive && <small> sensitive</small>}</span><span role="cell">{entry.before}</span><span role="cell">{entry.after}</span><span role="cell">{entry.delta >= 0 ? "+" : ""}{entry.delta}</span></div>)}</div><section className="semantic-change-signals"><strong>Impact signals</strong>{result.sensitiveChanges.length ? result.sensitiveChanges.map((change) => <p key={change}><AlertTriangle/> {change}</p>) : <p className="clear"><Check/> No sensitive structural or accessibility changes detected.</p>}</section><p className="semantic-change-note"><History/> Save intentionally to establish a new comparison baseline. Automatic draft recovery does not replace that baseline.</p><div className="apa-actions"><Button variant="outline" onClick={onDownload}><Download size={16}/> Download Report</Button><Button onClick={() => onOpenChange(false)}>Close</Button></div></DialogContent></Dialog>;
 }
 
 function PreviewCompareDialog({ open, onOpenChange, sourceDocument, lmsDocument, lmsLabel }: { open: boolean; onOpenChange: (open: boolean) => void; sourceDocument: string; lmsDocument: string; lmsLabel: string }) {
