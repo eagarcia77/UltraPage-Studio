@@ -7,6 +7,9 @@ export const metadata: Metadata = {
   applicationName: "UltraPage Studio",
   title: "UltraPage Studio | Accessible Multi-LMS Content Editor",
   description: "Create accessible, responsive content for Blackboard Ultra, Canvas, Moodle, Brightspace, and standards-based LMS platforms.",
+  authors: [{ name: "Eduardo Augusto García Rodríguez" }],
+  creator: "Eduardo Augusto García Rodríguez",
+  publisher: "Eduardo Augusto García Rodríguez",
   manifest: "/manifest.webmanifest",
   icons: {
     icon: "/favicon.svg",
@@ -28,6 +31,8 @@ export const metadata: Metadata = {
   },
   other: {
     "mobile-web-app-capable": "yes",
+    owner: "Eduardo Augusto García Rodríguez",
+    copyright: "© 2026 Eduardo Augusto García Rodríguez. All rights reserved.",
   },
 };
 

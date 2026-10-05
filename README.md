@@ -12,6 +12,13 @@ Editor visual para crear contenido accesible y portátil entre Blackboard Ultra,
 
 > **Estado del producto:** vista previa precomercial. Las ventas y las afirmaciones de certificación permanecen desactivadas hasta completar la [puerta de estabilidad y preparación comercial](docs/COMMERCIALIZATION_READINESS.md).
 
+## Propiedad y autoría
+
+- **Dueño y creador:** Eduardo Augusto García Rodríguez
+- **Copyright:** © 2026 Eduardo Augusto García Rodríguez. Todos los derechos reservados.
+
+“UltraPage Studio” se mantiene como nombre de trabajo mientras se completa una evaluación formal de marca. Esta declaración identifica la propiedad y autoría de la aplicación y de su código original; no afirma que el nombre comercial esté registrado o disponible en exclusiva. El proyecto es independiente y no está afiliado ni respaldado por terceros que utilicen términos similares.
+
 ## Funciones
 
 - Edición visual y edición directa de HTML.
