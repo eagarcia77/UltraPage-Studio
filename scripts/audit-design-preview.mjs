@@ -51,6 +51,19 @@ requireSource("Design selection located in HTML", "Design-to-HTML location annou
 requireSource("current.selectedText ? findTextWithinElement", "selection remapping after source reformatting");
 requireSource('root.querySelectorAll("[data-ultrapage-selected],[data-ultrapage-live-selected]")', "export cleanup for temporary selection markers");
 requireSource("PREVIEW_AUDIT_CHECK_COUNT = 23", "current Preview Audit check count");
+requireSource("createUniversalLmsPreflight", "Universal LMS compatibility engine");
+requireSource("Universal LMS Preflight", "cross-LMS publishing matrix");
+requireSource("Publishing Intelligence", "Ribbon publishing intelligence group");
+requireSource("25 compatibility signals", "five-profile compatibility signal summary");
+requireSource("universal-lms-preflight.txt", "downloadable cross-LMS report");
+requireSource("createLearningExperiencePulse", "instructional-design experience engine");
+requireSource("Learning Experience Pulse", "evidence-based learning experience dialog");
+requireSource("six instructional-design dimensions", "learning experience dimensional summary");
+requireSource("learning-experience-pulse.txt", "downloadable learning experience report");
+requireSource("createSemanticChangeImpact", "semantic version comparison engine");
+requireSource("Semantic Change Impact", "semantic change review dialog");
+requireSource("latest manual save", "manual-save comparison baseline guidance");
+requireSource("semantic-change-impact.txt", "downloadable semantic change report");
 requireSource("Keyboard-scrollable tables", "keyboard-scrollable table audit");
 requireSource("applyPreviewKeyboardSemantics", "keyboard table semantics normalization");
 requireSource('role="presentation" aria-hidden="true"', "explicit decorative semantics");
@@ -65,6 +78,12 @@ requireSource('style.setProperty("--ruler-scroll-y"', "vertical ruler measuremen
 requireStyle(".vertical-ruler-track", "independent vertical ruler measurement track");
 requireStyle("position: sticky;\n  top: var(--ruler-thickness);", "stationary vertical Design Preview ruler");
 requireStyle("align-self: start;\n  backface-visibility: hidden;", "stable sticky horizontal ruler alignment");
+requireStyle(".universal-preflight-matrix", "Universal LMS Preflight matrix styling");
+requireStyle(".ribbon-preflight-command", "Ribbon Preflight command styling");
+requireStyle(".learning-pulse-grid", "Learning Experience Pulse metric grid");
+requireStyle(".ribbon-learning-pulse-command", "Ribbon Learning Pulse command styling");
+requireStyle(".semantic-change-inventory", "semantic change inventory styling");
+requireStyle(".ribbon-change-impact-command", "Ribbon Change Impact command styling");
 
 const extractFunction = (name) => {
   const functionStart = page.indexOf(`function ${name}`);
@@ -129,4 +148,4 @@ if (findings.length) {
   process.exit(1);
 }
 
-console.log("✓ Design Preview audit passed: 23-point quality gate, clipboard images, Blackboard output, keyboard tables, issue navigation, persistent selection, behavior-tested Live/Design-to-HTML mapping, and exact accessibility checks");
+console.log("✓ Design Preview audit passed: 23-point quality gate, 25-signal Universal LMS Preflight, six-dimension Learning Experience Pulse, Semantic Change Impact, clipboard images, Blackboard output, keyboard tables, issue navigation, persistent selection, behavior-tested Live/Design-to-HTML mapping, and exact accessibility checks");
