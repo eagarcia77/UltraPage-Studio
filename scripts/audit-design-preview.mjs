@@ -83,6 +83,9 @@ requireSource("Learning Constellation Map", "interactive learning constellation 
 requireSource("learning-constellation.json", "downloadable Learning Constellation graph");
 requireSource("CASE-inspired relationship graph", "responsible interoperability positioning");
 requireSource("learnerDataIncluded: false", "explicit learner-data exclusion");
+requireSource("Deep-Space Learning Trajectories", "science-fiction-inspired trajectory simulator");
+requireSource("science-fiction-inspired deterministic simulation", "truthful futuristic simulation disclosure");
+requireSource("No extraterrestrial or quantum technology is claimed", "explicit non-deceptive technology claim");
 requireSource('id: "constellation"', "knowledge architecture Publication Readiness pillar");
 requireSource("Keyboard-scrollable tables", "keyboard-scrollable table audit");
 requireSource("applyPreviewKeyboardSemantics", "keyboard table semantics normalization");
@@ -110,6 +113,7 @@ requireStyle(".learner-simulation-workspace", "learner perspective simulation wo
 requireStyle(".ribbon-journey-command", "Ribbon Learner Simulator command styling");
 requireStyle(".constellation-workspace", "interactive constellation workspace styling");
 requireStyle(".ribbon-constellation-command", "Ribbon Learning Constellation command styling");
+requireStyle(".deep-space-trajectories", "deep-space trajectory cards styling");
 
 const extractFunction = (name) => {
   const functionStart = page.indexOf(`function ${name}`);

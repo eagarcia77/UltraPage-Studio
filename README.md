@@ -25,6 +25,7 @@ Editor visual para crear contenido accesible y portátil entre Blackboard Ultra,
 - Perfiles de salida para Universal LMS, Blackboard Ultra, Canvas, Moodle y D2L Brightspace.
 - Publication Readiness Command Center con estado `READY`, `REVIEW` o `BLOCKED`, siete pilares de evidencia y un Readiness Passport JSON que identifica la versión auditada sin presentarse como firma digital.
 - Learning Constellation Map: gemelo semántico local que representa objetivos, secciones, actividades, evaluaciones y recursos como una galaxia navegable; detecta rutas incompletas y exporta un grafo JSON inspirado en CASE sin presentarlo como paquete certificado.
+- Deep-Space Learning Trajectories simula rutas deterministas para principiantes, estudiantes con tiempo limitado y aprendizaje avanzado, con estética de ciencia ficción y sin afirmar tecnología extraterrestre real ni perfilar estudiantes.
 - Inclusive Learner Journey Simulator con cinco perspectivas (teclado, lector de pantalla, baja visión/reflow, carga cognitiva y móvil), vista transformada, secuencias de foco/lectura y reporte descargable; complementa, pero no sustituye, pruebas con tecnologías de asistencia y estudiantes.
 - Universal LMS Preflight con una matriz de 25 señales para comprobar contenido, estructura, imágenes, enlaces e higiene del HTML en los cinco perfiles antes de publicar.
 - Learning Experience Pulse para revisar estructura pedagógica, objetivos medibles, orientación, alineación de evaluación, apoyo y carga cognitiva sin sustituir el juicio docente.
