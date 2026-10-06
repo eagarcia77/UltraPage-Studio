@@ -44,7 +44,11 @@ type LearningExperienceMetric = { id: "structure" | "objectives" | "guidance" | 
 type LearningExperienceResult = { score: number; wordCount: number; readingMinutes: number; metrics: LearningExperienceMetric[] };
 type SemanticChangeItem = { label: string; before: number; after: number; delta: number; sensitive?: boolean };
 type SemanticChangeResult = { baselineTitle: string; baselineSavedAt: string; risk: "low" | "medium" | "high"; wordsAdded: number; wordsRemoved: number; accessibilityBefore: number; accessibilityAfter: number; sensitiveChanges: string[]; items: SemanticChangeItem[] };
-type ReadinessPillarId = "accessibility" | "design" | "lms" | "learning" | "change";
+type LearnerJourneyPersonaId = "keyboard" | "screen-reader" | "low-vision" | "cognitive" | "mobile";
+type LearnerJourneyStop = { order: number; role: string; label: string };
+type LearnerJourneyPersona = { id: LearnerJourneyPersonaId; label: string; score: number; status: "ready" | "review" | "blocked"; evidence: string; recommendation: string };
+type LearnerJourneyResult = { score: number; language: DocumentLanguage; sourceHtml: string; focusStops: LearnerJourneyStop[]; readingStops: LearnerJourneyStop[]; personas: LearnerJourneyPersona[]; frictionPoints: string[] };
+type ReadinessPillarId = "accessibility" | "design" | "lms" | "learning" | "change" | "journey";
 type ReadinessPillar = { id: ReadinessPillarId; label: string; score: number; status: "ready" | "review" | "blocked"; evidence: string; recommendation: string };
 type PublicationReadinessResult = { status: "READY" | "REVIEW" | "BLOCKED"; score: number; generatedAt: string; fingerprint: string; profile: LmsProfile; owner: string; pillars: ReadinessPillar[]; blockers: string[]; recommendations: string[] };
 type HtmlDiagnostic = { severity: "error" | "warning"; message: string; line: number; column: number; offset: number; length: number };
@@ -738,6 +742,83 @@ function createSemanticChangeImpact(currentHtml: string, baseline: DraftSnapshot
   return { baselineTitle: baseline.title, baselineSavedAt: baseline.savedAt, risk, wordsAdded, wordsRemoved, accessibilityBefore, accessibilityAfter, sensitiveChanges, items };
 }
 
+function createLearnerJourneySimulation(sourceHtml: string, language: DocumentLanguage): LearnerJourneyResult {
+  const parsed = new DOMParser().parseFromString(sourceHtml, "text/html");
+  const root = parsed.body;
+  const clean = (value: string | null | undefined, fallback = "Unlabeled item") => (value || "").replace(/\s+/g, " ").trim().slice(0, 120) || fallback;
+  if (!root || !clean(root.textContent, "")) {
+    const emptyPersonas: LearnerJourneyPersona[] = ([
+      ["keyboard", "Keyboard navigation"], ["screen-reader", "Screen-reader order"], ["low-vision", "Low vision & reflow"], ["cognitive", "Cognitive clarity"], ["mobile", "Mobile learning"],
+    ] as Array<[LearnerJourneyPersonaId, string]>).map(([id, label]) => ({ id, label, score: 0, status: "blocked", evidence: "The page has no learner content to simulate.", recommendation: "Add meaningful content, then run the simulator again." }));
+    return { score: 0, language, sourceHtml, focusStops: [], readingStops: [], personas: emptyPersonas, frictionPoints: emptyPersonas.map((persona) => `${persona.label}: ${persona.recommendation}`) };
+  }
+  const focusable = Array.from(root.querySelectorAll<HTMLElement>('a[href],button,input,select,textarea,[tabindex]:not([tabindex="-1"])'));
+  const focusStops = focusable.map((element, index) => ({ order: index + 1, role: element.tagName.toLowerCase(), label: clean(element.getAttribute("aria-label") || element.getAttribute("title") || element.textContent || (element as HTMLInputElement).value) }));
+  const readingElements = Array.from(root.querySelectorAll<HTMLElement>("h1,h2,h3,h4,p,li,a[href],img,blockquote,figcaption,caption,th"));
+  const readingStops = readingElements.map((element, index) => ({ order: index + 1, role: element.tagName === "IMG" ? "image" : element.tagName.toLowerCase(), label: clean(element.tagName === "IMG" ? element.getAttribute("alt") || (element.getAttribute("role") === "presentation" ? "Decorative image" : "Image without alternative text") : element.textContent) })).slice(0, 80);
+  const unnamedFocus = focusStops.filter((stop) => stop.label === "Unlabeled item").length;
+  const positiveTabindex = focusable.filter((element) => Number(element.getAttribute("tabindex") || 0) > 0).length;
+  const links = Array.from(root.querySelectorAll<HTMLAnchorElement>("a[href]"));
+  const vagueLinks = links.filter((link) => /^(aquí|clic aquí|click here|más|ver más|enlace)$/i.test(clean(link.textContent, ""))).length;
+  const ids = new Set(Array.from(root.querySelectorAll<HTMLElement>("[id]"), (element) => element.id));
+  const brokenInternalLinks = links.filter((link) => { const href = link.getAttribute("href") || ""; return href.startsWith("#") && href !== "#" && !ids.has(href.slice(1)); }).length;
+  const headings = Array.from(root.querySelectorAll<HTMLElement>("h1,h2,h3,h4"));
+  const headingLevels = headings.map((heading) => Number(heading.tagName.slice(1)));
+  const headingHierarchyReady = headingLevels.every((level, index) => index === 0 || level <= headingLevels[index - 1] + 1);
+  const h1Count = headings.filter((heading) => heading.tagName === "H1").length;
+  const images = Array.from(root.querySelectorAll<HTMLImageElement>("img"));
+  const imageIssues = images.filter((image) => { const decorative = image.getAttribute("role") === "presentation" || image.getAttribute("aria-hidden") === "true"; return decorative ? image.getAttribute("alt") !== "" : !image.getAttribute("alt")?.trim(); }).length;
+  const tables = Array.from(root.querySelectorAll<HTMLTableElement>("table"));
+  const tableIssues = tables.filter((table) => !table.querySelector("th") || (!table.querySelector("caption") && !table.getAttribute("aria-label"))).length;
+  const inlineStyled = Array.from(root.querySelectorAll<HTMLElement>("[style]"));
+  const smallText = inlineStyled.filter((element) => { const value = element.style.fontSize; return value.endsWith("px") && Number.parseFloat(value) < 12; }).length;
+  const fixedWidths = inlineStyled.filter((element) => [element.style.width, element.style.minWidth].some((value) => value.endsWith("px") && Number.parseFloat(value) >= 400)).length;
+  const paragraphs = Array.from(root.querySelectorAll<HTMLParagraphElement>("p"));
+  const longParagraphs = paragraphs.filter((paragraph) => clean(paragraph.textContent, "").split(/\s+/).filter(Boolean).length > 120).length;
+  const learning = createLearningExperiencePulse(sourceHtml, language);
+  const cognitiveMetrics = learning.metrics.filter((metric) => ["structure", "guidance", "cognitive-load"].includes(metric.id));
+  const cognitiveScore = Math.round(cognitiveMetrics.reduce((total, metric) => total + metric.score, 0) / Math.max(1, cognitiveMetrics.length));
+  const clamp = (value: number) => Math.max(0, Math.min(100, value));
+  const keyboardScore = clamp(100 - unnamedFocus * 25 - positiveTabindex * 20 - vagueLinks * 15 - brokenInternalLinks * 20);
+  const screenReaderScore = clamp(100 - (h1Count === 1 ? 0 : 25) - (headingHierarchyReady ? 0 : 20) - Math.min(30, imageIssues * 15) - Math.min(25, tableIssues * 15));
+  const lowVisionScore = clamp(100 - Math.min(45, smallText * 15) - Math.min(55, fixedWidths * 20));
+  const mobileScore = clamp(100 - Math.min(60, fixedWidths * 25) - Math.min(40, tables.filter((table) => /min-width\s*:\s*(?:[4-9]\d{2,}|\d{4,})px/i.test(table.getAttribute("style") || "")).length * 20));
+  const classify = (score: number): LearnerJourneyPersona["status"] => score >= 80 ? "ready" : score >= 50 ? "review" : "blocked";
+  const personas: LearnerJourneyPersona[] = [
+    { id: "keyboard", label: "Keyboard navigation", score: keyboardScore, status: classify(keyboardScore), evidence: `${focusStops.length} focus stop${focusStops.length === 1 ? "" : "s"} · ${unnamedFocus} unnamed · ${positiveTabindex} forced order · ${brokenInternalLinks} broken internal link${brokenInternalLinks === 1 ? "" : "s"}`, recommendation: keyboardScore >= 80 ? "Focus order and interactive names are predictable." : "Give every control a clear name, remove positive tabindex values, and repair internal destinations." },
+    { id: "screen-reader", label: "Screen-reader order", score: screenReaderScore, status: classify(screenReaderScore), evidence: `${readingStops.length} semantic reading stop${readingStops.length === 1 ? "" : "s"} · ${h1Count} H1 · ${imageIssues} image issue${imageIssues === 1 ? "" : "s"} · ${tableIssues} table issue${tableIssues === 1 ? "" : "s"}`, recommendation: screenReaderScore >= 80 ? "The semantic reading path is coherent." : "Repair heading hierarchy, image alternatives, and table names before assistive-technology testing." },
+    { id: "low-vision", label: "Low vision & reflow", score: lowVisionScore, status: classify(lowVisionScore), evidence: `${smallText} inline text size${smallText === 1 ? "" : "s"} below 12 px · ${fixedWidths} fixed width${fixedWidths === 1 ? "" : "s"} at or above 400 px`, recommendation: lowVisionScore >= 80 ? "The page supports enlarged text and reflow." : "Remove small inline text and fixed pixel widths that obstruct 200% zoom." },
+    { id: "cognitive", label: "Cognitive clarity", score: cognitiveScore, status: classify(cognitiveScore), evidence: `${longParagraphs} paragraph${longParagraphs === 1 ? "" : "s"} over 120 words · structure ${learning.metrics.find((metric) => metric.id === "structure")?.score || 0}% · guidance ${learning.metrics.find((metric) => metric.id === "guidance")?.score || 0}%`, recommendation: cognitiveScore >= 80 ? "The learning path is chunked and easy to scan." : "Shorten dense paragraphs and strengthen headings, instructions, and sequenced steps." },
+    { id: "mobile", label: "Mobile learning", score: mobileScore, status: classify(mobileScore), evidence: `${fixedWidths} fixed-width element${fixedWidths === 1 ? "" : "s"} · ${tables.length} table${tables.length === 1 ? "" : "s"} evaluated for narrow-screen flow`, recommendation: mobileScore >= 80 ? "The source is ready for narrow-screen reflow testing." : "Replace fixed widths and ensure wide tables remain horizontally scrollable." },
+  ];
+  const score = Math.round(personas.reduce((total, persona) => total + persona.score, 0) / personas.length);
+  const frictionPoints = personas.filter((persona) => persona.status !== "ready").map((persona) => `${persona.label}: ${persona.recommendation}`);
+  return { score, language, sourceHtml, focusStops, readingStops, personas, frictionPoints };
+}
+
+function buildLearnerJourneyPreview(result: LearnerJourneyResult, persona: LearnerJourneyPersonaId) {
+  if (persona === "screen-reader") {
+    const items = result.readingStops.map((stop) => `<li><span>${escapeHtml(stop.role)}</span><strong>${escapeHtml(stop.label)}</strong></li>`).join("");
+    return `<!doctype html><html lang="${result.language}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;padding:24px;background:#f6f7fa;color:#222;font:16px/1.55 Arial,sans-serif}h1{font-size:21px}p{color:#5f6878}ol{padding:0;list-style:none;counter-reset:step}li{counter-increment:step;display:grid;grid-template-columns:38px 110px 1fr;gap:10px;padding:10px;border-bottom:1px solid #dfe3ea;background:#fff}li:before{content:counter(step);display:grid;place-items:center;width:26px;height:26px;border-radius:50%;background:#5b2a86;color:#fff;font-weight:700}li span{color:#6b38d1;font-size:11px;font-weight:800;text-transform:uppercase}li strong{font-size:13px}@media(max-width:520px){li{grid-template-columns:34px 1fr}li strong{grid-column:2}}</style></head><body><h1>Semantic reading order</h1><p>Approximation based on document structure; verify with a real screen reader.</p><ol>${items || "<li><span>empty</span><strong>No semantic reading stops detected.</strong></li>"}</ol></body></html>`;
+  }
+  const parsed = new DOMParser().parseFromString(result.sourceHtml, "text/html");
+  const root = parsed.body;
+  if (!root) return "";
+  if (persona === "keyboard") Array.from(root.querySelectorAll<HTMLElement>('a[href],button,input,select,textarea,[tabindex]:not([tabindex="-1"])')).forEach((element, index) => element.setAttribute("data-journey-order", String(index + 1)));
+  if (persona === "cognitive") Array.from(root.querySelectorAll<HTMLParagraphElement>("p")).forEach((paragraph) => { if (cleanTextContent(paragraph.textContent).split(/\s+/).filter(Boolean).length > 120) paragraph.setAttribute("data-cognitive-friction", "true"); });
+  const personaCss: Record<Exclude<LearnerJourneyPersonaId, "screen-reader">, string> = {
+    keyboard: `[data-journey-order]{position:relative;outline:3px solid #7850c7!important;outline-offset:4px}[data-journey-order]::before{content:attr(data-journey-order);position:absolute;z-index:20;top:-14px;left:-10px;width:24px;height:24px;display:grid;place-items:center;border-radius:50%;background:#5b2a86;color:#fff;font:700 11px Arial}`,
+    "low-vision": `#learner-preview{font-size:200%!important;line-height:1.8!important;max-width:100%!important}#learner-preview *{max-width:100%!important;letter-spacing:.02em}#learner-preview a{text-decoration-thickness:.12em}`,
+    cognitive: `#learner-preview p{max-width:68ch}#learner-preview h1,#learner-preview h2,#learner-preview h3,#learner-preview h4{outline:2px solid #2f8a70;outline-offset:4px}[data-cognitive-friction]{outline:4px solid #c67818!important;background:#fff4dc!important;padding:12px!important}`,
+    mobile: `#learner-preview{width:100%;max-width:390px!important;margin:auto!important}#learner-preview img,#learner-preview video,#learner-preview canvas{max-width:100%!important;height:auto!important}#learner-preview table{display:block!important;max-width:100%!important;overflow-x:auto!important}`,
+  };
+  return `<!doctype html><html lang="${result.language}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>${exportedPageStyles}body{padding:18px;background:#e9ecf2}#learner-preview{width:min(100%,860px);margin:auto;background:#fff;padding:clamp(20px,6vw,54px);box-shadow:0 8px 24px #1f293719}${personaCss[persona]}</style></head><body><main id="learner-preview">${root.innerHTML}</main></body></html>`;
+}
+
+function cleanTextContent(value: string | null | undefined) {
+  return (value || "").replace(/\s+/g, " ").trim();
+}
+
 function stableContentFingerprint(value: string) {
   let hash = 0x811c9dc5;
   for (let index = 0; index < value.length; index += 1) {
@@ -784,6 +865,8 @@ export default function Home() {
   const [learningPulseResult, setLearningPulseResult] = useState<LearningExperienceResult | null>(null);
   const [semanticChangeOpen, setSemanticChangeOpen] = useState(false);
   const [semanticChangeResult, setSemanticChangeResult] = useState<SemanticChangeResult | null>(null);
+  const [learnerJourneyOpen, setLearnerJourneyOpen] = useState(false);
+  const [learnerJourneyResult, setLearnerJourneyResult] = useState<LearnerJourneyResult | null>(null);
   const [readinessCenterOpen, setReadinessCenterOpen] = useState(false);
   const [publicationReadiness, setPublicationReadiness] = useState<PublicationReadinessResult | null>(null);
   const [accessibilityIssueCursor, setAccessibilityIssueCursor] = useState(-1);
@@ -2369,12 +2452,42 @@ export default function Home() {
     downloadBlob(new Blob([lines.join("\n")], { type: "text/plain;charset=utf-8" }), exportFileName(title, "semantic-change-impact.txt"));
     toast.success("Semantic Change Impact report downloaded");
   };
+  const runLearnerJourneySimulator = () => {
+    const result = createLearnerJourneySimulation(htmlRef.current, documentLanguage);
+    setLearnerJourneyResult(result);
+    setLearnerJourneyOpen(true);
+    toast[result.personas.some((persona) => persona.status === "blocked") ? "warning" : result.score >= 80 ? "success" : "warning"](`Inclusive Learner Journey: ${result.score}%`);
+  };
+  const downloadLearnerJourneyReport = () => {
+    const result = learnerJourneyResult || createLearnerJourneySimulation(htmlRef.current, documentLanguage);
+    const lines = [
+      "UltraPage Studio — Inclusive Learner Journey Simulator",
+      "=======================================================",
+      `Generated: ${new Date().toISOString()}`,
+      `Document: ${title || "Untitled document"}`,
+      `Language: ${languageLabels[documentLanguage]}`,
+      `Overall journey score: ${result.score}%`,
+      `Focus stops: ${result.focusStops.length} · Semantic reading stops: ${result.readingStops.length}`,
+      "",
+      ...result.personas.flatMap((persona) => [`${persona.status.toUpperCase()} · ${persona.label} · ${persona.score}%`, `  Evidence: ${persona.evidence}`, `  Recommendation: ${persona.recommendation}`, ""]),
+      "First focus stops",
+      ...result.focusStops.slice(0, 25).map((stop) => `${stop.order}. ${stop.role.toUpperCase()} · ${stop.label}`),
+      "",
+      "First semantic reading stops",
+      ...result.readingStops.slice(0, 40).map((stop) => `${stop.order}. ${stop.role.toUpperCase()} · ${stop.label}`),
+      "",
+      "This structural simulation supports inclusive-design review. It does not replace testing by learners or validation with actual assistive technology.",
+    ];
+    downloadBlob(new Blob([lines.join("\n")], { type: "text/plain;charset=utf-8" }), exportFileName(title, "inclusive-learner-journey.txt"));
+    toast.success("Learner Journey report downloaded");
+  };
   const runPublicationReadiness = () => {
     const designChecks = runPreviewAudit(false);
     const designScore = designChecks.length ? Math.round((designChecks.filter((check) => check.ok).length / designChecks.length) * 100) : 0;
     const lmsResults = createUniversalLmsPreflight(htmlRef.current, documentLanguage);
     const lmsScore = lmsResults.length ? Math.round(lmsResults.reduce((total, result) => total + result.score, 0) / lmsResults.length) : 0;
     const learning = createLearningExperiencePulse(htmlRef.current, documentLanguage);
+    const journey = createLearnerJourneySimulation(htmlRef.current, documentLanguage);
     let history: DraftSnapshot[] = [];
     try { history = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]") as DraftSnapshot[]; } catch { /* A damaged local history is treated as unavailable. */ }
     const change = history[0] ? createSemanticChangeImpact(htmlRef.current, history[0], title, documentLanguage) : null;
@@ -2385,10 +2498,11 @@ export default function Home() {
       { id: "lms", label: "LMS Portability", score: lmsScore, status: lmsResults.some((result) => result.score < 60) ? "blocked" : lmsResults.every((result) => result.ready) ? "ready" : "review", evidence: `${lmsResults.filter((result) => result.ready).length}/${lmsResults.length} LMS profiles ready · ${lmsResults.reduce((total, result) => total + result.checks.filter((check) => check.ok).length, 0)} of ${lmsResults.length * 5} signals passed`, recommendation: lmsResults.every((result) => result.ready) ? "Content is portable across all five destination profiles." : "Open LMS Preflight and review the destination-specific signals." },
       { id: "learning", label: "Learning Experience", score: learning.score, status: learning.score < 50 ? "blocked" : learning.score >= 80 ? "ready" : "review", evidence: `${learning.metrics.filter((metric) => metric.score >= 80).length}/6 dimensions strong · ${learning.wordCount} words · ${learning.readingMinutes} min reading`, recommendation: learning.score >= 80 ? "The page exposes a strong instructional path." : "Use Learning Pulse to strengthen the lowest-scoring dimensions." },
       { id: "change", label: "Change Safety", score: changeScore, status: change?.risk === "high" ? "blocked" : change?.risk === "low" ? "ready" : "review", evidence: change ? `${change.risk.toUpperCase()} impact · accessibility ${change.accessibilityBefore}% → ${change.accessibilityAfter}% · ${change.sensitiveChanges.length} sensitive signal${change.sensitiveChanges.length === 1 ? "" : "s"}` : "No manual-save baseline is available for comparison.", recommendation: !change ? "Save intentionally to establish a semantic comparison baseline." : change.risk === "low" ? "No sensitive regression was detected." : "Open Change Impact and review every sensitive modification." },
+      { id: "journey", label: "Learner Journey", score: journey.score, status: journey.personas.some((persona) => persona.status === "blocked") ? "blocked" : journey.score >= 80 ? "ready" : "review", evidence: `${journey.personas.filter((persona) => persona.status === "ready").length}/5 inclusive perspectives ready · ${journey.focusStops.length} focus stops · ${journey.readingStops.length} reading stops`, recommendation: journey.score >= 80 && !journey.personas.some((persona) => persona.status === "blocked") ? "The simulated learner journeys are coherent." : "Open Learner Simulator and review each persona-specific friction point." },
     ];
     const blockers = pillars.filter((pillar) => pillar.status === "blocked").map((pillar) => `${pillar.label}: ${pillar.evidence}`);
     const recommendations = pillars.filter((pillar) => pillar.status !== "ready").map((pillar) => `${pillar.label}: ${pillar.recommendation}`);
-    const weights: Record<ReadinessPillarId, number> = { accessibility: .25, design: .20, lms: .20, learning: .20, change: .15 };
+    const weights: Record<ReadinessPillarId, number> = { accessibility: .20, design: .15, lms: .15, learning: .15, change: .15, journey: .20 };
     const score = Math.round(pillars.reduce((total, pillar) => total + pillar.score * weights[pillar.id], 0));
     const status: PublicationReadinessResult["status"] = blockers.length ? "BLOCKED" : pillars.every((pillar) => pillar.status === "ready") ? "READY" : "REVIEW";
     const result: PublicationReadinessResult = {
@@ -2424,7 +2538,8 @@ export default function Home() {
     if (pillar === "design") { runPreviewAudit(true); return; }
     if (pillar === "lms") { runUniversalLmsPreflight(); return; }
     if (pillar === "learning") { runLearningExperiencePulse(); return; }
-    runSemanticChangeImpact();
+    if (pillar === "change") { runSemanticChangeImpact(); return; }
+    runLearnerJourneySimulator();
   };
   const plainText = html.replace(/<[^>]+>/g, " ").replace(/&nbsp;|&amp;|&lt;|&gt;|&#39;|&quot;/g, " ").replace(/\s+/g, " ").trim();
   const wordCount = plainText ? plainText.split(" ").length : 0;
@@ -2556,7 +2671,7 @@ export default function Home() {
       "open estiloapa": () => { window.location.href = "/tools#apa"; },
       "open txt test generator": () => { window.location.href = "/tools#txt"; },
       "open qti 2.1": () => { window.location.href = "/tools#qti"; },
-      "accessibility review": () => { setSidePanelTab("review"); setRightPanel(true); }, "preview audit": () => runPreviewAudit(true), "publication readiness command center": runPublicationReadiness, "universal lms preflight": runUniversalLmsPreflight, "learning experience pulse": runLearningExperiencePulse, "semantic change impact": runSemanticChangeImpact, "document outline": () => { setSidePanelTab("outline"); setRightPanel(true); },
+      "accessibility review": () => { setSidePanelTab("review"); setRightPanel(true); }, "preview audit": () => runPreviewAudit(true), "publication readiness command center": runPublicationReadiness, "inclusive learner journey simulator": runLearnerJourneySimulator, "universal lms preflight": runUniversalLmsPreflight, "learning experience pulse": runLearningExperiencePulse, "semantic change impact": runSemanticChangeImpact, "document outline": () => { setSidePanelTab("outline"); setRightPanel(true); },
       "blackboard audit": runBlackboardPreviewAudit, "next preview issue": () => navigatePreviewIssue(1), "previous preview issue": () => navigatePreviewIssue(-1),
       "inspect selection html": inspectDesignSelectionInHtml, "open split view": openHtmlSplit,
       "table tools": () => selectionContext === "table" ? openRibbonTab("table") : toast.info("Select a table cell first"),
@@ -2616,6 +2731,7 @@ export default function Home() {
     <UniversalLmsPreflightDialog open={universalPreflightOpen} onOpenChange={setUniversalPreflightOpen} results={universalPreflightResults} activeProfile={lmsProfile} onSelectProfile={(profile) => { setLmsProfile(profile); setSaved(false); setUniversalPreflightOpen(false); runPreviewAudit(true, profile); }} onDownload={downloadUniversalPreflightReport}/>
     <LearningExperiencePulseDialog open={learningPulseOpen} onOpenChange={setLearningPulseOpen} result={learningPulseResult} onDownload={downloadLearningExperienceReport}/>
     <SemanticChangeImpactDialog open={semanticChangeOpen} onOpenChange={setSemanticChangeOpen} result={semanticChangeResult} onDownload={downloadSemanticChangeReport}/>
+    <LearnerJourneyDialog open={learnerJourneyOpen} onOpenChange={setLearnerJourneyOpen} result={learnerJourneyResult} onDownload={downloadLearnerJourneyReport}/>
     <PublicationReadinessDialog open={readinessCenterOpen} onOpenChange={setReadinessCenterOpen} result={publicationReadiness} onDownload={downloadReadinessPassport} onOpenPillar={openReadinessPillar}/>
     <input ref={localFileInput} className="sr-only" type="file" accept=".html,.htm,.txt,.docx,.ultrapage.json,.json,text/html,text/plain,application/json,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onChange={(event) => importLocalDocument(event.target.files?.[0])} aria-label="Open an HTML, TXT, Word, or UltraPage project file"/>
     <header className="topbar">
@@ -2634,7 +2750,7 @@ export default function Home() {
               {mode === "visual" && <div className="ribbon-tabs" role="tablist" aria-label="Editor ribbon">
                 {availableRibbonTabs.map((tab) => <button key={tab} id={`ribbon-tab-${tab}`} type="button" role="tab" data-ribbon-tab={tab} data-contextual={tab === "table" || tab === "picture" || tab === "link" ? tab : undefined} aria-controls="ribbon-panel" aria-selected={ribbonTab === tab} tabIndex={ribbonTab === tab ? 0 : -1} className={`${ribbonTab === tab ? "active" : ""} ${tab === "table" || tab === "picture" || tab === "link" ? `contextual ${tab}` : ""}`.trim()} onKeyDown={handleRibbonKeyDown} onClick={() => { setRibbonTab(tab); setRibbonCollapsed(false); }}>{tab[0].toUpperCase() + tab.slice(1)}{(tab === "table" || tab === "picture" || tab === "link") && <span className="sr-only"> contextual tools</span>}</button>)}
               </div>}
-              {mode === "visual" && <form className="ribbon-command-search" onSubmit={executeRibbonCommand} role="search"><Search aria-hidden="true"/><label className="sr-only" htmlFor="ribbon-command-input">Search ribbon commands</label><input id="ribbon-command-input" list="ribbon-command-options" value={ribbonCommand} onChange={(event) => setRibbonCommand(event.target.value)} placeholder="Search commands" autoComplete="off"/><datalist id="ribbon-command-options">{["New document","Open document","Save document","Home tools","Insert content","Page layout","References","Review","View","Native tools","Open EstiloAPA","Open TXT Test Generator","Open QTI 2.1","Table tools","Picture tools","Link tools","Accessibility review","Preview audit","Publication Readiness Command Center","Universal LMS Preflight","Learning Experience Pulse","Semantic Change Impact","Blackboard audit","Next preview issue","Previous preview issue","Download preview report","Document outline","Final preview","HTML editor","Desktop preview","Tablet preview","Mobile preview","Compare previews","Read aloud","Stop reading","Focus mode","Exit focus mode","Page width","Reset view","Show rulers","Hide rulers","Show margin guides","Hide margin guides","Show formatting marks","Hide formatting marks","Show structure map","Hide structure map","Table of contents","Copy","Cut","Paste plain text","Format painter","Clear formatting"].map((item) => <option key={item} value={item}/>)}</datalist></form>}
+              {mode === "visual" && <form className="ribbon-command-search" onSubmit={executeRibbonCommand} role="search"><Search aria-hidden="true"/><label className="sr-only" htmlFor="ribbon-command-input">Search ribbon commands</label><input id="ribbon-command-input" list="ribbon-command-options" value={ribbonCommand} onChange={(event) => setRibbonCommand(event.target.value)} placeholder="Search commands" autoComplete="off"/><datalist id="ribbon-command-options">{["New document","Open document","Save document","Home tools","Insert content","Page layout","References","Review","View","Native tools","Open EstiloAPA","Open TXT Test Generator","Open QTI 2.1","Table tools","Picture tools","Link tools","Accessibility review","Preview audit","Publication Readiness Command Center","Inclusive Learner Journey Simulator","Universal LMS Preflight","Learning Experience Pulse","Semantic Change Impact","Blackboard audit","Next preview issue","Previous preview issue","Download preview report","Document outline","Final preview","HTML editor","Desktop preview","Tablet preview","Mobile preview","Compare previews","Read aloud","Stop reading","Focus mode","Exit focus mode","Page width","Reset view","Show rulers","Hide rulers","Show margin guides","Hide margin guides","Show formatting marks","Hide formatting marks","Show structure map","Hide structure map","Table of contents","Copy","Cut","Paste plain text","Format painter","Clear formatting"].map((item) => <option key={item} value={item}/>)}</datalist></form>}
               {mode === "visual" && <div className="ribbon-quick" role="group" aria-label="Quick access"><button type="button" onClick={() => command("undo")} aria-label="Undo" title="Undo"><Undo2 /></button><button type="button" onClick={() => command("redo")} aria-label="Redo" title="Redo"><Redo2 /></button><button type="button" className={ribbonCollapsed ? "collapsed" : ""} aria-expanded={!ribbonCollapsed} aria-controls="ribbon-panel" onClick={() => setRibbonCollapsed((collapsed) => !collapsed)} aria-label={ribbonCollapsed ? "Expand ribbon" : "Collapse ribbon"} title={ribbonCollapsed ? "Expand ribbon" : "Collapse ribbon"}><ChevronDown /></button></div>}
             </div>
             {mode === "visual" && !ribbonCollapsed && <div id="ribbon-panel" className="ribbon-panel" role="tabpanel" aria-labelledby={`ribbon-tab-${ribbonTab}`}>
@@ -2667,7 +2783,7 @@ export default function Home() {
               </>}
               {ribbonTab === "review" && <>
                 <div className="ribbon-group ribbon-review-score"><div className="ribbon-group-body"><button type="button" className="ribbon-score-button" onClick={() => { setSidePanelTab("review"); setRightPanel(true); }}><span>{accessibilityScore}</span><strong>Accessibility</strong><small>{accessibilityIssueCount} issue{accessibilityIssueCount === 1 ? "" : "s"}</small></button></div><span className="ribbon-group-label">Review</span></div>
-                <div className="ribbon-group ribbon-preflight-group"><div className="ribbon-group-body ribbon-command-row"><button type="button" className="ribbon-command ribbon-ready-center-command" onClick={runPublicationReadiness}><Check/><span>Ready Center</span></button><button type="button" className="ribbon-command ribbon-preflight-command" onClick={runUniversalLmsPreflight}><Sparkles/><span>LMS Preflight</span></button><button type="button" className="ribbon-command ribbon-learning-pulse-command" onClick={runLearningExperiencePulse}><BookOpen/><span>Learning Pulse</span></button><button type="button" className="ribbon-command ribbon-change-impact-command" onClick={runSemanticChangeImpact}><History/><span>Change Impact</span></button></div><span className="ribbon-group-label">Publishing Intelligence</span></div>
+                <div className="ribbon-group ribbon-preflight-group"><div className="ribbon-group-body ribbon-command-row"><button type="button" className="ribbon-command ribbon-ready-center-command" onClick={runPublicationReadiness}><Check/><span>Ready Center</span></button><button type="button" className="ribbon-command ribbon-journey-command" onClick={runLearnerJourneySimulator}><Accessibility/><span>Learner Simulator</span></button><button type="button" className="ribbon-command ribbon-preflight-command" onClick={runUniversalLmsPreflight}><Sparkles/><span>LMS Preflight</span></button><button type="button" className="ribbon-command ribbon-learning-pulse-command" onClick={runLearningExperiencePulse}><BookOpen/><span>Learning Pulse</span></button><button type="button" className="ribbon-command ribbon-change-impact-command" onClick={runSemanticChangeImpact}><History/><span>Change Impact</span></button></div><span className="ribbon-group-label">Publishing Intelligence</span></div>
                 <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row"><button type="button" className="ribbon-command" onClick={repairAccessibility}><Accessibility/><span>Safe Fix</span></button><button type="button" className={`ribbon-command ${spellCheckEnabled ? "is-active" : ""}`} aria-pressed={spellCheckEnabled} onClick={() => setSpellCheckEnabled((enabled) => !enabled)}><Check/><span>Spelling</span></button><button type="button" className={`ribbon-command ${readingAloud ? "is-active" : ""}`} aria-pressed={readingAloud} onClick={toggleReadAloud}><Volume2/><span>{readingAloud ? "Stop Reading" : "Read Aloud"}</span></button></div><span className="ribbon-group-label">Proofing</span></div>
                 <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row"><button type="button" className="ribbon-command" disabled={!accessibilityIssueMap.length} onClick={() => navigateAccessibilityIssue(-1)}><ChevronDown className="issue-previous"/><span>Previous</span></button><button type="button" className="ribbon-command" disabled={!accessibilityIssueMap.length} onClick={() => navigateAccessibilityIssue(1)}><ChevronDown/><span>Next Issue</span></button><button type="button" className="ribbon-command" onClick={() => { setSidePanelTab("review"); setRightPanel(true); }}><Eye/><span>Issue Map</span></button></div><span className="ribbon-group-label">Accessibility Navigation</span></div>
               </>}
@@ -2832,6 +2948,16 @@ function SemanticChangeImpactDialog({ open, onOpenChange, result, onDownload }: 
   if (!result) return null;
   const savedAt = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(result.baselineSavedAt));
   return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent className="semantic-change-dialog"><DialogHeader><DialogTitle>Semantic Change Impact</DialogTitle><DialogDescription>Compares the current page with the latest manual save and highlights changes that may affect learners, accessibility, or LMS output.</DialogDescription></DialogHeader><div className={`semantic-change-hero ${result.risk}`}><span><History/></span><div><strong>{result.risk === "high" ? "High-impact review required" : result.risk === "medium" ? "Sensitive changes detected" : "Low-impact changes"}</strong><small>Baseline: {result.baselineTitle} · saved {savedAt}</small></div><b>{result.risk.toUpperCase()}</b></div><div className="semantic-change-summary"><article><span>+{result.wordsAdded}</span><small>Words added</small></article><article><span>−{result.wordsRemoved}</span><small>Words removed</small></article><article><span>{result.accessibilityBefore}%</span><small>Accessibility before</small></article><article className={result.accessibilityAfter < result.accessibilityBefore ? "decreased" : ""}><span>{result.accessibilityAfter}%</span><small>Accessibility now</small></article></div><div className="semantic-change-inventory" role="table" aria-label="Semantic change inventory"><div role="row" className="semantic-change-row header"><span role="columnheader">Element</span><span role="columnheader">Saved</span><span role="columnheader">Current</span><span role="columnheader">Change</span></div>{result.items.map((entry) => <div role="row" className={`semantic-change-row ${entry.sensitive && entry.delta ? "sensitive" : ""}`} key={entry.label}><span role="cell">{entry.label}{entry.sensitive && <small> sensitive</small>}</span><span role="cell">{entry.before}</span><span role="cell">{entry.after}</span><span role="cell">{entry.delta >= 0 ? "+" : ""}{entry.delta}</span></div>)}</div><section className="semantic-change-signals"><strong>Impact signals</strong>{result.sensitiveChanges.length ? result.sensitiveChanges.map((change) => <p key={change}><AlertTriangle/> {change}</p>) : <p className="clear"><Check/> No sensitive structural or accessibility changes detected.</p>}</section><p className="semantic-change-note"><History/> Save intentionally to establish a new comparison baseline. Automatic draft recovery does not replace that baseline.</p><div className="apa-actions"><Button variant="outline" onClick={onDownload}><Download size={16}/> Download Report</Button><Button onClick={() => onOpenChange(false)}>Close</Button></div></DialogContent></Dialog>;
+}
+
+function LearnerJourneyDialog({ open, onOpenChange, result, onDownload }: { open: boolean; onOpenChange: (open: boolean) => void; result: LearnerJourneyResult | null; onDownload: () => void }) {
+  const [activePersona, setActivePersona] = useState<LearnerJourneyPersonaId>("keyboard");
+  useEffect(() => { if (open) setActivePersona("keyboard"); }, [open, result]);
+  if (!result) return null;
+  const active = result.personas.find((persona) => persona.id === activePersona) || result.personas[0];
+  const preview = buildLearnerJourneyPreview(result, activePersona);
+  const PersonaIcon = activePersona === "keyboard" ? Keyboard : activePersona === "screen-reader" ? Volume2 : activePersona === "low-vision" ? Eye : activePersona === "mobile" ? Smartphone : BookOpen;
+  return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent className="learner-journey-dialog"><DialogHeader><DialogTitle>Inclusive Learner Journey Simulator</DialogTitle><DialogDescription>Experience-oriented structural previews for five learner perspectives, with evidence and friction points before LMS publication.</DialogDescription></DialogHeader><section className={`learner-journey-hero ${result.score >= 80 ? "ready" : result.score >= 50 ? "review" : "blocked"}`}><div className="learner-journey-score"><span>{result.score}</span><small>JOURNEY</small></div><div><strong>{result.score >= 80 ? "Inclusive journeys are coherent" : result.score >= 50 ? "Targeted journey review recommended" : "Learner barriers require attention"}</strong><p>{result.personas.filter((persona) => persona.status === "ready").length}/5 perspectives ready · {result.focusStops.length} focus stops · {result.readingStops.length} semantic reading stops</p></div></section><div className="learner-persona-tabs" role="tablist" aria-label="Learner simulation perspective">{result.personas.map((persona) => <button type="button" role="tab" aria-selected={persona.id === activePersona} className={`${persona.status} ${persona.id === activePersona ? "active" : ""}`} key={persona.id} onClick={() => setActivePersona(persona.id)}><span>{persona.id === "keyboard" ? <Keyboard/> : persona.id === "screen-reader" ? <Volume2/> : persona.id === "low-vision" ? <Eye/> : persona.id === "mobile" ? <Smartphone/> : <BookOpen/>}</span><strong>{persona.label}</strong><small>{persona.score}% · {persona.status}</small></button>)}</div><div className={`learner-simulation-workspace persona-${activePersona}`}><section className="learner-preview-stage"><header><span><PersonaIcon/> {active.label}</span><b>{active.score}%</b></header><iframe title={`${active.label} structural simulation`} srcDoc={preview} sandbox="allow-same-origin"/></section><aside className="learner-evidence-panel"><span className={`learner-persona-status ${active.status}`}>{active.status.toUpperCase()}</span><strong>Observable evidence</strong><p>{active.evidence}</p><strong>Recommended action</strong><p>{active.recommendation}</p>{activePersona === "keyboard" && <div className="learner-stop-list"><strong>Focus sequence</strong>{result.focusStops.length ? result.focusStops.slice(0, 12).map((stop) => <span key={`${stop.order}-${stop.label}`}><b>{stop.order}</b><small>{stop.role}</small>{stop.label}</span>) : <p>No interactive focus stops are present.</p>}</div>}{activePersona === "screen-reader" && <div className="learner-stop-list"><strong>Reading sequence</strong>{result.readingStops.slice(0, 12).map((stop) => <span key={`${stop.order}-${stop.label}`}><b>{stop.order}</b><small>{stop.role}</small>{stop.label}</span>)}</div>}</aside></div>{result.frictionPoints.length > 0 && <section className="learner-friction-list"><strong>Journey friction points</strong>{result.frictionPoints.map((friction) => <p key={friction}><AlertTriangle/> {friction}</p>)}</section>}<p className="learner-simulation-note"><Accessibility/> This simulator models observable structure, focus order, reflow, and content density. It supports review but does not emulate every assistive technology or replace testing with learners.</p><div className="apa-actions"><Button variant="outline" onClick={onDownload}><Download size={16}/> Download Journey Report</Button><Button onClick={() => onOpenChange(false)}>Close</Button></div></DialogContent></Dialog>;
 }
 
 function PublicationReadinessDialog({ open, onOpenChange, result, onDownload, onOpenPillar }: { open: boolean; onOpenChange: (open: boolean) => void; result: PublicationReadinessResult | null; onDownload: () => void; onOpenPillar: (pillar: ReadinessPillarId) => void }) {

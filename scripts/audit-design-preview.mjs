@@ -70,6 +70,14 @@ requireSource('status: "READY" | "REVIEW" | "BLOCKED"', "explicit publication de
 requireSource("readiness-passport.json", "downloadable Readiness Passport");
 requireSource("stableContentFingerprint", "stable audited-content fingerprint");
 requireSource("Eduardo Augusto García Rodríguez", "owner and creator evidence in Readiness Passport");
+requireSource("createLearnerJourneySimulation", "Inclusive Learner Journey simulation engine");
+requireSource("Inclusive Learner Journey Simulator", "five-perspective learner journey dialog");
+requireSource('"screen-reader"', "screen-reader learner perspective");
+requireSource('"low-vision"', "low-vision and reflow learner perspective");
+requireSource('"cognitive"', "cognitive-load learner perspective");
+requireSource("does not emulate every assistive technology", "responsible simulation limitation");
+requireSource("inclusive-learner-journey.txt", "downloadable learner journey report");
+requireSource('id: "journey"', "learner journey Publication Readiness pillar");
 requireSource("Keyboard-scrollable tables", "keyboard-scrollable table audit");
 requireSource("applyPreviewKeyboardSemantics", "keyboard table semantics normalization");
 requireSource('role="presentation" aria-hidden="true"', "explicit decorative semantics");
@@ -92,6 +100,8 @@ requireStyle(".semantic-change-inventory", "semantic change inventory styling");
 requireStyle(".ribbon-change-impact-command", "Ribbon Change Impact command styling");
 requireStyle(".readiness-pillar-grid", "Publication Readiness evidence grid styling");
 requireStyle(".ribbon-ready-center-command", "Ribbon Ready Center command styling");
+requireStyle(".learner-simulation-workspace", "learner perspective simulation workspace styling");
+requireStyle(".ribbon-journey-command", "Ribbon Learner Simulator command styling");
 
 const extractFunction = (name) => {
   const functionStart = page.indexOf(`function ${name}`);
@@ -156,4 +166,4 @@ if (findings.length) {
   process.exit(1);
 }
 
-console.log("✓ Design Preview audit passed: Publication Readiness Command Center, Readiness Passport, 23-point quality gate, 25-signal Universal LMS Preflight, six-dimension Learning Experience Pulse, Semantic Change Impact, clipboard images, Blackboard output, keyboard tables, issue navigation, persistent selection, behavior-tested Live/Design-to-HTML mapping, and exact accessibility checks");
+console.log("✓ Design Preview audit passed: six-pillar Publication Readiness Command Center, Inclusive Learner Journey Simulator, Readiness Passport, 23-point quality gate, 25-signal Universal LMS Preflight, six-dimension Learning Experience Pulse, Semantic Change Impact, clipboard images, Blackboard output, keyboard tables, issue navigation, persistent selection, behavior-tested Live/Design-to-HTML mapping, and exact accessibility checks");
