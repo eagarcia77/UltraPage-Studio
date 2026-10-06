@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import JSZip from "jszip";
-import { Accessibility, AlertTriangle, AlignCenter, AlignJustify, AlignLeft, AlignRight, Bold, BookOpen, CalendarDays, Check, ChevronDown, ClipboardPaste, Cloud, Code2, Columns3, Copy, Download, Eraser, Eye, FileImage, FilePlus2, FileText, Folder, Heading2, Highlighter, History, ImagePlus, Italic, Keyboard, Link2, List, ListOrdered, Loader2, LockKeyhole, Maximize2, Minus, Monitor, MoreHorizontal, Palette, PanelRight, Pilcrow, PlugZap, Plus, Printer, Quote, Redo2, Rows3, Save, Scissors, Search, Settings2, Sigma, Smartphone, Sparkles, Stamp, Strikethrough, Subscript, Superscript, Table2, Tablet, Trash2, Underline, Undo2, Unlink, Upload, Video, Volume2, X, ZoomIn, ZoomOut } from "lucide-react";
+import { Accessibility, AlertTriangle, AlignCenter, AlignJustify, AlignLeft, AlignRight, Bold, BookOpen, CalendarDays, Check, ChevronDown, ClipboardPaste, Cloud, Code2, Columns3, Copy, Download, Eraser, Eye, FileImage, FilePlus2, FileText, Folder, Heading2, Highlighter, History, ImagePlus, Italic, Keyboard, Link2, List, ListOrdered, Loader2, LockKeyhole, Maximize2, Minus, Monitor, MoreHorizontal, Orbit, Palette, PanelRight, Pilcrow, PlugZap, Plus, Printer, Quote, Redo2, Rows3, Save, Scissors, Search, Settings2, Sigma, Smartphone, Sparkles, Stamp, Strikethrough, Subscript, Superscript, Table2, Tablet, Trash2, Underline, Undo2, Unlink, Upload, Video, Volume2, X, ZoomIn, ZoomOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -44,7 +44,16 @@ type LearningExperienceMetric = { id: "structure" | "objectives" | "guidance" | 
 type LearningExperienceResult = { score: number; wordCount: number; readingMinutes: number; metrics: LearningExperienceMetric[] };
 type SemanticChangeItem = { label: string; before: number; after: number; delta: number; sensitive?: boolean };
 type SemanticChangeResult = { baselineTitle: string; baselineSavedAt: string; risk: "low" | "medium" | "high"; wordsAdded: number; wordsRemoved: number; accessibilityBefore: number; accessibilityAfter: number; sensitiveChanges: string[]; items: SemanticChangeItem[] };
-type ReadinessPillarId = "accessibility" | "design" | "lms" | "learning" | "change";
+type LearnerJourneyPersonaId = "keyboard" | "screen-reader" | "low-vision" | "cognitive" | "mobile";
+type LearnerJourneyStop = { order: number; role: string; label: string };
+type LearnerJourneyPersona = { id: LearnerJourneyPersonaId; label: string; score: number; status: "ready" | "review" | "blocked"; evidence: string; recommendation: string };
+type LearnerJourneyResult = { score: number; language: DocumentLanguage; sourceHtml: string; focusStops: LearnerJourneyStop[]; readingStops: LearnerJourneyStop[]; personas: LearnerJourneyPersona[]; frictionPoints: string[] };
+type ConstellationNodeKind = "course" | "objective" | "section" | "activity" | "assessment" | "resource";
+type ConstellationNode = { id: string; kind: ConstellationNodeKind; label: string; x: number; y: number; weight: number; parentId?: string; evidence: string };
+type ConstellationEdge = { source: string; target: string; relation: "contains" | "supports" | "assesses" | "extends" };
+type ConstellationTrajectory = { id: "first-contact" | "warp-sprint" | "mastery-orbit"; label: string; score: number; status: "stable" | "turbulent" | "lost"; path: string[]; signal: string };
+type LearningConstellationResult = { score: number; status: "ready" | "review" | "blocked"; nodes: ConstellationNode[]; edges: ConstellationEdge[]; orphanIds: string[]; metrics: Array<{ label: string; value: string; detail: string }>; trajectories: ConstellationTrajectory[]; gaps: string[]; generatedAt: string };
+type ReadinessPillarId = "accessibility" | "design" | "lms" | "learning" | "change" | "journey" | "constellation";
 type ReadinessPillar = { id: ReadinessPillarId; label: string; score: number; status: "ready" | "review" | "blocked"; evidence: string; recommendation: string };
 type PublicationReadinessResult = { status: "READY" | "REVIEW" | "BLOCKED"; score: number; generatedAt: string; fingerprint: string; profile: LmsProfile; owner: string; pillars: ReadinessPillar[]; blockers: string[]; recommendations: string[] };
 type HtmlDiagnostic = { severity: "error" | "warning"; message: string; line: number; column: number; offset: number; length: number };
@@ -738,6 +747,163 @@ function createSemanticChangeImpact(currentHtml: string, baseline: DraftSnapshot
   return { baselineTitle: baseline.title, baselineSavedAt: baseline.savedAt, risk, wordsAdded, wordsRemoved, accessibilityBefore, accessibilityAfter, sensitiveChanges, items };
 }
 
+function createLearnerJourneySimulation(sourceHtml: string, language: DocumentLanguage): LearnerJourneyResult {
+  const parsed = new DOMParser().parseFromString(sourceHtml, "text/html");
+  const root = parsed.body;
+  const clean = (value: string | null | undefined, fallback = "Unlabeled item") => (value || "").replace(/\s+/g, " ").trim().slice(0, 120) || fallback;
+  if (!root || !clean(root.textContent, "")) {
+    const emptyPersonas: LearnerJourneyPersona[] = ([
+      ["keyboard", "Keyboard navigation"], ["screen-reader", "Screen-reader order"], ["low-vision", "Low vision & reflow"], ["cognitive", "Cognitive clarity"], ["mobile", "Mobile learning"],
+    ] as Array<[LearnerJourneyPersonaId, string]>).map(([id, label]) => ({ id, label, score: 0, status: "blocked", evidence: "The page has no learner content to simulate.", recommendation: "Add meaningful content, then run the simulator again." }));
+    return { score: 0, language, sourceHtml, focusStops: [], readingStops: [], personas: emptyPersonas, frictionPoints: emptyPersonas.map((persona) => `${persona.label}: ${persona.recommendation}`) };
+  }
+  const focusable = Array.from(root.querySelectorAll<HTMLElement>('a[href],button,input,select,textarea,[tabindex]:not([tabindex="-1"])'));
+  const focusStops = focusable.map((element, index) => ({ order: index + 1, role: element.tagName.toLowerCase(), label: clean(element.getAttribute("aria-label") || element.getAttribute("title") || element.textContent || (element as HTMLInputElement).value) }));
+  const readingElements = Array.from(root.querySelectorAll<HTMLElement>("h1,h2,h3,h4,p,li,a[href],img,blockquote,figcaption,caption,th"));
+  const readingStops = readingElements.map((element, index) => ({ order: index + 1, role: element.tagName === "IMG" ? "image" : element.tagName.toLowerCase(), label: clean(element.tagName === "IMG" ? element.getAttribute("alt") || (element.getAttribute("role") === "presentation" ? "Decorative image" : "Image without alternative text") : element.textContent) })).slice(0, 80);
+  const unnamedFocus = focusStops.filter((stop) => stop.label === "Unlabeled item").length;
+  const positiveTabindex = focusable.filter((element) => Number(element.getAttribute("tabindex") || 0) > 0).length;
+  const links = Array.from(root.querySelectorAll<HTMLAnchorElement>("a[href]"));
+  const vagueLinks = links.filter((link) => /^(aquí|clic aquí|click here|más|ver más|enlace)$/i.test(clean(link.textContent, ""))).length;
+  const ids = new Set(Array.from(root.querySelectorAll<HTMLElement>("[id]"), (element) => element.id));
+  const brokenInternalLinks = links.filter((link) => { const href = link.getAttribute("href") || ""; return href.startsWith("#") && href !== "#" && !ids.has(href.slice(1)); }).length;
+  const headings = Array.from(root.querySelectorAll<HTMLElement>("h1,h2,h3,h4"));
+  const headingLevels = headings.map((heading) => Number(heading.tagName.slice(1)));
+  const headingHierarchyReady = headingLevels.every((level, index) => index === 0 || level <= headingLevels[index - 1] + 1);
+  const h1Count = headings.filter((heading) => heading.tagName === "H1").length;
+  const images = Array.from(root.querySelectorAll<HTMLImageElement>("img"));
+  const imageIssues = images.filter((image) => { const decorative = image.getAttribute("role") === "presentation" || image.getAttribute("aria-hidden") === "true"; return decorative ? image.getAttribute("alt") !== "" : !image.getAttribute("alt")?.trim(); }).length;
+  const tables = Array.from(root.querySelectorAll<HTMLTableElement>("table"));
+  const tableIssues = tables.filter((table) => !table.querySelector("th") || (!table.querySelector("caption") && !table.getAttribute("aria-label"))).length;
+  const inlineStyled = Array.from(root.querySelectorAll<HTMLElement>("[style]"));
+  const smallText = inlineStyled.filter((element) => { const value = element.style.fontSize; return value.endsWith("px") && Number.parseFloat(value) < 12; }).length;
+  const fixedWidths = inlineStyled.filter((element) => [element.style.width, element.style.minWidth].some((value) => value.endsWith("px") && Number.parseFloat(value) >= 400)).length;
+  const paragraphs = Array.from(root.querySelectorAll<HTMLParagraphElement>("p"));
+  const longParagraphs = paragraphs.filter((paragraph) => clean(paragraph.textContent, "").split(/\s+/).filter(Boolean).length > 120).length;
+  const learning = createLearningExperiencePulse(sourceHtml, language);
+  const cognitiveMetrics = learning.metrics.filter((metric) => ["structure", "guidance", "cognitive-load"].includes(metric.id));
+  const cognitiveScore = Math.round(cognitiveMetrics.reduce((total, metric) => total + metric.score, 0) / Math.max(1, cognitiveMetrics.length));
+  const clamp = (value: number) => Math.max(0, Math.min(100, value));
+  const keyboardScore = clamp(100 - unnamedFocus * 25 - positiveTabindex * 20 - vagueLinks * 15 - brokenInternalLinks * 20);
+  const screenReaderScore = clamp(100 - (h1Count === 1 ? 0 : 25) - (headingHierarchyReady ? 0 : 20) - Math.min(30, imageIssues * 15) - Math.min(25, tableIssues * 15));
+  const lowVisionScore = clamp(100 - Math.min(45, smallText * 15) - Math.min(55, fixedWidths * 20));
+  const mobileScore = clamp(100 - Math.min(60, fixedWidths * 25) - Math.min(40, tables.filter((table) => /min-width\s*:\s*(?:[4-9]\d{2,}|\d{4,})px/i.test(table.getAttribute("style") || "")).length * 20));
+  const classify = (score: number): LearnerJourneyPersona["status"] => score >= 80 ? "ready" : score >= 50 ? "review" : "blocked";
+  const personas: LearnerJourneyPersona[] = [
+    { id: "keyboard", label: "Keyboard navigation", score: keyboardScore, status: classify(keyboardScore), evidence: `${focusStops.length} focus stop${focusStops.length === 1 ? "" : "s"} · ${unnamedFocus} unnamed · ${positiveTabindex} forced order · ${brokenInternalLinks} broken internal link${brokenInternalLinks === 1 ? "" : "s"}`, recommendation: keyboardScore >= 80 ? "Focus order and interactive names are predictable." : "Give every control a clear name, remove positive tabindex values, and repair internal destinations." },
+    { id: "screen-reader", label: "Screen-reader order", score: screenReaderScore, status: classify(screenReaderScore), evidence: `${readingStops.length} semantic reading stop${readingStops.length === 1 ? "" : "s"} · ${h1Count} H1 · ${imageIssues} image issue${imageIssues === 1 ? "" : "s"} · ${tableIssues} table issue${tableIssues === 1 ? "" : "s"}`, recommendation: screenReaderScore >= 80 ? "The semantic reading path is coherent." : "Repair heading hierarchy, image alternatives, and table names before assistive-technology testing." },
+    { id: "low-vision", label: "Low vision & reflow", score: lowVisionScore, status: classify(lowVisionScore), evidence: `${smallText} inline text size${smallText === 1 ? "" : "s"} below 12 px · ${fixedWidths} fixed width${fixedWidths === 1 ? "" : "s"} at or above 400 px`, recommendation: lowVisionScore >= 80 ? "The page supports enlarged text and reflow." : "Remove small inline text and fixed pixel widths that obstruct 200% zoom." },
+    { id: "cognitive", label: "Cognitive clarity", score: cognitiveScore, status: classify(cognitiveScore), evidence: `${longParagraphs} paragraph${longParagraphs === 1 ? "" : "s"} over 120 words · structure ${learning.metrics.find((metric) => metric.id === "structure")?.score || 0}% · guidance ${learning.metrics.find((metric) => metric.id === "guidance")?.score || 0}%`, recommendation: cognitiveScore >= 80 ? "The learning path is chunked and easy to scan." : "Shorten dense paragraphs and strengthen headings, instructions, and sequenced steps." },
+    { id: "mobile", label: "Mobile learning", score: mobileScore, status: classify(mobileScore), evidence: `${fixedWidths} fixed-width element${fixedWidths === 1 ? "" : "s"} · ${tables.length} table${tables.length === 1 ? "" : "s"} evaluated for narrow-screen flow`, recommendation: mobileScore >= 80 ? "The source is ready for narrow-screen reflow testing." : "Replace fixed widths and ensure wide tables remain horizontally scrollable." },
+  ];
+  const score = Math.round(personas.reduce((total, persona) => total + persona.score, 0) / personas.length);
+  const frictionPoints = personas.filter((persona) => persona.status !== "ready").map((persona) => `${persona.label}: ${persona.recommendation}`);
+  return { score, language, sourceHtml, focusStops, readingStops, personas, frictionPoints };
+}
+
+function buildLearnerJourneyPreview(result: LearnerJourneyResult, persona: LearnerJourneyPersonaId) {
+  if (persona === "screen-reader") {
+    const items = result.readingStops.map((stop) => `<li><span>${escapeHtml(stop.role)}</span><strong>${escapeHtml(stop.label)}</strong></li>`).join("");
+    return `<!doctype html><html lang="${result.language}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;padding:24px;background:#f6f7fa;color:#222;font:16px/1.55 Arial,sans-serif}h1{font-size:21px}p{color:#5f6878}ol{padding:0;list-style:none;counter-reset:step}li{counter-increment:step;display:grid;grid-template-columns:38px 110px 1fr;gap:10px;padding:10px;border-bottom:1px solid #dfe3ea;background:#fff}li:before{content:counter(step);display:grid;place-items:center;width:26px;height:26px;border-radius:50%;background:#5b2a86;color:#fff;font-weight:700}li span{color:#6b38d1;font-size:11px;font-weight:800;text-transform:uppercase}li strong{font-size:13px}@media(max-width:520px){li{grid-template-columns:34px 1fr}li strong{grid-column:2}}</style></head><body><h1>Semantic reading order</h1><p>Approximation based on document structure; verify with a real screen reader.</p><ol>${items || "<li><span>empty</span><strong>No semantic reading stops detected.</strong></li>"}</ol></body></html>`;
+  }
+  const parsed = new DOMParser().parseFromString(result.sourceHtml, "text/html");
+  const root = parsed.body;
+  if (!root) return "";
+  if (persona === "keyboard") Array.from(root.querySelectorAll<HTMLElement>('a[href],button,input,select,textarea,[tabindex]:not([tabindex="-1"])')).forEach((element, index) => element.setAttribute("data-journey-order", String(index + 1)));
+  if (persona === "cognitive") Array.from(root.querySelectorAll<HTMLParagraphElement>("p")).forEach((paragraph) => { if (cleanTextContent(paragraph.textContent).split(/\s+/).filter(Boolean).length > 120) paragraph.setAttribute("data-cognitive-friction", "true"); });
+  const personaCss: Record<Exclude<LearnerJourneyPersonaId, "screen-reader">, string> = {
+    keyboard: `[data-journey-order]{position:relative;outline:3px solid #7850c7!important;outline-offset:4px}[data-journey-order]::before{content:attr(data-journey-order);position:absolute;z-index:20;top:-14px;left:-10px;width:24px;height:24px;display:grid;place-items:center;border-radius:50%;background:#5b2a86;color:#fff;font:700 11px Arial}`,
+    "low-vision": `#learner-preview{font-size:200%!important;line-height:1.8!important;max-width:100%!important}#learner-preview *{max-width:100%!important;letter-spacing:.02em}#learner-preview a{text-decoration-thickness:.12em}`,
+    cognitive: `#learner-preview p{max-width:68ch}#learner-preview h1,#learner-preview h2,#learner-preview h3,#learner-preview h4{outline:2px solid #2f8a70;outline-offset:4px}[data-cognitive-friction]{outline:4px solid #c67818!important;background:#fff4dc!important;padding:12px!important}`,
+    mobile: `#learner-preview{width:100%;max-width:390px!important;margin:auto!important}#learner-preview img,#learner-preview video,#learner-preview canvas{max-width:100%!important;height:auto!important}#learner-preview table{display:block!important;max-width:100%!important;overflow-x:auto!important}`,
+  };
+  return `<!doctype html><html lang="${result.language}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>${exportedPageStyles}body{padding:18px;background:#e9ecf2}#learner-preview{width:min(100%,860px);margin:auto;background:#fff;padding:clamp(20px,6vw,54px);box-shadow:0 8px 24px #1f293719}${personaCss[persona]}</style></head><body><main id="learner-preview">${root.innerHTML}</main></body></html>`;
+}
+
+function cleanTextContent(value: string | null | undefined) {
+  return (value || "").replace(/\s+/g, " ").trim();
+}
+
+function createLearningConstellation(sourceHtml: string, title: string, language: DocumentLanguage): LearningConstellationResult {
+  const parsed = new DOMParser().parseFromString(sourceHtml, "text/html");
+  const root = parsed.body;
+  const label = (element: Element | null, fallback: string) => cleanTextContent(element?.textContent).slice(0, 74) || fallback;
+  const documentElements = Array.from(root.querySelectorAll<HTMLElement>("h1,h2,h3,h4,h5,h6,p,li,a[href],table,figure,video,iframe,[data-learning-objective],[data-learning-activity],[data-assessment]"));
+  const headings = documentElements.filter((element) => /^H[1-6]$/.test(element.tagName));
+  const objectivePattern = /\b(objectives?|outcomes?|competenc(?:y|ies)|objetivos?|resultados?|competencias?)\b/i;
+  const assessmentPattern = /\b(quiz|exam|test|assessment|assignment|project|rubric|discussion|foro|prueba|examen|evaluaci[oó]n|asignaci[oó]n|proyecto|r[uú]brica)\b/i;
+  const activityPattern = /\b(activity|practice|exercise|reflection|case study|actividad|pr[aá]ctica|ejercicio|reflexi[oó]n|estudio de caso)\b/i;
+  const actionVerbPattern = language === "es-PR" ? /^(analiz|aplic|compar|cre|diseñ|evalu|explic|identific|integr|demostr|desarroll|describ|distingu|interpret)/i : /^(analy|apply|compare|create|design|evaluate|explain|identify|integrate|demonstrate|develop|describe|distinguish|interpret)/i;
+  const nodes: ConstellationNode[] = [{ id: "course", kind: "course", label: title.trim() || label(root.querySelector("h1"), "Untitled learning page"), x: 400, y: 250, weight: 28, evidence: "Document nucleus" }];
+  const edges: ConstellationEdge[] = [];
+  const headingIds = new Map<Element, string>();
+  const headingStack: Array<{ level: number; id: string }> = [];
+  const addNode = (kind: ConstellationNodeKind, nodeLabel: string, parentId: string | undefined, evidence: string) => {
+    const normalized = nodeLabel.toLocaleLowerCase(language);
+    if (!nodeLabel || nodes.some((node) => node.kind === kind && node.label.toLocaleLowerCase(language) === normalized)) return undefined;
+    const id = `node-${nodes.length}`;
+    nodes.push({ id, kind, label: nodeLabel, x: 0, y: 0, weight: kind === "section" ? 19 : kind === "objective" ? 17 : 14, parentId, evidence });
+    if (parentId) edges.push({ source: parentId, target: id, relation: kind === "assessment" ? "assesses" : kind === "resource" ? "extends" : kind === "activity" ? "supports" : "contains" });
+    return id;
+  };
+  headings.slice(0, 12).forEach((heading) => {
+    const level = Number(heading.tagName.slice(1));
+    while (headingStack.length && headingStack.at(-1)!.level >= level) headingStack.pop();
+    const text = label(heading, `Heading ${nodes.length}`);
+    const kind: ConstellationNodeKind = assessmentPattern.test(text) ? "assessment" : objectivePattern.test(text) ? "objective" : activityPattern.test(text) ? "activity" : "section";
+    const parentId = headingStack.at(-1)?.id || "course";
+    const id = addNode(kind, text, parentId, `H${level} in document order`);
+    if (id) { headingIds.set(heading, id); headingStack.push({ level, id }); }
+  });
+  const nearestHeadingId = (element: Element) => {
+    const position = documentElements.indexOf(element as HTMLElement);
+    for (let index = position - 1; index >= 0; index -= 1) if (headingIds.has(documentElements[index])) return headingIds.get(documentElements[index])!;
+    return "course";
+  };
+  documentElements.filter((element) => element.matches("p,li,[data-learning-objective]")).slice(0, 80).forEach((element) => {
+    if (nodes.filter((node) => node.kind === "objective").length >= 8) return;
+    const text = label(element, "");
+    const previousHeading = headings.filter((heading) => documentElements.indexOf(heading) < documentElements.indexOf(element)).at(-1);
+    const explicit = element.hasAttribute("data-learning-objective") || objectivePattern.test(label(previousHeading || null, ""));
+    if (text.length >= 10 && text.length <= 220 && (explicit || actionVerbPattern.test(text))) addNode("objective", text, nearestHeadingId(element), explicit ? "Objective context" : "Observable action verb");
+  });
+  documentElements.filter((element) => element.matches("[data-assessment],[data-learning-activity],table")).slice(0, 6).forEach((element) => {
+    const text = label(element, element.tagName === "TABLE" ? "Structured learning table" : "Learning activity");
+    const kind: ConstellationNodeKind = element.hasAttribute("data-assessment") || assessmentPattern.test(text) ? "assessment" : "activity";
+    addNode(kind, text, nearestHeadingId(element), element.tagName === "TABLE" ? "Structured table evidence" : "Explicit learning marker");
+  });
+  documentElements.filter((element) => element.matches("a[href],figure,video,iframe")).slice(0, 6).forEach((element) => {
+    const resourceLabel = element.tagName === "A" ? label(element, "Unnamed linked resource") : label(element, `${element.tagName.toLowerCase()} resource`);
+    addNode("resource", resourceLabel, nearestHeadingId(element), element.tagName === "A" ? `Linked resource: ${element.getAttribute("href") || "missing destination"}` : `${element.tagName.toLowerCase()} media resource`);
+  });
+  const visibleNodes = nodes.slice(0, 28);
+  const visibleIds = new Set(visibleNodes.map((node) => node.id));
+  const visibleEdges = edges.filter((edge) => visibleIds.has(edge.source) && visibleIds.has(edge.target));
+  visibleNodes.slice(1).forEach((node, index) => {
+    const angle = -Math.PI / 2 + (index / Math.max(1, visibleNodes.length - 1)) * Math.PI * 2;
+    const radius = node.kind === "section" ? 176 : node.kind === "objective" ? 130 : node.kind === "assessment" ? 205 : node.kind === "activity" ? 222 : 238;
+    node.x = Math.round(400 + Math.cos(angle) * radius);
+    node.y = Math.round(250 + Math.sin(angle) * radius * .82);
+  });
+  const sectionCount = visibleNodes.filter((node) => node.kind === "section").length;
+  const objectiveCount = visibleNodes.filter((node) => node.kind === "objective").length;
+  const activityCount = visibleNodes.filter((node) => node.kind === "activity").length;
+  const assessmentCount = visibleNodes.filter((node) => node.kind === "assessment").length;
+  const resourceCount = visibleNodes.filter((node) => node.kind === "resource").length;
+  const headingLevels = headings.map((heading) => Number(heading.tagName.slice(1)));
+  const hierarchyGap = headingLevels.some((level, index) => index > 0 && level > headingLevels[index - 1] + 1);
+  const orphanIds = visibleNodes.filter((node) => node.parentId === "course" && ["activity", "assessment", "resource"].includes(node.kind)).map((node) => node.id);
+  const score = Math.max(0, Math.min(100, (sectionCount >= 2 ? 25 : sectionCount ? 12 : 0) + (objectiveCount ? 25 : 0) + (activityCount ? 18 : 0) + (assessmentCount ? 22 : 0) + (resourceCount ? 10 : 0) - Math.min(24, orphanIds.length * 8) - (hierarchyGap ? 12 : 0)));
+  const gaps = [!objectiveCount && "No explicit or action-oriented learning objective was detected.", !activityCount && "No practice or structured learning activity was detected.", !assessmentCount && "No assessment node was detected to close the learning loop.", sectionCount < 2 && "The knowledge architecture needs at least two distinguishable sections.", hierarchyGap && "A heading-level jump breaks the visible knowledge hierarchy.", orphanIds.length > 0 && `${orphanIds.length} learning node${orphanIds.length === 1 ? " is" : "s are"} connected only to the document nucleus.`].filter(Boolean) as string[];
+  const trajectory = (id: ConstellationTrajectory["id"], trajectoryLabel: string, trajectoryScore: number, kinds: ConstellationNodeKind[], signal: string): ConstellationTrajectory => ({ id, label: trajectoryLabel, score: trajectoryScore, status: trajectoryScore >= 80 ? "stable" : trajectoryScore >= 50 ? "turbulent" : "lost", path: visibleNodes.filter((node) => kinds.includes(node.kind)).slice(0, 5).map((node) => node.label), signal });
+  const trajectories: ConstellationTrajectory[] = [
+    trajectory("first-contact", "First Contact", Math.min(100, (objectiveCount ? 35 : 0) + (sectionCount >= 2 ? 30 : sectionCount ? 15 : 0) + (activityCount ? 20 : 0) + (resourceCount ? 15 : 0)), ["objective", "section", "activity", "resource"], "A novice needs an explicit destination, gradual knowledge bodies, guided practice, and support."),
+    trajectory("warp-sprint", "Warp Sprint", Math.min(100, (objectiveCount ? 30 : 0) + (sectionCount ? 25 : 0) + (!hierarchyGap ? 25 : 0) + (resourceCount ? 20 : 0)), ["objective", "section", "resource"], "A time-limited learner needs a scannable route with immediate purpose and direct resources."),
+    trajectory("mastery-orbit", "Mastery Orbit", Math.min(100, (objectiveCount ? 25 : 0) + (activityCount ? 25 : 0) + (assessmentCount ? 35 : 0) + (resourceCount ? 15 : 0)), ["objective", "activity", "assessment", "resource"], "An advanced learner needs application, evidence of mastery, and extension resources."),
+  ];
+  return { score, status: score >= 80 && !gaps.length ? "ready" : score >= 50 ? "review" : "blocked", nodes: visibleNodes, edges: visibleEdges, orphanIds, metrics: [{ label: "Knowledge bodies", value: String(sectionCount), detail: "Semantic sections" }, { label: "Objectives", value: String(objectiveCount), detail: "Explicit or action-oriented" }, { label: "Practice + proof", value: String(activityCount + assessmentCount), detail: `${activityCount} activities · ${assessmentCount} assessments` }, { label: "Resources", value: String(resourceCount), detail: "Linked or embedded" }], trajectories, gaps, generatedAt: new Date().toISOString() };
+}
+
 function stableContentFingerprint(value: string) {
   let hash = 0x811c9dc5;
   for (let index = 0; index < value.length; index += 1) {
@@ -784,6 +950,10 @@ export default function Home() {
   const [learningPulseResult, setLearningPulseResult] = useState<LearningExperienceResult | null>(null);
   const [semanticChangeOpen, setSemanticChangeOpen] = useState(false);
   const [semanticChangeResult, setSemanticChangeResult] = useState<SemanticChangeResult | null>(null);
+  const [learnerJourneyOpen, setLearnerJourneyOpen] = useState(false);
+  const [learnerJourneyResult, setLearnerJourneyResult] = useState<LearnerJourneyResult | null>(null);
+  const [learningConstellationOpen, setLearningConstellationOpen] = useState(false);
+  const [learningConstellationResult, setLearningConstellationResult] = useState<LearningConstellationResult | null>(null);
   const [readinessCenterOpen, setReadinessCenterOpen] = useState(false);
   const [publicationReadiness, setPublicationReadiness] = useState<PublicationReadinessResult | null>(null);
   const [accessibilityIssueCursor, setAccessibilityIssueCursor] = useState(-1);
@@ -2369,12 +2539,55 @@ export default function Home() {
     downloadBlob(new Blob([lines.join("\n")], { type: "text/plain;charset=utf-8" }), exportFileName(title, "semantic-change-impact.txt"));
     toast.success("Semantic Change Impact report downloaded");
   };
+  const runLearnerJourneySimulator = () => {
+    const result = createLearnerJourneySimulation(htmlRef.current, documentLanguage);
+    setLearnerJourneyResult(result);
+    setLearnerJourneyOpen(true);
+    toast[result.personas.some((persona) => persona.status === "blocked") ? "warning" : result.score >= 80 ? "success" : "warning"](`Inclusive Learner Journey: ${result.score}%`);
+  };
+  const downloadLearnerJourneyReport = () => {
+    const result = learnerJourneyResult || createLearnerJourneySimulation(htmlRef.current, documentLanguage);
+    const lines = [
+      "UltraPage Studio — Inclusive Learner Journey Simulator",
+      "=======================================================",
+      `Generated: ${new Date().toISOString()}`,
+      `Document: ${title || "Untitled document"}`,
+      `Language: ${languageLabels[documentLanguage]}`,
+      `Overall journey score: ${result.score}%`,
+      `Focus stops: ${result.focusStops.length} · Semantic reading stops: ${result.readingStops.length}`,
+      "",
+      ...result.personas.flatMap((persona) => [`${persona.status.toUpperCase()} · ${persona.label} · ${persona.score}%`, `  Evidence: ${persona.evidence}`, `  Recommendation: ${persona.recommendation}`, ""]),
+      "First focus stops",
+      ...result.focusStops.slice(0, 25).map((stop) => `${stop.order}. ${stop.role.toUpperCase()} · ${stop.label}`),
+      "",
+      "First semantic reading stops",
+      ...result.readingStops.slice(0, 40).map((stop) => `${stop.order}. ${stop.role.toUpperCase()} · ${stop.label}`),
+      "",
+      "This structural simulation supports inclusive-design review. It does not replace testing by learners or validation with actual assistive technology.",
+    ];
+    downloadBlob(new Blob([lines.join("\n")], { type: "text/plain;charset=utf-8" }), exportFileName(title, "inclusive-learner-journey.txt"));
+    toast.success("Learner Journey report downloaded");
+  };
+  const runLearningConstellation = () => {
+    const result = createLearningConstellation(htmlRef.current, title, documentLanguage);
+    setLearningConstellationResult(result);
+    setLearningConstellationOpen(true);
+    toast[result.status === "ready" ? "success" : "warning"](`Learning Constellation: ${result.score}%`);
+  };
+  const downloadLearningConstellation = () => {
+    const result = learningConstellationResult || createLearningConstellation(htmlRef.current, title, documentLanguage);
+    const artifact = { schema: "ultrapage-learning-constellation/v1", application: "UltraPage Studio", owner: "Eduardo Augusto García Rodríguez", document: { title: title || "Untitled document", language: documentLanguage, fingerprint: stableContentFingerprint(`${title}|${documentLanguage}|${htmlRef.current.replace(/\s+/g, " ").trim()}`) }, ...result, interoperability: { alignmentModel: "CASE-inspired relationship graph", certification: "Not a certified CASE package", learnerDataIncluded: false }, simulation: { mode: "science-fiction-inspired deterministic simulation", claim: "No extraterrestrial or quantum technology is claimed." } };
+    downloadBlob(new Blob([JSON.stringify(artifact, null, 2)], { type: "application/json;charset=utf-8" }), exportFileName(title, "learning-constellation.json"));
+    toast.success("Learning Constellation JSON downloaded");
+  };
   const runPublicationReadiness = () => {
     const designChecks = runPreviewAudit(false);
     const designScore = designChecks.length ? Math.round((designChecks.filter((check) => check.ok).length / designChecks.length) * 100) : 0;
     const lmsResults = createUniversalLmsPreflight(htmlRef.current, documentLanguage);
     const lmsScore = lmsResults.length ? Math.round(lmsResults.reduce((total, result) => total + result.score, 0) / lmsResults.length) : 0;
     const learning = createLearningExperiencePulse(htmlRef.current, documentLanguage);
+    const journey = createLearnerJourneySimulation(htmlRef.current, documentLanguage);
+    const constellation = createLearningConstellation(htmlRef.current, title, documentLanguage);
     let history: DraftSnapshot[] = [];
     try { history = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]") as DraftSnapshot[]; } catch { /* A damaged local history is treated as unavailable. */ }
     const change = history[0] ? createSemanticChangeImpact(htmlRef.current, history[0], title, documentLanguage) : null;
@@ -2385,10 +2598,12 @@ export default function Home() {
       { id: "lms", label: "LMS Portability", score: lmsScore, status: lmsResults.some((result) => result.score < 60) ? "blocked" : lmsResults.every((result) => result.ready) ? "ready" : "review", evidence: `${lmsResults.filter((result) => result.ready).length}/${lmsResults.length} LMS profiles ready · ${lmsResults.reduce((total, result) => total + result.checks.filter((check) => check.ok).length, 0)} of ${lmsResults.length * 5} signals passed`, recommendation: lmsResults.every((result) => result.ready) ? "Content is portable across all five destination profiles." : "Open LMS Preflight and review the destination-specific signals." },
       { id: "learning", label: "Learning Experience", score: learning.score, status: learning.score < 50 ? "blocked" : learning.score >= 80 ? "ready" : "review", evidence: `${learning.metrics.filter((metric) => metric.score >= 80).length}/6 dimensions strong · ${learning.wordCount} words · ${learning.readingMinutes} min reading`, recommendation: learning.score >= 80 ? "The page exposes a strong instructional path." : "Use Learning Pulse to strengthen the lowest-scoring dimensions." },
       { id: "change", label: "Change Safety", score: changeScore, status: change?.risk === "high" ? "blocked" : change?.risk === "low" ? "ready" : "review", evidence: change ? `${change.risk.toUpperCase()} impact · accessibility ${change.accessibilityBefore}% → ${change.accessibilityAfter}% · ${change.sensitiveChanges.length} sensitive signal${change.sensitiveChanges.length === 1 ? "" : "s"}` : "No manual-save baseline is available for comparison.", recommendation: !change ? "Save intentionally to establish a semantic comparison baseline." : change.risk === "low" ? "No sensitive regression was detected." : "Open Change Impact and review every sensitive modification." },
+      { id: "journey", label: "Learner Journey", score: journey.score, status: journey.personas.some((persona) => persona.status === "blocked") ? "blocked" : journey.score >= 80 ? "ready" : "review", evidence: `${journey.personas.filter((persona) => persona.status === "ready").length}/5 inclusive perspectives ready · ${journey.focusStops.length} focus stops · ${journey.readingStops.length} reading stops`, recommendation: journey.score >= 80 && !journey.personas.some((persona) => persona.status === "blocked") ? "The simulated learner journeys are coherent." : "Open Learner Simulator and review each persona-specific friction point." },
+      { id: "constellation", label: "Knowledge Architecture", score: constellation.score, status: constellation.status, evidence: `${constellation.nodes.length} semantic nodes · ${constellation.edges.length} relationships · ${constellation.orphanIds.length} unanchored`, recommendation: constellation.status === "ready" ? "The learning constellation forms a coherent knowledge path." : "Open Learning Constellation and close the highlighted architecture gaps." },
     ];
     const blockers = pillars.filter((pillar) => pillar.status === "blocked").map((pillar) => `${pillar.label}: ${pillar.evidence}`);
     const recommendations = pillars.filter((pillar) => pillar.status !== "ready").map((pillar) => `${pillar.label}: ${pillar.recommendation}`);
-    const weights: Record<ReadinessPillarId, number> = { accessibility: .25, design: .20, lms: .20, learning: .20, change: .15 };
+    const weights: Record<ReadinessPillarId, number> = { accessibility: .18, design: .13, lms: .14, learning: .14, change: .12, journey: .16, constellation: .13 };
     const score = Math.round(pillars.reduce((total, pillar) => total + pillar.score * weights[pillar.id], 0));
     const status: PublicationReadinessResult["status"] = blockers.length ? "BLOCKED" : pillars.every((pillar) => pillar.status === "ready") ? "READY" : "REVIEW";
     const result: PublicationReadinessResult = {
@@ -2424,7 +2639,9 @@ export default function Home() {
     if (pillar === "design") { runPreviewAudit(true); return; }
     if (pillar === "lms") { runUniversalLmsPreflight(); return; }
     if (pillar === "learning") { runLearningExperiencePulse(); return; }
-    runSemanticChangeImpact();
+    if (pillar === "change") { runSemanticChangeImpact(); return; }
+    if (pillar === "journey") { runLearnerJourneySimulator(); return; }
+    runLearningConstellation();
   };
   const plainText = html.replace(/<[^>]+>/g, " ").replace(/&nbsp;|&amp;|&lt;|&gt;|&#39;|&quot;/g, " ").replace(/\s+/g, " ").trim();
   const wordCount = plainText ? plainText.split(" ").length : 0;
@@ -2556,7 +2773,7 @@ export default function Home() {
       "open estiloapa": () => { window.location.href = "/tools#apa"; },
       "open txt test generator": () => { window.location.href = "/tools#txt"; },
       "open qti 2.1": () => { window.location.href = "/tools#qti"; },
-      "accessibility review": () => { setSidePanelTab("review"); setRightPanel(true); }, "preview audit": () => runPreviewAudit(true), "publication readiness command center": runPublicationReadiness, "universal lms preflight": runUniversalLmsPreflight, "learning experience pulse": runLearningExperiencePulse, "semantic change impact": runSemanticChangeImpact, "document outline": () => { setSidePanelTab("outline"); setRightPanel(true); },
+      "accessibility review": () => { setSidePanelTab("review"); setRightPanel(true); }, "preview audit": () => runPreviewAudit(true), "publication readiness command center": runPublicationReadiness, "inclusive learner journey simulator": runLearnerJourneySimulator, "learning constellation map": runLearningConstellation, "universal lms preflight": runUniversalLmsPreflight, "learning experience pulse": runLearningExperiencePulse, "semantic change impact": runSemanticChangeImpact, "document outline": () => { setSidePanelTab("outline"); setRightPanel(true); },
       "blackboard audit": runBlackboardPreviewAudit, "next preview issue": () => navigatePreviewIssue(1), "previous preview issue": () => navigatePreviewIssue(-1),
       "inspect selection html": inspectDesignSelectionInHtml, "open split view": openHtmlSplit,
       "table tools": () => selectionContext === "table" ? openRibbonTab("table") : toast.info("Select a table cell first"),
@@ -2616,6 +2833,8 @@ export default function Home() {
     <UniversalLmsPreflightDialog open={universalPreflightOpen} onOpenChange={setUniversalPreflightOpen} results={universalPreflightResults} activeProfile={lmsProfile} onSelectProfile={(profile) => { setLmsProfile(profile); setSaved(false); setUniversalPreflightOpen(false); runPreviewAudit(true, profile); }} onDownload={downloadUniversalPreflightReport}/>
     <LearningExperiencePulseDialog open={learningPulseOpen} onOpenChange={setLearningPulseOpen} result={learningPulseResult} onDownload={downloadLearningExperienceReport}/>
     <SemanticChangeImpactDialog open={semanticChangeOpen} onOpenChange={setSemanticChangeOpen} result={semanticChangeResult} onDownload={downloadSemanticChangeReport}/>
+    <LearnerJourneyDialog open={learnerJourneyOpen} onOpenChange={setLearnerJourneyOpen} result={learnerJourneyResult} onDownload={downloadLearnerJourneyReport}/>
+    <LearningConstellationDialog open={learningConstellationOpen} onOpenChange={setLearningConstellationOpen} result={learningConstellationResult} onDownload={downloadLearningConstellation}/>
     <PublicationReadinessDialog open={readinessCenterOpen} onOpenChange={setReadinessCenterOpen} result={publicationReadiness} onDownload={downloadReadinessPassport} onOpenPillar={openReadinessPillar}/>
     <input ref={localFileInput} className="sr-only" type="file" accept=".html,.htm,.txt,.docx,.ultrapage.json,.json,text/html,text/plain,application/json,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onChange={(event) => importLocalDocument(event.target.files?.[0])} aria-label="Open an HTML, TXT, Word, or UltraPage project file"/>
     <header className="topbar">
@@ -2634,7 +2853,7 @@ export default function Home() {
               {mode === "visual" && <div className="ribbon-tabs" role="tablist" aria-label="Editor ribbon">
                 {availableRibbonTabs.map((tab) => <button key={tab} id={`ribbon-tab-${tab}`} type="button" role="tab" data-ribbon-tab={tab} data-contextual={tab === "table" || tab === "picture" || tab === "link" ? tab : undefined} aria-controls="ribbon-panel" aria-selected={ribbonTab === tab} tabIndex={ribbonTab === tab ? 0 : -1} className={`${ribbonTab === tab ? "active" : ""} ${tab === "table" || tab === "picture" || tab === "link" ? `contextual ${tab}` : ""}`.trim()} onKeyDown={handleRibbonKeyDown} onClick={() => { setRibbonTab(tab); setRibbonCollapsed(false); }}>{tab[0].toUpperCase() + tab.slice(1)}{(tab === "table" || tab === "picture" || tab === "link") && <span className="sr-only"> contextual tools</span>}</button>)}
               </div>}
-              {mode === "visual" && <form className="ribbon-command-search" onSubmit={executeRibbonCommand} role="search"><Search aria-hidden="true"/><label className="sr-only" htmlFor="ribbon-command-input">Search ribbon commands</label><input id="ribbon-command-input" list="ribbon-command-options" value={ribbonCommand} onChange={(event) => setRibbonCommand(event.target.value)} placeholder="Search commands" autoComplete="off"/><datalist id="ribbon-command-options">{["New document","Open document","Save document","Home tools","Insert content","Page layout","References","Review","View","Native tools","Open EstiloAPA","Open TXT Test Generator","Open QTI 2.1","Table tools","Picture tools","Link tools","Accessibility review","Preview audit","Publication Readiness Command Center","Universal LMS Preflight","Learning Experience Pulse","Semantic Change Impact","Blackboard audit","Next preview issue","Previous preview issue","Download preview report","Document outline","Final preview","HTML editor","Desktop preview","Tablet preview","Mobile preview","Compare previews","Read aloud","Stop reading","Focus mode","Exit focus mode","Page width","Reset view","Show rulers","Hide rulers","Show margin guides","Hide margin guides","Show formatting marks","Hide formatting marks","Show structure map","Hide structure map","Table of contents","Copy","Cut","Paste plain text","Format painter","Clear formatting"].map((item) => <option key={item} value={item}/>)}</datalist></form>}
+              {mode === "visual" && <form className="ribbon-command-search" onSubmit={executeRibbonCommand} role="search"><Search aria-hidden="true"/><label className="sr-only" htmlFor="ribbon-command-input">Search ribbon commands</label><input id="ribbon-command-input" list="ribbon-command-options" value={ribbonCommand} onChange={(event) => setRibbonCommand(event.target.value)} placeholder="Search commands" autoComplete="off"/><datalist id="ribbon-command-options">{["New document","Open document","Save document","Home tools","Insert content","Page layout","References","Review","View","Native tools","Open EstiloAPA","Open TXT Test Generator","Open QTI 2.1","Table tools","Picture tools","Link tools","Accessibility review","Preview audit","Publication Readiness Command Center","Inclusive Learner Journey Simulator","Learning Constellation Map","Universal LMS Preflight","Learning Experience Pulse","Semantic Change Impact","Blackboard audit","Next preview issue","Previous preview issue","Download preview report","Document outline","Final preview","HTML editor","Desktop preview","Tablet preview","Mobile preview","Compare previews","Read aloud","Stop reading","Focus mode","Exit focus mode","Page width","Reset view","Show rulers","Hide rulers","Show margin guides","Hide margin guides","Show formatting marks","Hide formatting marks","Show structure map","Hide structure map","Table of contents","Copy","Cut","Paste plain text","Format painter","Clear formatting"].map((item) => <option key={item} value={item}/>)}</datalist></form>}
               {mode === "visual" && <div className="ribbon-quick" role="group" aria-label="Quick access"><button type="button" onClick={() => command("undo")} aria-label="Undo" title="Undo"><Undo2 /></button><button type="button" onClick={() => command("redo")} aria-label="Redo" title="Redo"><Redo2 /></button><button type="button" className={ribbonCollapsed ? "collapsed" : ""} aria-expanded={!ribbonCollapsed} aria-controls="ribbon-panel" onClick={() => setRibbonCollapsed((collapsed) => !collapsed)} aria-label={ribbonCollapsed ? "Expand ribbon" : "Collapse ribbon"} title={ribbonCollapsed ? "Expand ribbon" : "Collapse ribbon"}><ChevronDown /></button></div>}
             </div>
             {mode === "visual" && !ribbonCollapsed && <div id="ribbon-panel" className="ribbon-panel" role="tabpanel" aria-labelledby={`ribbon-tab-${ribbonTab}`}>
@@ -2667,7 +2886,7 @@ export default function Home() {
               </>}
               {ribbonTab === "review" && <>
                 <div className="ribbon-group ribbon-review-score"><div className="ribbon-group-body"><button type="button" className="ribbon-score-button" onClick={() => { setSidePanelTab("review"); setRightPanel(true); }}><span>{accessibilityScore}</span><strong>Accessibility</strong><small>{accessibilityIssueCount} issue{accessibilityIssueCount === 1 ? "" : "s"}</small></button></div><span className="ribbon-group-label">Review</span></div>
-                <div className="ribbon-group ribbon-preflight-group"><div className="ribbon-group-body ribbon-command-row"><button type="button" className="ribbon-command ribbon-ready-center-command" onClick={runPublicationReadiness}><Check/><span>Ready Center</span></button><button type="button" className="ribbon-command ribbon-preflight-command" onClick={runUniversalLmsPreflight}><Sparkles/><span>LMS Preflight</span></button><button type="button" className="ribbon-command ribbon-learning-pulse-command" onClick={runLearningExperiencePulse}><BookOpen/><span>Learning Pulse</span></button><button type="button" className="ribbon-command ribbon-change-impact-command" onClick={runSemanticChangeImpact}><History/><span>Change Impact</span></button></div><span className="ribbon-group-label">Publishing Intelligence</span></div>
+                <div className="ribbon-group ribbon-preflight-group"><div className="ribbon-group-body ribbon-command-row"><button type="button" className="ribbon-command ribbon-ready-center-command" onClick={runPublicationReadiness}><Check/><span>Ready Center</span></button><button type="button" className="ribbon-command ribbon-constellation-command" onClick={runLearningConstellation}><Orbit/><span>Constellation</span></button><button type="button" className="ribbon-command ribbon-journey-command" onClick={runLearnerJourneySimulator}><Accessibility/><span>Learner Simulator</span></button><button type="button" className="ribbon-command ribbon-preflight-command" onClick={runUniversalLmsPreflight}><Sparkles/><span>LMS Preflight</span></button><button type="button" className="ribbon-command ribbon-learning-pulse-command" onClick={runLearningExperiencePulse}><BookOpen/><span>Learning Pulse</span></button><button type="button" className="ribbon-command ribbon-change-impact-command" onClick={runSemanticChangeImpact}><History/><span>Change Impact</span></button></div><span className="ribbon-group-label">Publishing Intelligence</span></div>
                 <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row"><button type="button" className="ribbon-command" onClick={repairAccessibility}><Accessibility/><span>Safe Fix</span></button><button type="button" className={`ribbon-command ${spellCheckEnabled ? "is-active" : ""}`} aria-pressed={spellCheckEnabled} onClick={() => setSpellCheckEnabled((enabled) => !enabled)}><Check/><span>Spelling</span></button><button type="button" className={`ribbon-command ${readingAloud ? "is-active" : ""}`} aria-pressed={readingAloud} onClick={toggleReadAloud}><Volume2/><span>{readingAloud ? "Stop Reading" : "Read Aloud"}</span></button></div><span className="ribbon-group-label">Proofing</span></div>
                 <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row"><button type="button" className="ribbon-command" disabled={!accessibilityIssueMap.length} onClick={() => navigateAccessibilityIssue(-1)}><ChevronDown className="issue-previous"/><span>Previous</span></button><button type="button" className="ribbon-command" disabled={!accessibilityIssueMap.length} onClick={() => navigateAccessibilityIssue(1)}><ChevronDown/><span>Next Issue</span></button><button type="button" className="ribbon-command" onClick={() => { setSidePanelTab("review"); setRightPanel(true); }}><Eye/><span>Issue Map</span></button></div><span className="ribbon-group-label">Accessibility Navigation</span></div>
               </>}
@@ -2834,10 +3053,30 @@ function SemanticChangeImpactDialog({ open, onOpenChange, result, onDownload }: 
   return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent className="semantic-change-dialog"><DialogHeader><DialogTitle>Semantic Change Impact</DialogTitle><DialogDescription>Compares the current page with the latest manual save and highlights changes that may affect learners, accessibility, or LMS output.</DialogDescription></DialogHeader><div className={`semantic-change-hero ${result.risk}`}><span><History/></span><div><strong>{result.risk === "high" ? "High-impact review required" : result.risk === "medium" ? "Sensitive changes detected" : "Low-impact changes"}</strong><small>Baseline: {result.baselineTitle} · saved {savedAt}</small></div><b>{result.risk.toUpperCase()}</b></div><div className="semantic-change-summary"><article><span>+{result.wordsAdded}</span><small>Words added</small></article><article><span>−{result.wordsRemoved}</span><small>Words removed</small></article><article><span>{result.accessibilityBefore}%</span><small>Accessibility before</small></article><article className={result.accessibilityAfter < result.accessibilityBefore ? "decreased" : ""}><span>{result.accessibilityAfter}%</span><small>Accessibility now</small></article></div><div className="semantic-change-inventory" role="table" aria-label="Semantic change inventory"><div role="row" className="semantic-change-row header"><span role="columnheader">Element</span><span role="columnheader">Saved</span><span role="columnheader">Current</span><span role="columnheader">Change</span></div>{result.items.map((entry) => <div role="row" className={`semantic-change-row ${entry.sensitive && entry.delta ? "sensitive" : ""}`} key={entry.label}><span role="cell">{entry.label}{entry.sensitive && <small> sensitive</small>}</span><span role="cell">{entry.before}</span><span role="cell">{entry.after}</span><span role="cell">{entry.delta >= 0 ? "+" : ""}{entry.delta}</span></div>)}</div><section className="semantic-change-signals"><strong>Impact signals</strong>{result.sensitiveChanges.length ? result.sensitiveChanges.map((change) => <p key={change}><AlertTriangle/> {change}</p>) : <p className="clear"><Check/> No sensitive structural or accessibility changes detected.</p>}</section><p className="semantic-change-note"><History/> Save intentionally to establish a new comparison baseline. Automatic draft recovery does not replace that baseline.</p><div className="apa-actions"><Button variant="outline" onClick={onDownload}><Download size={16}/> Download Report</Button><Button onClick={() => onOpenChange(false)}>Close</Button></div></DialogContent></Dialog>;
 }
 
+function LearnerJourneyDialog({ open, onOpenChange, result, onDownload }: { open: boolean; onOpenChange: (open: boolean) => void; result: LearnerJourneyResult | null; onDownload: () => void }) {
+  const [activePersona, setActivePersona] = useState<LearnerJourneyPersonaId>("keyboard");
+  useEffect(() => { if (open) setActivePersona("keyboard"); }, [open, result]);
+  if (!result) return null;
+  const active = result.personas.find((persona) => persona.id === activePersona) || result.personas[0];
+  const preview = buildLearnerJourneyPreview(result, activePersona);
+  const PersonaIcon = activePersona === "keyboard" ? Keyboard : activePersona === "screen-reader" ? Volume2 : activePersona === "low-vision" ? Eye : activePersona === "mobile" ? Smartphone : BookOpen;
+  return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent className="learner-journey-dialog"><DialogHeader><DialogTitle>Inclusive Learner Journey Simulator</DialogTitle><DialogDescription>Experience-oriented structural previews for five learner perspectives, with evidence and friction points before LMS publication.</DialogDescription></DialogHeader><section className={`learner-journey-hero ${result.score >= 80 ? "ready" : result.score >= 50 ? "review" : "blocked"}`}><div className="learner-journey-score"><span>{result.score}</span><small>JOURNEY</small></div><div><strong>{result.score >= 80 ? "Inclusive journeys are coherent" : result.score >= 50 ? "Targeted journey review recommended" : "Learner barriers require attention"}</strong><p>{result.personas.filter((persona) => persona.status === "ready").length}/5 perspectives ready · {result.focusStops.length} focus stops · {result.readingStops.length} semantic reading stops</p></div></section><div className="learner-persona-tabs" role="tablist" aria-label="Learner simulation perspective">{result.personas.map((persona) => <button type="button" role="tab" aria-selected={persona.id === activePersona} className={`${persona.status} ${persona.id === activePersona ? "active" : ""}`} key={persona.id} onClick={() => setActivePersona(persona.id)}><span>{persona.id === "keyboard" ? <Keyboard/> : persona.id === "screen-reader" ? <Volume2/> : persona.id === "low-vision" ? <Eye/> : persona.id === "mobile" ? <Smartphone/> : <BookOpen/>}</span><strong>{persona.label}</strong><small>{persona.score}% · {persona.status}</small></button>)}</div><div className={`learner-simulation-workspace persona-${activePersona}`}><section className="learner-preview-stage"><header><span><PersonaIcon/> {active.label}</span><b>{active.score}%</b></header><iframe title={`${active.label} structural simulation`} srcDoc={preview} sandbox="allow-same-origin"/></section><aside className="learner-evidence-panel"><span className={`learner-persona-status ${active.status}`}>{active.status.toUpperCase()}</span><strong>Observable evidence</strong><p>{active.evidence}</p><strong>Recommended action</strong><p>{active.recommendation}</p>{activePersona === "keyboard" && <div className="learner-stop-list"><strong>Focus sequence</strong>{result.focusStops.length ? result.focusStops.slice(0, 12).map((stop) => <span key={`${stop.order}-${stop.label}`}><b>{stop.order}</b><small>{stop.role}</small>{stop.label}</span>) : <p>No interactive focus stops are present.</p>}</div>}{activePersona === "screen-reader" && <div className="learner-stop-list"><strong>Reading sequence</strong>{result.readingStops.slice(0, 12).map((stop) => <span key={`${stop.order}-${stop.label}`}><b>{stop.order}</b><small>{stop.role}</small>{stop.label}</span>)}</div>}</aside></div>{result.frictionPoints.length > 0 && <section className="learner-friction-list"><strong>Journey friction points</strong>{result.frictionPoints.map((friction) => <p key={friction}><AlertTriangle/> {friction}</p>)}</section>}<p className="learner-simulation-note"><Accessibility/> This simulator models observable structure, focus order, reflow, and content density. It supports review but does not emulate every assistive technology or replace testing with learners.</p><div className="apa-actions"><Button variant="outline" onClick={onDownload}><Download size={16}/> Download Journey Report</Button><Button onClick={() => onOpenChange(false)}>Close</Button></div></DialogContent></Dialog>;
+}
+
+function LearningConstellationDialog({ open, onOpenChange, result, onDownload }: { open: boolean; onOpenChange: (open: boolean) => void; result: LearningConstellationResult | null; onDownload: () => void }) {
+  const [selectedNodeId, setSelectedNodeId] = useState("course");
+  useEffect(() => { if (open) setSelectedNodeId("course"); }, [open, result]);
+  if (!result) return null;
+  const selected = result.nodes.find((node) => node.id === selectedNodeId) || result.nodes[0];
+  const colors: Record<ConstellationNodeKind, string> = { course: "#ffffff", objective: "#7ee7c4", section: "#9fc7ff", activity: "#f6c96b", assessment: "#ff8f9b", resource: "#c6a8ff" };
+  const nodeById = new Map(result.nodes.map((node) => [node.id, node]));
+  return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent className="learning-constellation-dialog"><DialogHeader><DialogTitle>Learning Constellation Map</DialogTitle><DialogDescription>A local semantic twin of the learning page: explore objectives, knowledge bodies, practice, evidence, and resources as one navigable system.</DialogDescription></DialogHeader><section className={`constellation-hero ${result.status}`}><div className="constellation-score"><Orbit/><span>{result.score}</span><small>COHERENCE</small></div><div><span>{result.status.toUpperCase()}</span><strong>{result.status === "ready" ? "The learning universe is connected" : result.status === "review" ? "A few knowledge routes need alignment" : "Critical learning bodies are missing"}</strong><p>{result.nodes.length} nodes · {result.edges.length} relationships · {result.orphanIds.length} unanchored</p></div></section><div className="constellation-metrics">{result.metrics.map((metric) => <article key={metric.label}><span>{metric.value}</span><strong>{metric.label}</strong><small>{metric.detail}</small></article>)}</div><section className="deep-space-trajectories"><header><span><Orbit/> Deep-Space Learning Trajectories</span><small>SCIENCE-FICTION-INSPIRED · DETERMINISTIC</small></header><div>{result.trajectories.map((trajectory) => <article className={trajectory.status} key={trajectory.id}><span>{trajectory.score}%</span><strong>{trajectory.label}</strong><small>{trajectory.status}</small><p>{trajectory.signal}</p><ol>{trajectory.path.length ? trajectory.path.map((stop) => <li key={stop}>{stop}</li>) : <li>No viable route detected</li>}</ol></article>)}</div></section><div className="constellation-workspace"><section className="constellation-space" aria-label="Interactive learning constellation"><svg viewBox="0 0 800 500" role="img" aria-labelledby="constellation-map-title constellation-map-description"><title id="constellation-map-title">Learning constellation relationship map</title><desc id="constellation-map-description">Select a node to inspect its type, evidence, and relationship to the learning page.</desc><defs><radialGradient id="space-glow"><stop offset="0" stopColor="#35276b"/><stop offset="1" stopColor="#090c20"/></radialGradient><filter id="node-glow"><feGaussianBlur stdDeviation="4" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><rect width="800" height="500" rx="22" fill="url(#space-glow)"/><g className="constellation-stars" aria-hidden="true">{Array.from({ length: 48 }, (_, index) => <circle key={index} cx={(index * 83) % 790 + 5} cy={(index * 47) % 490 + 5} r={index % 7 === 0 ? 1.8 : .8}/>)}</g><g className="constellation-edges" aria-hidden="true">{result.edges.map((edge) => { const source = nodeById.get(edge.source); const target = nodeById.get(edge.target); return source && target ? <line key={`${edge.source}-${edge.target}`} x1={source.x} y1={source.y} x2={target.x} y2={target.y} className={edge.relation}/> : null; })}</g><g>{result.nodes.map((node) => <g key={node.id} className={`constellation-node ${node.kind} ${selected.id === node.id ? "selected" : ""} ${result.orphanIds.includes(node.id) ? "orphan" : ""}`} role="button" tabIndex={0} aria-label={`${node.kind}: ${node.label}`} aria-pressed={selected.id === node.id} onClick={() => setSelectedNodeId(node.id)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setSelectedNodeId(node.id); } }}><circle cx={node.x} cy={node.y} r={node.weight} fill={colors[node.kind]} filter="url(#node-glow)"/><text x={node.x} y={node.y + node.weight + 15} textAnchor="middle">{node.label.length > 24 ? `${node.label.slice(0, 22)}…` : node.label}</text></g>)}</g></svg><div className="constellation-legend" aria-label="Node legend">{Object.entries(colors).map(([kind, color]) => <span key={kind}><i style={{ background: color }}/>{kind}</span>)}</div></section><aside className="constellation-inspector"><span className={`constellation-kind ${selected.kind}`}>{selected.kind}</span><strong>{selected.label}</strong><p>{selected.evidence}</p><dl><div><dt>Node ID</dt><dd>{selected.id}</dd></div><div><dt>Connected to</dt><dd>{selected.parentId ? nodeById.get(selected.parentId)?.label || selected.parentId : "Document nucleus"}</dd></div><div><dt>Signal</dt><dd>{result.orphanIds.includes(selected.id) ? "Needs stronger alignment" : "Connected"}</dd></div></dl>{result.gaps.length > 0 && <section><strong>Mission gaps</strong>{result.gaps.map((gap) => <p key={gap}><AlertTriangle/> {gap}</p>)}</section>}</aside></div><p className="constellation-note"><Orbit/> The map is generated deterministically on this device and contains no learner data. Its relationship model is CASE-inspired, but the JSON export is not a certified CASE package.</p><div className="apa-actions"><Button variant="outline" onClick={onDownload}><Download size={16}/> Download Constellation JSON</Button><Button onClick={() => onOpenChange(false)}>Close</Button></div></DialogContent></Dialog>;
+}
+
 function PublicationReadinessDialog({ open, onOpenChange, result, onDownload, onOpenPillar }: { open: boolean; onOpenChange: (open: boolean) => void; result: PublicationReadinessResult | null; onDownload: () => void; onOpenPillar: (pillar: ReadinessPillarId) => void }) {
   if (!result) return null;
   const checkedAt = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(result.generatedAt));
-  return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent className="readiness-center-dialog"><DialogHeader><DialogTitle>Publication Readiness Command Center</DialogTitle><DialogDescription>A single evidence-based release decision across accessibility, Design Preview, LMS portability, learning experience, and change safety.</DialogDescription></DialogHeader><section className={`readiness-center-hero ${result.status.toLowerCase()}`}><div className="readiness-center-ring" style={{ "--readiness-score": `${result.score * 3.6}deg` } as React.CSSProperties}><span>{result.score}</span><small>READINESS</small></div><div><span className="readiness-status">{result.status}</span><strong>{result.status === "READY" ? "Ready for controlled publication" : result.status === "BLOCKED" ? "Critical evidence blocks publication" : "Targeted review remains"}</strong><p>{checkedAt} · {lmsProfiles[result.profile].label} · {result.fingerprint}</p></div></section><div className="readiness-pillar-grid">{result.pillars.map((pillar) => <article className={`readiness-pillar ${pillar.status}`} key={pillar.id}><header><span>{pillar.status === "ready" ? <Check/> : <AlertTriangle/>}</span><div><strong>{pillar.label}</strong><small>{pillar.status.toUpperCase()}</small></div><b>{pillar.score}%</b></header><div className="readiness-meter"><span style={{ width: `${pillar.score}%` }}/></div><p>{pillar.evidence}</p><button type="button" onClick={() => onOpenPillar(pillar.id)}>Open evidence</button></article>)}</div>{result.blockers.length > 0 && <section className="readiness-blockers"><strong>Publication blockers</strong>{result.blockers.map((blocker) => <p key={blocker}><AlertTriangle/> {blocker}</p>)}</section>}{result.recommendations.length > 0 && <section className="readiness-recommendations"><strong>Next best actions</strong><ol>{result.recommendations.map((recommendation) => <li key={recommendation}>{recommendation}</li>)}</ol></section>}<p className="readiness-passport-note"><Stamp/> The Readiness Passport records this evidence, owner/creator, LMS profile, timestamp, and content fingerprint. The fingerprint identifies the audited state; it is not a digital signature or legal certification.</p><div className="apa-actions"><Button variant="outline" onClick={onDownload}><Download size={16}/> Download Passport</Button><Button onClick={() => onOpenChange(false)}>Close</Button></div></DialogContent></Dialog>;
+  return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent className="readiness-center-dialog"><DialogHeader><DialogTitle>Publication Readiness Command Center</DialogTitle><DialogDescription>A single evidence-based release decision across seven pillars, including inclusive journeys and knowledge architecture.</DialogDescription></DialogHeader><section className={`readiness-center-hero ${result.status.toLowerCase()}`}><div className="readiness-center-ring" style={{ "--readiness-score": `${result.score * 3.6}deg` } as React.CSSProperties}><span>{result.score}</span><small>READINESS</small></div><div><span className="readiness-status">{result.status}</span><strong>{result.status === "READY" ? "Ready for controlled publication" : result.status === "BLOCKED" ? "Critical evidence blocks publication" : "Targeted review remains"}</strong><p>{checkedAt} · {lmsProfiles[result.profile].label} · {result.fingerprint}</p></div></section><div className="readiness-pillar-grid">{result.pillars.map((pillar) => <article className={`readiness-pillar ${pillar.status}`} key={pillar.id}><header><span>{pillar.status === "ready" ? <Check/> : <AlertTriangle/>}</span><div><strong>{pillar.label}</strong><small>{pillar.status.toUpperCase()}</small></div><b>{pillar.score}%</b></header><div className="readiness-meter"><span style={{ width: `${pillar.score}%` }}/></div><p>{pillar.evidence}</p><button type="button" onClick={() => onOpenPillar(pillar.id)}>Open evidence</button></article>)}</div>{result.blockers.length > 0 && <section className="readiness-blockers"><strong>Publication blockers</strong>{result.blockers.map((blocker) => <p key={blocker}><AlertTriangle/> {blocker}</p>)}</section>}{result.recommendations.length > 0 && <section className="readiness-recommendations"><strong>Next best actions</strong><ol>{result.recommendations.map((recommendation) => <li key={recommendation}>{recommendation}</li>)}</ol></section>}<p className="readiness-passport-note"><Stamp/> The Readiness Passport records this evidence, owner/creator, LMS profile, timestamp, and content fingerprint. The fingerprint identifies the audited state; it is not a digital signature or legal certification.</p><div className="apa-actions"><Button variant="outline" onClick={onDownload}><Download size={16}/> Download Passport</Button><Button onClick={() => onOpenChange(false)}>Close</Button></div></DialogContent></Dialog>;
 }
 
 function PreviewCompareDialog({ open, onOpenChange, sourceDocument, lmsDocument, lmsLabel }: { open: boolean; onOpenChange: (open: boolean) => void; sourceDocument: string; lmsDocument: string; lmsLabel: string }) {
