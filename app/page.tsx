@@ -44,6 +44,9 @@ type LearningExperienceMetric = { id: "structure" | "objectives" | "guidance" | 
 type LearningExperienceResult = { score: number; wordCount: number; readingMinutes: number; metrics: LearningExperienceMetric[] };
 type SemanticChangeItem = { label: string; before: number; after: number; delta: number; sensitive?: boolean };
 type SemanticChangeResult = { baselineTitle: string; baselineSavedAt: string; risk: "low" | "medium" | "high"; wordsAdded: number; wordsRemoved: number; accessibilityBefore: number; accessibilityAfter: number; sensitiveChanges: string[]; items: SemanticChangeItem[] };
+type ReadinessPillarId = "accessibility" | "design" | "lms" | "learning" | "change";
+type ReadinessPillar = { id: ReadinessPillarId; label: string; score: number; status: "ready" | "review" | "blocked"; evidence: string; recommendation: string };
+type PublicationReadinessResult = { status: "READY" | "REVIEW" | "BLOCKED"; score: number; generatedAt: string; fingerprint: string; profile: LmsProfile; owner: string; pillars: ReadinessPillar[]; blockers: string[]; recommendations: string[] };
 type HtmlDiagnostic = { severity: "error" | "warning"; message: string; line: number; column: number; offset: number; length: number };
 type HtmlTagCrumb = { name: string; offset: number };
 type HtmlLiveSelection = { tag: string; ordinal: number; offset: number; length: number; line: number; column: number; label: string; selectedText?: string };
@@ -735,6 +738,15 @@ function createSemanticChangeImpact(currentHtml: string, baseline: DraftSnapshot
   return { baselineTitle: baseline.title, baselineSavedAt: baseline.savedAt, risk, wordsAdded, wordsRemoved, accessibilityBefore, accessibilityAfter, sensitiveChanges, items };
 }
 
+function stableContentFingerprint(value: string) {
+  let hash = 0x811c9dc5;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return `UP-${(hash >>> 0).toString(16).toUpperCase().padStart(8, "0")}`;
+}
+
 export default function Home() {
   const editor = useRef<HTMLDivElement>(null);
   const codeEditor = useRef<HTMLTextAreaElement>(null);
@@ -772,6 +784,8 @@ export default function Home() {
   const [learningPulseResult, setLearningPulseResult] = useState<LearningExperienceResult | null>(null);
   const [semanticChangeOpen, setSemanticChangeOpen] = useState(false);
   const [semanticChangeResult, setSemanticChangeResult] = useState<SemanticChangeResult | null>(null);
+  const [readinessCenterOpen, setReadinessCenterOpen] = useState(false);
+  const [publicationReadiness, setPublicationReadiness] = useState<PublicationReadinessResult | null>(null);
   const [accessibilityIssueCursor, setAccessibilityIssueCursor] = useState(-1);
   const [previewIssueCursor, setPreviewIssueCursor] = useState(-1);
   const [rightPanel, setRightPanel] = useState(false);
@@ -884,7 +898,7 @@ export default function Home() {
   }, [accessibilityHighlight, mode]);
   const runPreviewAudit = useCallback((announce = false, profileOverride?: LmsProfile) => {
     const canvas = editor.current;
-    if (!canvas) return;
+    if (!canvas) return [] as PreviewAuditCheck[];
     const auditProfile = profileOverride || lmsProfile;
     const images = Array.from(canvas.querySelectorAll<HTMLImageElement>("img"));
     const tables = Array.from(canvas.querySelectorAll<HTMLTableElement>("table"));
@@ -1021,6 +1035,7 @@ export default function Home() {
       setRightPanel(true);
       toast[passed === checks.length ? "success" : "warning"](`Preview audit: ${passed}/${checks.length} checks passed`);
     }
+    return checks;
   }, [documentLanguage, lmsProfile]);
   useEffect(() => {
     if (mode !== "visual") return;
@@ -2354,6 +2369,63 @@ export default function Home() {
     downloadBlob(new Blob([lines.join("\n")], { type: "text/plain;charset=utf-8" }), exportFileName(title, "semantic-change-impact.txt"));
     toast.success("Semantic Change Impact report downloaded");
   };
+  const runPublicationReadiness = () => {
+    const designChecks = runPreviewAudit(false);
+    const designScore = designChecks.length ? Math.round((designChecks.filter((check) => check.ok).length / designChecks.length) * 100) : 0;
+    const lmsResults = createUniversalLmsPreflight(htmlRef.current, documentLanguage);
+    const lmsScore = lmsResults.length ? Math.round(lmsResults.reduce((total, result) => total + result.score, 0) / lmsResults.length) : 0;
+    const learning = createLearningExperiencePulse(htmlRef.current, documentLanguage);
+    let history: DraftSnapshot[] = [];
+    try { history = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]") as DraftSnapshot[]; } catch { /* A damaged local history is treated as unavailable. */ }
+    const change = history[0] ? createSemanticChangeImpact(htmlRef.current, history[0], title, documentLanguage) : null;
+    const changeScore = !change ? 70 : change.risk === "low" ? 100 : change.risk === "medium" ? 65 : 20;
+    const pillars: ReadinessPillar[] = [
+      { id: "accessibility", label: "Accessibility", score: accessibilityScore, status: accessibilityScore < 70 ? "blocked" : accessibilityScore === 100 ? "ready" : "review", evidence: `${pageChecks.filter((check) => check.ok).length}/${pageChecks.length} automated checks passed · ${accessibilityIssueCount} exact issue${accessibilityIssueCount === 1 ? "" : "s"}`, recommendation: accessibilityScore === 100 ? "Accessibility checks are clear." : "Open the issue map and resolve every affected location." },
+      { id: "design", label: "Design Preview", score: designScore, status: designScore < 70 ? "blocked" : designScore === 100 ? "ready" : "review", evidence: `${designChecks.filter((check) => check.ok).length}/${designChecks.length || PREVIEW_AUDIT_CHECK_COUNT} visual, responsive, and parity controls passed`, recommendation: designScore === 100 ? "The current preview is stable across the tested conditions." : "Run Preview Audit and inspect the first failed control." },
+      { id: "lms", label: "LMS Portability", score: lmsScore, status: lmsResults.some((result) => result.score < 60) ? "blocked" : lmsResults.every((result) => result.ready) ? "ready" : "review", evidence: `${lmsResults.filter((result) => result.ready).length}/${lmsResults.length} LMS profiles ready · ${lmsResults.reduce((total, result) => total + result.checks.filter((check) => check.ok).length, 0)} of ${lmsResults.length * 5} signals passed`, recommendation: lmsResults.every((result) => result.ready) ? "Content is portable across all five destination profiles." : "Open LMS Preflight and review the destination-specific signals." },
+      { id: "learning", label: "Learning Experience", score: learning.score, status: learning.score < 50 ? "blocked" : learning.score >= 80 ? "ready" : "review", evidence: `${learning.metrics.filter((metric) => metric.score >= 80).length}/6 dimensions strong · ${learning.wordCount} words · ${learning.readingMinutes} min reading`, recommendation: learning.score >= 80 ? "The page exposes a strong instructional path." : "Use Learning Pulse to strengthen the lowest-scoring dimensions." },
+      { id: "change", label: "Change Safety", score: changeScore, status: change?.risk === "high" ? "blocked" : change?.risk === "low" ? "ready" : "review", evidence: change ? `${change.risk.toUpperCase()} impact · accessibility ${change.accessibilityBefore}% → ${change.accessibilityAfter}% · ${change.sensitiveChanges.length} sensitive signal${change.sensitiveChanges.length === 1 ? "" : "s"}` : "No manual-save baseline is available for comparison.", recommendation: !change ? "Save intentionally to establish a semantic comparison baseline." : change.risk === "low" ? "No sensitive regression was detected." : "Open Change Impact and review every sensitive modification." },
+    ];
+    const blockers = pillars.filter((pillar) => pillar.status === "blocked").map((pillar) => `${pillar.label}: ${pillar.evidence}`);
+    const recommendations = pillars.filter((pillar) => pillar.status !== "ready").map((pillar) => `${pillar.label}: ${pillar.recommendation}`);
+    const weights: Record<ReadinessPillarId, number> = { accessibility: .25, design: .20, lms: .20, learning: .20, change: .15 };
+    const score = Math.round(pillars.reduce((total, pillar) => total + pillar.score * weights[pillar.id], 0));
+    const status: PublicationReadinessResult["status"] = blockers.length ? "BLOCKED" : pillars.every((pillar) => pillar.status === "ready") ? "READY" : "REVIEW";
+    const result: PublicationReadinessResult = {
+      status,
+      score,
+      generatedAt: new Date().toISOString(),
+      fingerprint: stableContentFingerprint(`${title.trim()}|${documentLanguage}|${lmsProfile}|${htmlRef.current.replace(/\s+/g, " ").trim()}`),
+      profile: lmsProfile,
+      owner: "Eduardo Augusto García Rodríguez",
+      pillars,
+      blockers,
+      recommendations,
+    };
+    setPublicationReadiness(result);
+    setReadinessCenterOpen(true);
+    toast[status === "READY" ? "success" : "warning"](`Publication readiness: ${status} · ${score}%`);
+  };
+  const downloadReadinessPassport = () => {
+    if (!publicationReadiness) return;
+    const passport = {
+      schema: "ultrapage-readiness-passport/v1",
+      application: "UltraPage Studio",
+      document: { title: title || "Untitled document", language: documentLanguage, targetLms: lmsProfiles[publicationReadiness.profile].label },
+      ...publicationReadiness,
+      notice: "The fingerprint identifies this audited content state; it is not a digital signature or legal certification.",
+    };
+    downloadBlob(new Blob([JSON.stringify(passport, null, 2)], { type: "application/json;charset=utf-8" }), exportFileName(title, "readiness-passport.json"));
+    toast.success("Readiness Passport downloaded", { description: `${publicationReadiness.status} · ${publicationReadiness.fingerprint}` });
+  };
+  const openReadinessPillar = (pillar: ReadinessPillarId) => {
+    setReadinessCenterOpen(false);
+    if (pillar === "accessibility") { setSidePanelTab("review"); setRightPanel(true); return; }
+    if (pillar === "design") { runPreviewAudit(true); return; }
+    if (pillar === "lms") { runUniversalLmsPreflight(); return; }
+    if (pillar === "learning") { runLearningExperiencePulse(); return; }
+    runSemanticChangeImpact();
+  };
   const plainText = html.replace(/<[^>]+>/g, " ").replace(/&nbsp;|&amp;|&lt;|&gt;|&#39;|&quot;/g, " ").replace(/\s+/g, " ").trim();
   const wordCount = plainText ? plainText.split(" ").length : 0;
   const characterCount = plainText.length;
@@ -2484,7 +2556,7 @@ export default function Home() {
       "open estiloapa": () => { window.location.href = "/tools#apa"; },
       "open txt test generator": () => { window.location.href = "/tools#txt"; },
       "open qti 2.1": () => { window.location.href = "/tools#qti"; },
-      "accessibility review": () => { setSidePanelTab("review"); setRightPanel(true); }, "preview audit": () => runPreviewAudit(true), "universal lms preflight": runUniversalLmsPreflight, "learning experience pulse": runLearningExperiencePulse, "semantic change impact": runSemanticChangeImpact, "document outline": () => { setSidePanelTab("outline"); setRightPanel(true); },
+      "accessibility review": () => { setSidePanelTab("review"); setRightPanel(true); }, "preview audit": () => runPreviewAudit(true), "publication readiness command center": runPublicationReadiness, "universal lms preflight": runUniversalLmsPreflight, "learning experience pulse": runLearningExperiencePulse, "semantic change impact": runSemanticChangeImpact, "document outline": () => { setSidePanelTab("outline"); setRightPanel(true); },
       "blackboard audit": runBlackboardPreviewAudit, "next preview issue": () => navigatePreviewIssue(1), "previous preview issue": () => navigatePreviewIssue(-1),
       "inspect selection html": inspectDesignSelectionInHtml, "open split view": openHtmlSplit,
       "table tools": () => selectionContext === "table" ? openRibbonTab("table") : toast.info("Select a table cell first"),
@@ -2544,6 +2616,7 @@ export default function Home() {
     <UniversalLmsPreflightDialog open={universalPreflightOpen} onOpenChange={setUniversalPreflightOpen} results={universalPreflightResults} activeProfile={lmsProfile} onSelectProfile={(profile) => { setLmsProfile(profile); setSaved(false); setUniversalPreflightOpen(false); runPreviewAudit(true, profile); }} onDownload={downloadUniversalPreflightReport}/>
     <LearningExperiencePulseDialog open={learningPulseOpen} onOpenChange={setLearningPulseOpen} result={learningPulseResult} onDownload={downloadLearningExperienceReport}/>
     <SemanticChangeImpactDialog open={semanticChangeOpen} onOpenChange={setSemanticChangeOpen} result={semanticChangeResult} onDownload={downloadSemanticChangeReport}/>
+    <PublicationReadinessDialog open={readinessCenterOpen} onOpenChange={setReadinessCenterOpen} result={publicationReadiness} onDownload={downloadReadinessPassport} onOpenPillar={openReadinessPillar}/>
     <input ref={localFileInput} className="sr-only" type="file" accept=".html,.htm,.txt,.docx,.ultrapage.json,.json,text/html,text/plain,application/json,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onChange={(event) => importLocalDocument(event.target.files?.[0])} aria-label="Open an HTML, TXT, Word, or UltraPage project file"/>
     <header className="topbar">
       <div className="brandmark" aria-hidden="true"><img src="/brand/ultrapage-mark.svg" alt="" /></div><div className="brandcopy"><strong>UltraPage Studio</strong><span>Accessible editor for every LMS</span></div>
@@ -2561,7 +2634,7 @@ export default function Home() {
               {mode === "visual" && <div className="ribbon-tabs" role="tablist" aria-label="Editor ribbon">
                 {availableRibbonTabs.map((tab) => <button key={tab} id={`ribbon-tab-${tab}`} type="button" role="tab" data-ribbon-tab={tab} data-contextual={tab === "table" || tab === "picture" || tab === "link" ? tab : undefined} aria-controls="ribbon-panel" aria-selected={ribbonTab === tab} tabIndex={ribbonTab === tab ? 0 : -1} className={`${ribbonTab === tab ? "active" : ""} ${tab === "table" || tab === "picture" || tab === "link" ? `contextual ${tab}` : ""}`.trim()} onKeyDown={handleRibbonKeyDown} onClick={() => { setRibbonTab(tab); setRibbonCollapsed(false); }}>{tab[0].toUpperCase() + tab.slice(1)}{(tab === "table" || tab === "picture" || tab === "link") && <span className="sr-only"> contextual tools</span>}</button>)}
               </div>}
-              {mode === "visual" && <form className="ribbon-command-search" onSubmit={executeRibbonCommand} role="search"><Search aria-hidden="true"/><label className="sr-only" htmlFor="ribbon-command-input">Search ribbon commands</label><input id="ribbon-command-input" list="ribbon-command-options" value={ribbonCommand} onChange={(event) => setRibbonCommand(event.target.value)} placeholder="Search commands" autoComplete="off"/><datalist id="ribbon-command-options">{["New document","Open document","Save document","Home tools","Insert content","Page layout","References","Review","View","Native tools","Open EstiloAPA","Open TXT Test Generator","Open QTI 2.1","Table tools","Picture tools","Link tools","Accessibility review","Preview audit","Universal LMS Preflight","Learning Experience Pulse","Semantic Change Impact","Blackboard audit","Next preview issue","Previous preview issue","Download preview report","Document outline","Final preview","HTML editor","Desktop preview","Tablet preview","Mobile preview","Compare previews","Read aloud","Stop reading","Focus mode","Exit focus mode","Page width","Reset view","Show rulers","Hide rulers","Show margin guides","Hide margin guides","Show formatting marks","Hide formatting marks","Show structure map","Hide structure map","Table of contents","Copy","Cut","Paste plain text","Format painter","Clear formatting"].map((item) => <option key={item} value={item}/>)}</datalist></form>}
+              {mode === "visual" && <form className="ribbon-command-search" onSubmit={executeRibbonCommand} role="search"><Search aria-hidden="true"/><label className="sr-only" htmlFor="ribbon-command-input">Search ribbon commands</label><input id="ribbon-command-input" list="ribbon-command-options" value={ribbonCommand} onChange={(event) => setRibbonCommand(event.target.value)} placeholder="Search commands" autoComplete="off"/><datalist id="ribbon-command-options">{["New document","Open document","Save document","Home tools","Insert content","Page layout","References","Review","View","Native tools","Open EstiloAPA","Open TXT Test Generator","Open QTI 2.1","Table tools","Picture tools","Link tools","Accessibility review","Preview audit","Publication Readiness Command Center","Universal LMS Preflight","Learning Experience Pulse","Semantic Change Impact","Blackboard audit","Next preview issue","Previous preview issue","Download preview report","Document outline","Final preview","HTML editor","Desktop preview","Tablet preview","Mobile preview","Compare previews","Read aloud","Stop reading","Focus mode","Exit focus mode","Page width","Reset view","Show rulers","Hide rulers","Show margin guides","Hide margin guides","Show formatting marks","Hide formatting marks","Show structure map","Hide structure map","Table of contents","Copy","Cut","Paste plain text","Format painter","Clear formatting"].map((item) => <option key={item} value={item}/>)}</datalist></form>}
               {mode === "visual" && <div className="ribbon-quick" role="group" aria-label="Quick access"><button type="button" onClick={() => command("undo")} aria-label="Undo" title="Undo"><Undo2 /></button><button type="button" onClick={() => command("redo")} aria-label="Redo" title="Redo"><Redo2 /></button><button type="button" className={ribbonCollapsed ? "collapsed" : ""} aria-expanded={!ribbonCollapsed} aria-controls="ribbon-panel" onClick={() => setRibbonCollapsed((collapsed) => !collapsed)} aria-label={ribbonCollapsed ? "Expand ribbon" : "Collapse ribbon"} title={ribbonCollapsed ? "Expand ribbon" : "Collapse ribbon"}><ChevronDown /></button></div>}
             </div>
             {mode === "visual" && !ribbonCollapsed && <div id="ribbon-panel" className="ribbon-panel" role="tabpanel" aria-labelledby={`ribbon-tab-${ribbonTab}`}>
@@ -2594,7 +2667,7 @@ export default function Home() {
               </>}
               {ribbonTab === "review" && <>
                 <div className="ribbon-group ribbon-review-score"><div className="ribbon-group-body"><button type="button" className="ribbon-score-button" onClick={() => { setSidePanelTab("review"); setRightPanel(true); }}><span>{accessibilityScore}</span><strong>Accessibility</strong><small>{accessibilityIssueCount} issue{accessibilityIssueCount === 1 ? "" : "s"}</small></button></div><span className="ribbon-group-label">Review</span></div>
-                <div className="ribbon-group ribbon-preflight-group"><div className="ribbon-group-body ribbon-command-row"><button type="button" className="ribbon-command ribbon-preflight-command" onClick={runUniversalLmsPreflight}><Sparkles/><span>LMS Preflight</span></button><button type="button" className="ribbon-command ribbon-learning-pulse-command" onClick={runLearningExperiencePulse}><BookOpen/><span>Learning Pulse</span></button><button type="button" className="ribbon-command ribbon-change-impact-command" onClick={runSemanticChangeImpact}><History/><span>Change Impact</span></button></div><span className="ribbon-group-label">Publishing Intelligence</span></div>
+                <div className="ribbon-group ribbon-preflight-group"><div className="ribbon-group-body ribbon-command-row"><button type="button" className="ribbon-command ribbon-ready-center-command" onClick={runPublicationReadiness}><Check/><span>Ready Center</span></button><button type="button" className="ribbon-command ribbon-preflight-command" onClick={runUniversalLmsPreflight}><Sparkles/><span>LMS Preflight</span></button><button type="button" className="ribbon-command ribbon-learning-pulse-command" onClick={runLearningExperiencePulse}><BookOpen/><span>Learning Pulse</span></button><button type="button" className="ribbon-command ribbon-change-impact-command" onClick={runSemanticChangeImpact}><History/><span>Change Impact</span></button></div><span className="ribbon-group-label">Publishing Intelligence</span></div>
                 <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row"><button type="button" className="ribbon-command" onClick={repairAccessibility}><Accessibility/><span>Safe Fix</span></button><button type="button" className={`ribbon-command ${spellCheckEnabled ? "is-active" : ""}`} aria-pressed={spellCheckEnabled} onClick={() => setSpellCheckEnabled((enabled) => !enabled)}><Check/><span>Spelling</span></button><button type="button" className={`ribbon-command ${readingAloud ? "is-active" : ""}`} aria-pressed={readingAloud} onClick={toggleReadAloud}><Volume2/><span>{readingAloud ? "Stop Reading" : "Read Aloud"}</span></button></div><span className="ribbon-group-label">Proofing</span></div>
                 <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row"><button type="button" className="ribbon-command" disabled={!accessibilityIssueMap.length} onClick={() => navigateAccessibilityIssue(-1)}><ChevronDown className="issue-previous"/><span>Previous</span></button><button type="button" className="ribbon-command" disabled={!accessibilityIssueMap.length} onClick={() => navigateAccessibilityIssue(1)}><ChevronDown/><span>Next Issue</span></button><button type="button" className="ribbon-command" onClick={() => { setSidePanelTab("review"); setRightPanel(true); }}><Eye/><span>Issue Map</span></button></div><span className="ribbon-group-label">Accessibility Navigation</span></div>
               </>}
@@ -2759,6 +2832,12 @@ function SemanticChangeImpactDialog({ open, onOpenChange, result, onDownload }: 
   if (!result) return null;
   const savedAt = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(result.baselineSavedAt));
   return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent className="semantic-change-dialog"><DialogHeader><DialogTitle>Semantic Change Impact</DialogTitle><DialogDescription>Compares the current page with the latest manual save and highlights changes that may affect learners, accessibility, or LMS output.</DialogDescription></DialogHeader><div className={`semantic-change-hero ${result.risk}`}><span><History/></span><div><strong>{result.risk === "high" ? "High-impact review required" : result.risk === "medium" ? "Sensitive changes detected" : "Low-impact changes"}</strong><small>Baseline: {result.baselineTitle} · saved {savedAt}</small></div><b>{result.risk.toUpperCase()}</b></div><div className="semantic-change-summary"><article><span>+{result.wordsAdded}</span><small>Words added</small></article><article><span>−{result.wordsRemoved}</span><small>Words removed</small></article><article><span>{result.accessibilityBefore}%</span><small>Accessibility before</small></article><article className={result.accessibilityAfter < result.accessibilityBefore ? "decreased" : ""}><span>{result.accessibilityAfter}%</span><small>Accessibility now</small></article></div><div className="semantic-change-inventory" role="table" aria-label="Semantic change inventory"><div role="row" className="semantic-change-row header"><span role="columnheader">Element</span><span role="columnheader">Saved</span><span role="columnheader">Current</span><span role="columnheader">Change</span></div>{result.items.map((entry) => <div role="row" className={`semantic-change-row ${entry.sensitive && entry.delta ? "sensitive" : ""}`} key={entry.label}><span role="cell">{entry.label}{entry.sensitive && <small> sensitive</small>}</span><span role="cell">{entry.before}</span><span role="cell">{entry.after}</span><span role="cell">{entry.delta >= 0 ? "+" : ""}{entry.delta}</span></div>)}</div><section className="semantic-change-signals"><strong>Impact signals</strong>{result.sensitiveChanges.length ? result.sensitiveChanges.map((change) => <p key={change}><AlertTriangle/> {change}</p>) : <p className="clear"><Check/> No sensitive structural or accessibility changes detected.</p>}</section><p className="semantic-change-note"><History/> Save intentionally to establish a new comparison baseline. Automatic draft recovery does not replace that baseline.</p><div className="apa-actions"><Button variant="outline" onClick={onDownload}><Download size={16}/> Download Report</Button><Button onClick={() => onOpenChange(false)}>Close</Button></div></DialogContent></Dialog>;
+}
+
+function PublicationReadinessDialog({ open, onOpenChange, result, onDownload, onOpenPillar }: { open: boolean; onOpenChange: (open: boolean) => void; result: PublicationReadinessResult | null; onDownload: () => void; onOpenPillar: (pillar: ReadinessPillarId) => void }) {
+  if (!result) return null;
+  const checkedAt = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(result.generatedAt));
+  return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent className="readiness-center-dialog"><DialogHeader><DialogTitle>Publication Readiness Command Center</DialogTitle><DialogDescription>A single evidence-based release decision across accessibility, Design Preview, LMS portability, learning experience, and change safety.</DialogDescription></DialogHeader><section className={`readiness-center-hero ${result.status.toLowerCase()}`}><div className="readiness-center-ring" style={{ "--readiness-score": `${result.score * 3.6}deg` } as React.CSSProperties}><span>{result.score}</span><small>READINESS</small></div><div><span className="readiness-status">{result.status}</span><strong>{result.status === "READY" ? "Ready for controlled publication" : result.status === "BLOCKED" ? "Critical evidence blocks publication" : "Targeted review remains"}</strong><p>{checkedAt} · {lmsProfiles[result.profile].label} · {result.fingerprint}</p></div></section><div className="readiness-pillar-grid">{result.pillars.map((pillar) => <article className={`readiness-pillar ${pillar.status}`} key={pillar.id}><header><span>{pillar.status === "ready" ? <Check/> : <AlertTriangle/>}</span><div><strong>{pillar.label}</strong><small>{pillar.status.toUpperCase()}</small></div><b>{pillar.score}%</b></header><div className="readiness-meter"><span style={{ width: `${pillar.score}%` }}/></div><p>{pillar.evidence}</p><button type="button" onClick={() => onOpenPillar(pillar.id)}>Open evidence</button></article>)}</div>{result.blockers.length > 0 && <section className="readiness-blockers"><strong>Publication blockers</strong>{result.blockers.map((blocker) => <p key={blocker}><AlertTriangle/> {blocker}</p>)}</section>}{result.recommendations.length > 0 && <section className="readiness-recommendations"><strong>Next best actions</strong><ol>{result.recommendations.map((recommendation) => <li key={recommendation}>{recommendation}</li>)}</ol></section>}<p className="readiness-passport-note"><Stamp/> The Readiness Passport records this evidence, owner/creator, LMS profile, timestamp, and content fingerprint. The fingerprint identifies the audited state; it is not a digital signature or legal certification.</p><div className="apa-actions"><Button variant="outline" onClick={onDownload}><Download size={16}/> Download Passport</Button><Button onClick={() => onOpenChange(false)}>Close</Button></div></DialogContent></Dialog>;
 }
 
 function PreviewCompareDialog({ open, onOpenChange, sourceDocument, lmsDocument, lmsLabel }: { open: boolean; onOpenChange: (open: boolean) => void; sourceDocument: string; lmsDocument: string; lmsLabel: string }) {
