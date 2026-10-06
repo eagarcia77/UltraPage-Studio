@@ -78,6 +78,12 @@ requireSource('"cognitive"', "cognitive-load learner perspective");
 requireSource("does not emulate every assistive technology", "responsible simulation limitation");
 requireSource("inclusive-learner-journey.txt", "downloadable learner journey report");
 requireSource('id: "journey"', "learner journey Publication Readiness pillar");
+requireSource("createLearningConstellation", "Learning Constellation semantic graph engine");
+requireSource("Learning Constellation Map", "interactive learning constellation dialog");
+requireSource("learning-constellation.json", "downloadable Learning Constellation graph");
+requireSource("CASE-inspired relationship graph", "responsible interoperability positioning");
+requireSource("learnerDataIncluded: false", "explicit learner-data exclusion");
+requireSource('id: "constellation"', "knowledge architecture Publication Readiness pillar");
 requireSource("Keyboard-scrollable tables", "keyboard-scrollable table audit");
 requireSource("applyPreviewKeyboardSemantics", "keyboard table semantics normalization");
 requireSource('role="presentation" aria-hidden="true"', "explicit decorative semantics");
@@ -102,6 +108,8 @@ requireStyle(".readiness-pillar-grid", "Publication Readiness evidence grid styl
 requireStyle(".ribbon-ready-center-command", "Ribbon Ready Center command styling");
 requireStyle(".learner-simulation-workspace", "learner perspective simulation workspace styling");
 requireStyle(".ribbon-journey-command", "Ribbon Learner Simulator command styling");
+requireStyle(".constellation-workspace", "interactive constellation workspace styling");
+requireStyle(".ribbon-constellation-command", "Ribbon Learning Constellation command styling");
 
 const extractFunction = (name) => {
   const functionStart = page.indexOf(`function ${name}`);
@@ -166,4 +174,4 @@ if (findings.length) {
   process.exit(1);
 }
 
-console.log("✓ Design Preview audit passed: six-pillar Publication Readiness Command Center, Inclusive Learner Journey Simulator, Readiness Passport, 23-point quality gate, 25-signal Universal LMS Preflight, six-dimension Learning Experience Pulse, Semantic Change Impact, clipboard images, Blackboard output, keyboard tables, issue navigation, persistent selection, behavior-tested Live/Design-to-HTML mapping, and exact accessibility checks");
+console.log("✓ Design Preview audit passed: seven-pillar Publication Readiness Command Center, Learning Constellation Map, Inclusive Learner Journey Simulator, Readiness Passport, 23-point quality gate, 25-signal Universal LMS Preflight, six-dimension Learning Experience Pulse, Semantic Change Impact, clipboard images, Blackboard output, keyboard tables, issue navigation, persistent selection, behavior-tested Live/Design-to-HTML mapping, and exact accessibility checks");
