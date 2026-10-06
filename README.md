@@ -23,6 +23,7 @@ Editor visual para crear contenido accesible y portátil entre Blackboard Ultra,
 
 - Edición visual y edición directa de HTML.
 - Perfiles de salida para Universal LMS, Blackboard Ultra, Canvas, Moodle y D2L Brightspace.
+- Publication Readiness Command Center con estado `READY`, `REVIEW` o `BLOCKED`, cinco pilares de evidencia y un Readiness Passport JSON que identifica la versión auditada sin presentarse como firma digital.
 - Universal LMS Preflight con una matriz de 25 señales para comprobar contenido, estructura, imágenes, enlaces e higiene del HTML en los cinco perfiles antes de publicar.
 - Learning Experience Pulse para revisar estructura pedagógica, objetivos medibles, orientación, alineación de evaluación, apoyo y carga cognitiva sin sustituir el juicio docente.
 - Semantic Change Impact para comparar la página actual con la última versión guardada e identificar cambios sensibles en estructura, enlaces, imágenes, tablas y accesibilidad.
