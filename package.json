@@ -33,6 +33,11 @@
     "tailwind-merge": "3.6.0",
     "mammoth": "^1.9.1"
   },
+  "overrides": {
+    "mammoth": {
+      "argparse": "2.0.1"
+    }
+  },
   "devDependencies": {
     "@tailwindcss/postcss": "4.2.1",
     "@types/node": "22.19.19",

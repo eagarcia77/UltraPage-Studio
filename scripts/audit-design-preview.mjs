@@ -64,6 +64,12 @@ requireSource("createSemanticChangeImpact", "semantic version comparison engine"
 requireSource("Semantic Change Impact", "semantic change review dialog");
 requireSource("latest manual save", "manual-save comparison baseline guidance");
 requireSource("semantic-change-impact.txt", "downloadable semantic change report");
+requireSource("runPublicationReadiness", "Publication Readiness aggregation engine");
+requireSource("Publication Readiness Command Center", "unified publication decision dialog");
+requireSource('status: "READY" | "REVIEW" | "BLOCKED"', "explicit publication decision states");
+requireSource("readiness-passport.json", "downloadable Readiness Passport");
+requireSource("stableContentFingerprint", "stable audited-content fingerprint");
+requireSource("Eduardo Augusto García Rodríguez", "owner and creator evidence in Readiness Passport");
 requireSource("Keyboard-scrollable tables", "keyboard-scrollable table audit");
 requireSource("applyPreviewKeyboardSemantics", "keyboard table semantics normalization");
 requireSource('role="presentation" aria-hidden="true"', "explicit decorative semantics");
@@ -84,6 +90,8 @@ requireStyle(".learning-pulse-grid", "Learning Experience Pulse metric grid");
 requireStyle(".ribbon-learning-pulse-command", "Ribbon Learning Pulse command styling");
 requireStyle(".semantic-change-inventory", "semantic change inventory styling");
 requireStyle(".ribbon-change-impact-command", "Ribbon Change Impact command styling");
+requireStyle(".readiness-pillar-grid", "Publication Readiness evidence grid styling");
+requireStyle(".ribbon-ready-center-command", "Ribbon Ready Center command styling");
 
 const extractFunction = (name) => {
   const functionStart = page.indexOf(`function ${name}`);
@@ -148,4 +156,4 @@ if (findings.length) {
   process.exit(1);
 }
 
-console.log("✓ Design Preview audit passed: 23-point quality gate, 25-signal Universal LMS Preflight, six-dimension Learning Experience Pulse, Semantic Change Impact, clipboard images, Blackboard output, keyboard tables, issue navigation, persistent selection, behavior-tested Live/Design-to-HTML mapping, and exact accessibility checks");
+console.log("✓ Design Preview audit passed: Publication Readiness Command Center, Readiness Passport, 23-point quality gate, 25-signal Universal LMS Preflight, six-dimension Learning Experience Pulse, Semantic Change Impact, clipboard images, Blackboard output, keyboard tables, issue navigation, persistent selection, behavior-tested Live/Design-to-HTML mapping, and exact accessibility checks");
