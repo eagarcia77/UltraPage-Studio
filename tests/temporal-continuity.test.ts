@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { CONTINUITY_CAPSULE_FORMAT, createContinuityCheckpoint, createRecoveryCapsule, documentKey, stableStringify, verifyContinuityCheckpoint, verifyRecoveryCapsule, type ContinuityDocument } from "../lib/temporal-continuity.ts";
+import { CONTINUITY_CAPSULE_FORMAT, createContinuityCheckpoint, createRecoveryCapsule, documentKey, newestRecoveryCheckpoint, sha256, stableStringify, verifyContinuityCheckpoint, verifyRecoveryCapsule, type ContinuityDocument, type RecoveryCapsule } from "../lib/temporal-continuity.ts";
 
 const document: ContinuityDocument = {
   html: "<h1>Module One</h1><p>Welcome.</p>",
@@ -45,4 +45,22 @@ test("capsule verification rejects envelope tampering and normalizes document ke
   capsule.exportedAt = "2026-10-08T13:00:00.000Z";
   assert.equal((await verifyRecoveryCapsule(capsule)).valid, false);
   assert.equal(documentKey(document), "module-one.html");
+  assert.equal(documentKey({ fileName: "INTRO.html" }), "intro.html");
+});
+
+test("capsule verification rejects malformed runtime fields even with recomputed hashes", async () => {
+  const checkpoint = await createContinuityCheckpoint(document, "2026-10-07T12:00:00.000Z", "checkpoint");
+  const forged = { ...checkpoint, createdAt: 123 } as unknown as typeof checkpoint;
+  const forgedBase = { id: forged.id, documentKey: forged.documentKey, createdAt: forged.createdAt, contentHash: forged.contentHash, document: forged.document };
+  forged.recoveryHash = await sha256(stableStringify(forgedBase));
+  const base = { format: CONTINUITY_CAPSULE_FORMAT, version: 1 as const, exportedAt: "2026-10-07T13:00:00.000Z", checkpoints: [forged] };
+  const capsule = { ...base, capsuleHash: await sha256(stableStringify(base)) } as RecoveryCapsule;
+  assert.equal((await verifyRecoveryCapsule(capsule)).valid, false);
+});
+
+test("capsule recovery selects its newest checkpoint, not a newer local timeline", async () => {
+  const older = await createContinuityCheckpoint({ ...document, title: "Older" }, "2026-10-06T12:00:00.000Z", "older");
+  const newestInCapsule = await createContinuityCheckpoint({ ...document, title: "Recovered" }, "2026-10-07T12:00:00.000Z", "recovered");
+  const capsule = await createRecoveryCapsule([older, newestInCapsule]);
+  assert.equal(newestRecoveryCheckpoint(capsule)?.document.title, "Recovered");
 });

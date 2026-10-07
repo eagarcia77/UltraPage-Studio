@@ -32,6 +32,44 @@ export type RecoveryCapsule = {
   capsuleHash: string;
 };
 
+const HASH_PATTERN = /^[a-f0-9]{64}$/;
+const LMS_PROFILES = new Set(["universal", "blackboard", "canvas", "moodle", "brightspace"]);
+const PAGE_SIZES = new Set(["letter", "a4"]);
+const PAGE_ORIENTATIONS = new Set(["portrait", "landscape"]);
+const PAGE_MARGINS = new Set(["normal", "narrow", "wide"]);
+
+function isString(value: unknown, maximumLength: number, allowEmpty = true): value is string {
+  return typeof value === "string" && value.length <= maximumLength && (allowEmpty || value.length > 0);
+}
+
+function isIsoTimestamp(value: unknown): value is string {
+  return typeof value === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(value) && !Number.isNaN(Date.parse(value));
+}
+
+function hasValidCheckpointShape(value: unknown): value is ContinuityCheckpoint {
+  if (!value || typeof value !== "object") return false;
+  const checkpoint = value as Partial<ContinuityCheckpoint>;
+  const document = checkpoint.document as Partial<ContinuityDocument> | undefined;
+  const setup = document?.pageSetup as Partial<ContinuityDocument["pageSetup"]> | undefined;
+  return isString(checkpoint.id, 200, false)
+    && isString(checkpoint.documentKey, 512, false)
+    && isIsoTimestamp(checkpoint.createdAt)
+    && typeof checkpoint.contentHash === "string" && HASH_PATTERN.test(checkpoint.contentHash)
+    && typeof checkpoint.recoveryHash === "string" && HASH_PATTERN.test(checkpoint.recoveryHash)
+    && !!document
+    && isString(document.html, 10_000_000)
+    && isString(document.title, 500)
+    && isString(document.fileName, 512, false)
+    && (document.language === "es-PR" || document.language === "en-US")
+    && typeof document.lmsProfile === "string" && LMS_PROFILES.has(document.lmsProfile)
+    && isString(document.author, 500)
+    && isString(document.description, 5_000)
+    && !!setup
+    && typeof setup.size === "string" && PAGE_SIZES.has(setup.size)
+    && typeof setup.orientation === "string" && PAGE_ORIENTATIONS.has(setup.orientation)
+    && typeof setup.margin === "string" && PAGE_MARGINS.has(setup.margin);
+}
+
 function stableValue(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(stableValue);
   if (value && typeof value === "object") {
@@ -51,7 +89,7 @@ export async function sha256(value: string) {
 }
 
 export function documentKey(document: Pick<ContinuityDocument, "fileName">) {
-  return document.fileName.trim().toLocaleLowerCase() || "untitled-document";
+  return document.fileName.trim().toLowerCase() || "untitled-document";
 }
 
 export async function createContinuityCheckpoint(document: ContinuityDocument, createdAt = new Date().toISOString(), id = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`): Promise<ContinuityCheckpoint> {
@@ -61,7 +99,7 @@ export async function createContinuityCheckpoint(document: ContinuityDocument, c
 }
 
 export async function verifyContinuityCheckpoint(checkpoint: ContinuityCheckpoint) {
-  if (!checkpoint || typeof checkpoint !== "object" || typeof checkpoint.document?.html !== "string") return false;
+  if (!hasValidCheckpointShape(checkpoint)) return false;
   const contentHash = await sha256(stableStringify(checkpoint.document));
   if (contentHash !== checkpoint.contentHash || documentKey(checkpoint.document) !== checkpoint.documentKey) return false;
   const checkpointBase = { id: checkpoint.id, documentKey: checkpoint.documentKey, createdAt: checkpoint.createdAt, contentHash: checkpoint.contentHash, document: checkpoint.document };
@@ -76,7 +114,7 @@ export async function createRecoveryCapsule(checkpoints: ContinuityCheckpoint[],
 export async function verifyRecoveryCapsule(value: unknown): Promise<{ valid: boolean; capsule?: RecoveryCapsule; reason?: string }> {
   if (!value || typeof value !== "object") return { valid: false, reason: "The recovery capsule is not an object." };
   const capsule = value as RecoveryCapsule;
-  if (capsule.format !== CONTINUITY_CAPSULE_FORMAT || capsule.version !== CONTINUITY_CAPSULE_VERSION || !Array.isArray(capsule.checkpoints) || typeof capsule.exportedAt !== "string" || typeof capsule.capsuleHash !== "string") {
+  if (capsule.format !== CONTINUITY_CAPSULE_FORMAT || capsule.version !== CONTINUITY_CAPSULE_VERSION || !Array.isArray(capsule.checkpoints) || !isIsoTimestamp(capsule.exportedAt) || typeof capsule.capsuleHash !== "string" || !HASH_PATTERN.test(capsule.capsuleHash)) {
     return { valid: false, reason: "The recovery capsule format or version is not supported." };
   }
   if (!capsule.checkpoints.length || capsule.checkpoints.length > CONTINUITY_CHECKPOINT_LIMIT) return { valid: false, reason: "The recovery capsule contains an invalid number of checkpoints." };
@@ -86,6 +124,10 @@ export async function verifyRecoveryCapsule(value: unknown): Promise<{ valid: bo
     if (!(await verifyContinuityCheckpoint(checkpoint))) return { valid: false, reason: "A checkpoint failed its SHA-256 integrity check." };
   }
   return { valid: true, capsule };
+}
+
+export function newestRecoveryCheckpoint(capsule: RecoveryCapsule) {
+  return [...capsule.checkpoints].sort((left, right) => right.createdAt.localeCompare(left.createdAt))[0];
 }
 
 function openContinuityDatabase(): Promise<IDBDatabase> {

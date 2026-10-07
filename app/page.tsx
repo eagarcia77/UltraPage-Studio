@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { toast, Toaster } from "sonner";
 import { createCourseDigitalTwin, type CourseDigitalTwinResult, type TwinPerspective } from "@/lib/course-digital-twin";
-import { CONTINUITY_CAPSULE_FORMAT, createContinuityCheckpoint, createRecoveryCapsule, importRecoveryCapsule, listContinuityCheckpoints, storeContinuityCheckpoint, verifyContinuityCheckpoint, verifyRecoveryCapsule, type ContinuityCheckpoint, type ContinuityDocument } from "@/lib/temporal-continuity";
+import { CONTINUITY_CAPSULE_FORMAT, createContinuityCheckpoint, createRecoveryCapsule, importRecoveryCapsule, listContinuityCheckpoints, newestRecoveryCheckpoint, storeContinuityCheckpoint, verifyContinuityCheckpoint, verifyRecoveryCapsule, type ContinuityCheckpoint, type ContinuityDocument } from "@/lib/temporal-continuity";
 
 const starterHtml = "";
 const exportedPageStyles = `
@@ -1040,7 +1040,7 @@ export default function Home() {
       peers.set(message.tabId, Date.now());
       for (const [tabId, seenAt] of peers) if (Date.now() - seenAt > 45_000) peers.delete(tabId);
       setContinuityPeers(peers.size + 1);
-      if (message.documentKey === documentFileName.trim().toLocaleLowerCase() && message.contentHash && continuityHash.current && message.contentHash !== continuityHash.current) {
+      if (message.documentKey === documentFileName.trim().toLowerCase() && message.contentHash && continuityHash.current && message.contentHash !== continuityHash.current) {
         setContinuityConflict(`Another tab is editing ${message.title || documentFileName} on a divergent timeline. UltraPage will not merge or overwrite either version automatically.`);
       }
     };
@@ -2189,9 +2189,9 @@ export default function Home() {
         if (parsedJson.format === CONTINUITY_CAPSULE_FORMAT) {
           const verification = await verifyRecoveryCapsule(parsedJson);
           if (!verification.valid || !verification.capsule) throw new Error(verification.reason || "Invalid recovery capsule");
-          const checkpoints = await importRecoveryCapsule(verification.capsule);
-          const newest = checkpoints[0];
+          const newest = newestRecoveryCheckpoint(verification.capsule);
           if (!newest) throw new Error("The recovery capsule does not contain a checkpoint.");
+          await importRecoveryCapsule(verification.capsule);
           await restoreContinuityCheckpoint(newest);
           window.dispatchEvent(new CustomEvent("ultrapage-continuity-updated"));
           toast.success("Recovery Capsule verified and imported", { description: `${verification.capsule.checkpoints.length} checkpoint${verification.capsule.checkpoints.length === 1 ? "" : "s"} recovered.` });
