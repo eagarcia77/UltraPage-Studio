@@ -23,7 +23,8 @@ Editor visual para crear contenido accesible y portátil entre Blackboard Ultra,
 
 - Edición visual y edición directa de HTML.
 - Perfiles de salida para Universal LMS, Blackboard Ultra, Canvas, Moodle y D2L Brightspace.
-- Publication Readiness Command Center con estado `READY`, `REVIEW` o `BLOCKED`, siete pilares de evidencia y un Readiness Passport JSON que identifica la versión auditada sin presentarse como firma digital.
+- Publication Readiness Command Center con estado `READY`, `REVIEW` o `BLOCKED`, ocho pilares de evidencia y un Readiness Passport JSON que identifica la versión auditada sin presentarse como firma digital.
+- Course Digital Twin: simulación predictiva local de cinco condiciones combinadas de LMS, dispositivo, conectividad y accesibilidad; estima estabilidad, tiempo de carga, señales supervivientes, riesgos y acciones de recuperación sin usar datos de estudiantes.
 - Learning Constellation Map: gemelo semántico local que representa objetivos, secciones, actividades, evaluaciones y recursos como una galaxia navegable; detecta rutas incompletas y exporta un grafo JSON inspirado en CASE sin presentarlo como paquete certificado.
 - Deep-Space Learning Trajectories simula rutas deterministas para principiantes, estudiantes con tiempo limitado y aprendizaje avanzado, con estética de ciencia ficción y sin afirmar tecnología extraterrestre real ni perfilar estudiantes.
 - Inclusive Learner Journey Simulator con cinco perspectivas (teclado, lector de pantalla, baja visión/reflow, carga cognitiva y móvil), vista transformada, secuencias de foco/lectura y reporte descargable; complementa, pero no sustituye, pruebas con tecnologías de asistencia y estudiantes.
@@ -65,13 +66,13 @@ docs/NATIVE_TOOLS_AUDIT_2026-10-02.md
 ## Desarrollo local
 
 ```bash
-npm install
+npm ci
 npm run dev
 ```
 
 ## Seguridad
 
-No incluya credenciales de Blackboard, contraseñas WebDAV ni secretos institucionales en el código fuente. Las credenciales se utilizan temporalmente durante la conexión y no se almacenan en GitHub.
+No incluya credenciales de Blackboard, contraseñas WebDAV ni secretos institucionales en el código fuente. Las credenciales se utilizan temporalmente durante la conexión y no se almacenan en GitHub. Las rutas de importación, exportación y WebDAV aplican límites de tamaño y frecuencia; la conversión de documentos vuelve a sanitizar el HTML en el servidor.
 
 ## Implementación
 

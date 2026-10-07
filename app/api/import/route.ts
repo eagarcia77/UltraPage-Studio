@@ -1,11 +1,16 @@
 import * as mammoth from "mammoth";
+import { NextRequest } from "next/server";
+import { guardApiRequest } from "../security";
+import { sanitizeServerHtml } from "@/lib/server-html-security";
 
 export const runtime = "nodejs";
 
 const MAX_DOCX_BYTES = 10 * 1024 * 1024;
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
+    const rejected = guardApiRequest(request, { scope: "import", maxBytes: MAX_DOCX_BYTES + 1024 * 1024, requestsPerMinute: 12 });
+    if (rejected) return rejected;
     const formData = await request.formData();
     const file = formData.get("file");
     if (!(file instanceof File)) return Response.json({ error: "Select a Word document." }, { status: 400 });
@@ -29,7 +34,7 @@ export async function POST(request: Request) {
     );
 
     return Response.json({
-      html: result.value,
+      html: sanitizeServerHtml(result.value),
       warnings: result.messages.map((message) => message.message).filter(Boolean).slice(0, 20),
     });
   } catch {

@@ -81,6 +81,8 @@ requireSource('id: "journey"', "learner journey Publication Readiness pillar");
 requireSource("createLearningConstellation", "Learning Constellation semantic graph engine");
 requireSource("Learning Constellation Map", "interactive learning constellation dialog");
 requireSource("learning-constellation.json", "downloadable Learning Constellation graph");
+requireSource("Course Digital Twin", "predictive multi-condition course simulation");
+requireSource("course-digital-twin.json", "downloadable Course Digital Twin report");
 requireSource("CASE-inspired relationship graph", "responsible interoperability positioning");
 requireSource("learnerDataIncluded: false", "explicit learner-data exclusion");
 requireSource("Deep-Space Learning Trajectories", "science-fiction-inspired trajectory simulator");
@@ -178,4 +180,4 @@ if (findings.length) {
   process.exit(1);
 }
 
-console.log("✓ Design Preview audit passed: seven-pillar Publication Readiness Command Center, Learning Constellation Map, Inclusive Learner Journey Simulator, Readiness Passport, 23-point quality gate, 25-signal Universal LMS Preflight, six-dimension Learning Experience Pulse, Semantic Change Impact, clipboard images, Blackboard output, keyboard tables, issue navigation, persistent selection, behavior-tested Live/Design-to-HTML mapping, and exact accessibility checks");
+console.log("✓ Design Preview audit passed: eight-pillar Publication Readiness Command Center, Course Digital Twin, Learning Constellation Map, Inclusive Learner Journey Simulator, Readiness Passport, 23-point quality gate, 25-signal Universal LMS Preflight, six-dimension Learning Experience Pulse, Semantic Change Impact, clipboard images, Blackboard output, keyboard tables, issue navigation, persistent selection, behavior-tested Live/Design-to-HTML mapping, and exact accessibility checks");

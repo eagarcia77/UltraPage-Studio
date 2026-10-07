@@ -23,6 +23,8 @@ import {
 } from "docx";
 import type { AnyNode, Element } from "domhandler";
 import path from "node:path";
+import { guardApiRequest } from "../security";
+import { sanitizeServerHtml } from "@/lib/server-html-security";
 
 export const runtime = "nodejs";
 
@@ -510,6 +512,8 @@ function createPdf(html: string, title: string, author: string, language: string
 
 export async function POST(request: NextRequest) {
   try {
+    const rejected = guardApiRequest(request, { scope: "export", maxBytes: MAX_HTML_LENGTH + 1024 * 1024, requestsPerMinute: 20 });
+    if (rejected) return rejected;
     const body = await request.json() as ExportRequest;
     const format = body.format;
     const html = body.html || "";
@@ -521,7 +525,8 @@ export async function POST(request: NextRequest) {
     if ((format !== "docx" && format !== "pdf") || !html || html.length > MAX_HTML_LENGTH) {
       return NextResponse.json({ error: "Formato o contenido no válido." }, { status: 400 });
     }
-    const data = format === "docx" ? await createDocx(html, title, author, language, description, pageSetup) : await createPdf(html, title, author, language, description, pageSetup);
+    const safeHtml = sanitizeServerHtml(html);
+    const data = format === "docx" ? await createDocx(safeHtml, title, author, language, description, pageSetup) : await createPdf(safeHtml, title, author, language, description, pageSetup);
     const name = `${safeFileName(title)}.${format}`;
     return new NextResponse(new Uint8Array(data), {
       headers: {

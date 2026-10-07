@@ -1,6 +1,7 @@
 {
   "name": "ultrapage-studio",
   "version": "1.1.0",
+  "type": "module",
   "author": "Eduardo Augusto García Rodríguez",
   "private": true,
   "engines": {
@@ -10,10 +11,11 @@
     "audit:design-preview": "node scripts/audit-design-preview.mjs",
     "audit:native-tools": "node scripts/audit-native-tools.mjs",
     "audit:qti21": "node scripts/audit-qti21.mjs",
+    "test": "node --test --experimental-strip-types tests/*.test.ts",
     "dev": "next dev",
     "build": "next build",
     "start": "next start -H 0.0.0.0 -p $PORT",
-    "check": "npm run audit:design-preview && npm run audit:native-tools && npm run audit:qti21 && npm run build"
+    "check": "npm test && npm run audit:design-preview && npm run audit:native-tools && npm run audit:qti21 && npm run build"
   },
   "dependencies": {
     "@fontsource/dejavu-sans": "^5.3.0",

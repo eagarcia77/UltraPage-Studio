@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
 import { isUnsafeWebDavAddress } from "./security";
+import { guardApiRequest } from "../security";
 
 type WebDavRequest = {
   action?: "list" | "read" | "download" | "write" | "writeBinary";
@@ -64,6 +65,8 @@ function parseWebDav(xml: string, baseUrl: URL) {
 
 export async function POST(request: NextRequest) {
   try {
+    const rejected = guardApiRequest(request, { scope: "webdav", maxBytes: 36 * 1024 * 1024, requestsPerMinute: 30 });
+    if (rejected) return rejected;
     const body = await request.json() as WebDavRequest;
     if (!body.url || !body.username || !body.password) {
       return NextResponse.json({ error: "Enter the WebDAV address, username, and password." }, { status: 400 });
