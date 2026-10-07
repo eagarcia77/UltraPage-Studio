@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { toast, Toaster } from "sonner";
 import { createCourseDigitalTwin, type CourseDigitalTwinResult, type TwinPerspective } from "@/lib/course-digital-twin";
+import { CONTINUITY_CAPSULE_FORMAT, createContinuityCheckpoint, createRecoveryCapsule, importRecoveryCapsule, listContinuityCheckpoints, storeContinuityCheckpoint, verifyContinuityCheckpoint, verifyRecoveryCapsule, type ContinuityCheckpoint, type ContinuityDocument } from "@/lib/temporal-continuity";
 
 const starterHtml = "";
 const exportedPageStyles = `
@@ -957,6 +958,12 @@ export default function Home() {
   const [learningConstellationResult, setLearningConstellationResult] = useState<LearningConstellationResult | null>(null);
   const [courseTwinOpen, setCourseTwinOpen] = useState(false);
   const [courseTwinResult, setCourseTwinResult] = useState<CourseDigitalTwinResult | null>(null);
+  const [continuityOpen, setContinuityOpen] = useState(false);
+  const [continuityConflict, setContinuityConflict] = useState("");
+  const [continuityPeers, setContinuityPeers] = useState(1);
+  const continuityTabId = useRef(globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`);
+  const continuityHash = useRef("");
+  const continuityChannel = useRef<BroadcastChannel | null>(null);
   const [readinessCenterOpen, setReadinessCenterOpen] = useState(false);
   const [publicationReadiness, setPublicationReadiness] = useState<PublicationReadinessResult | null>(null);
   const [accessibilityIssueCursor, setAccessibilityIssueCursor] = useState(-1);
@@ -1020,6 +1027,39 @@ export default function Home() {
       localStorage.setItem(DRAFT_KEY, JSON.stringify({ html, title, fileName: documentFileName, language: documentLanguage, lmsProfile, author: documentAuthor, description: documentDescription, pageSetup, updatedAt: new Date().toISOString() }));
       setSaved(true);
     }, 700);
+    return () => window.clearTimeout(timer);
+  }, [draftLoaded, html, title, documentFileName, documentLanguage, lmsProfile, documentAuthor, documentDescription, pageSetup]);
+  useEffect(() => {
+    if (typeof BroadcastChannel === "undefined") return;
+    const channel = new BroadcastChannel("ultrapage-temporal-continuity-v1");
+    const peers = new Map<string, number>();
+    continuityChannel.current = channel;
+    channel.onmessage = (event: MessageEvent<{ tabId?: string; documentKey?: string; contentHash?: string; title?: string }>) => {
+      const message = event.data;
+      if (!message?.tabId || message.tabId === continuityTabId.current) return;
+      peers.set(message.tabId, Date.now());
+      for (const [tabId, seenAt] of peers) if (Date.now() - seenAt > 45_000) peers.delete(tabId);
+      setContinuityPeers(peers.size + 1);
+      if (message.documentKey === documentFileName.trim().toLocaleLowerCase() && message.contentHash && continuityHash.current && message.contentHash !== continuityHash.current) {
+        setContinuityConflict(`Another tab is editing ${message.title || documentFileName} on a divergent timeline. UltraPage will not merge or overwrite either version automatically.`);
+      }
+    };
+    return () => { continuityChannel.current = null; channel.close(); };
+  }, [documentFileName]);
+  useEffect(() => {
+    if (!draftLoaded) return;
+    const timer = window.setTimeout(async () => {
+      const document: ContinuityDocument = { html, title, fileName: documentFileName, language: documentLanguage, lmsProfile, author: documentAuthor, description: documentDescription, pageSetup };
+      try {
+        const checkpoint = await createContinuityCheckpoint(document);
+        continuityHash.current = checkpoint.contentHash;
+        const result = await storeContinuityCheckpoint(checkpoint);
+        continuityChannel.current?.postMessage({ tabId: continuityTabId.current, documentKey: checkpoint.documentKey, contentHash: checkpoint.contentHash, title: checkpoint.document.title });
+        if (result.stored) window.dispatchEvent(new CustomEvent("ultrapage-continuity-updated"));
+      } catch {
+        // The established localStorage draft remains available when durable browser storage is unavailable.
+      }
+    }, 1800);
     return () => window.clearTimeout(timer);
   }, [draftLoaded, html, title, documentFileName, documentLanguage, lmsProfile, documentAuthor, documentDescription, pageSetup]);
 
@@ -2052,6 +2092,15 @@ export default function Home() {
     localStorage.setItem(DRAFT_KEY, JSON.stringify({ html: snapshot.html, title: snapshot.title, fileName: snapshot.fileName, language: snapshot.language || documentLanguage, lmsProfile: snapshot.lmsProfile || lmsProfile, author: snapshot.author || "", description: snapshot.description || "", pageSetup: snapshot.pageSetup || pageSetup, updatedAt: new Date().toISOString() }));
     toast.success("Version restored", { description: snapshot.title });
   };
+  const restoreContinuityCheckpoint = async (checkpoint: ContinuityCheckpoint) => {
+    if (!(await verifyContinuityCheckpoint(checkpoint))) { toast.error("Checkpoint integrity failed", { description: "The content was not restored." }); return; }
+    const document = checkpoint.document;
+    const safeHtml = sanitizePastedHtml(document.html);
+    restoreSnapshot({ id: checkpoint.id, html: safeHtml, title: document.title, fileName: document.fileName, language: document.language, lmsProfile: isLmsProfile(document.lmsProfile) ? document.lmsProfile : "universal", author: document.author, description: document.description, pageSetup: isPageSetup(document.pageSetup) ? document.pageSetup : pageSetup, savedAt: checkpoint.createdAt });
+    setContinuityConflict("");
+    setContinuityOpen(false);
+    toast.success("Verified checkpoint restored", { description: "The recovered HTML was sanitized before editing." });
+  };
   const copyHtml = async () => {
     const currentHtml = mode === "visual" ? editor.current?.innerHTML || html : html;
     const compatibleMarkup = buildLmsHtml(currentHtml, documentLanguage, lmsProfile);
@@ -2136,7 +2185,19 @@ export default function Home() {
       }
       const content = await file.text();
       if (/\.json$/i.test(file.name)) {
-        const project = JSON.parse(content) as { format?: string; version?: number; html?: string; title?: string; fileName?: string; language?: string; lmsProfile?: string; author?: string; description?: string; pageSetup?: PageSetup };
+        const parsedJson = JSON.parse(content) as { format?: string };
+        if (parsedJson.format === CONTINUITY_CAPSULE_FORMAT) {
+          const verification = await verifyRecoveryCapsule(parsedJson);
+          if (!verification.valid || !verification.capsule) throw new Error(verification.reason || "Invalid recovery capsule");
+          const checkpoints = await importRecoveryCapsule(verification.capsule);
+          const newest = checkpoints[0];
+          if (!newest) throw new Error("The recovery capsule does not contain a checkpoint.");
+          await restoreContinuityCheckpoint(newest);
+          window.dispatchEvent(new CustomEvent("ultrapage-continuity-updated"));
+          toast.success("Recovery Capsule verified and imported", { description: `${verification.capsule.checkpoints.length} checkpoint${verification.capsule.checkpoints.length === 1 ? "" : "s"} recovered.` });
+          return;
+        }
+        const project = parsedJson as { format?: string; version?: number; html?: string; title?: string; fileName?: string; language?: string; lmsProfile?: string; author?: string; description?: string; pageSetup?: PageSetup };
         if (project.format !== "ultrapage-project" || project.version !== 1 || typeof project.html !== "string") throw new Error("Invalid UltraPage project");
         const body = sanitizePastedHtml(project.html);
         const projectLanguage: DocumentLanguage = project.language === "en-US" ? "en-US" : "es-PR";
@@ -2822,6 +2883,7 @@ export default function Home() {
       "open txt test generator": () => { window.location.href = "/tools#txt"; },
       "open qti 2.1": () => { window.location.href = "/tools#qti"; },
       "accessibility review": () => { setSidePanelTab("review"); setRightPanel(true); }, "preview audit": () => runPreviewAudit(true), "publication readiness command center": runPublicationReadiness, "course digital twin": runCourseDigitalTwin, "inclusive learner journey simulator": runLearnerJourneySimulator, "learning constellation map": runLearningConstellation, "universal lms preflight": runUniversalLmsPreflight, "learning experience pulse": runLearningExperiencePulse, "semantic change impact": runSemanticChangeImpact, "document outline": () => { setSidePanelTab("outline"); setRightPanel(true); },
+      "temporal continuity nexus": () => setContinuityOpen(true),
       "blackboard audit": runBlackboardPreviewAudit, "next preview issue": () => navigatePreviewIssue(1), "previous preview issue": () => navigatePreviewIssue(-1),
       "inspect selection html": inspectDesignSelectionInHtml, "open split view": openHtmlSplit,
       "table tools": () => selectionContext === "table" ? openRibbonTab("table") : toast.info("Select a table cell first"),
@@ -2884,8 +2946,9 @@ export default function Home() {
     <LearnerJourneyDialog open={learnerJourneyOpen} onOpenChange={setLearnerJourneyOpen} result={learnerJourneyResult} onDownload={downloadLearnerJourneyReport}/>
     <LearningConstellationDialog open={learningConstellationOpen} onOpenChange={setLearningConstellationOpen} result={learningConstellationResult} onDownload={downloadLearningConstellation}/>
     <CourseDigitalTwinDialog open={courseTwinOpen} onOpenChange={setCourseTwinOpen} result={courseTwinResult} onDownload={downloadCourseDigitalTwin}/>
+    <TemporalContinuityDialog open={continuityOpen} onOpenChange={setContinuityOpen} conflict={continuityConflict} peerCount={continuityPeers} onRestore={restoreContinuityCheckpoint}/>
     <PublicationReadinessDialog open={readinessCenterOpen} onOpenChange={setReadinessCenterOpen} result={publicationReadiness} onDownload={downloadReadinessPassport} onOpenPillar={openReadinessPillar}/>
-    <input ref={localFileInput} className="sr-only" type="file" accept=".html,.htm,.txt,.docx,.ultrapage.json,.json,text/html,text/plain,application/json,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onChange={(event) => importLocalDocument(event.target.files?.[0])} aria-label="Open an HTML, TXT, Word, or UltraPage project file"/>
+    <input ref={localFileInput} className="sr-only" type="file" accept=".html,.htm,.txt,.docx,.ultrapage.json,.recovery.json,.json,text/html,text/plain,application/json,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onChange={(event) => importLocalDocument(event.target.files?.[0])} aria-label="Open an HTML, TXT, Word, UltraPage project, or Recovery Capsule file"/>
     <header className="topbar">
       <div className="brandmark" aria-hidden="true"><img src="/brand/ultrapage-mark.svg" alt="" /></div><div className="brandcopy"><strong>UltraPage Studio</strong><span>Accessible editor for every LMS</span></div>
       <label className="lms-profile-picker"><span>Target LMS</span><select value={lmsProfile} onChange={(event) => { setLmsProfile(event.target.value as LmsProfile); setSaved(false); }} aria-label="Target learning management system">{Object.entries(lmsProfiles).map(([value, profile]) => <option key={value} value={value}>{profile.label}</option>)}</select></label>
@@ -2902,14 +2965,14 @@ export default function Home() {
               {mode === "visual" && <div className="ribbon-tabs" role="tablist" aria-label="Editor ribbon">
                 {availableRibbonTabs.map((tab) => <button key={tab} id={`ribbon-tab-${tab}`} type="button" role="tab" data-ribbon-tab={tab} data-contextual={tab === "table" || tab === "picture" || tab === "link" ? tab : undefined} aria-controls="ribbon-panel" aria-selected={ribbonTab === tab} tabIndex={ribbonTab === tab ? 0 : -1} className={`${ribbonTab === tab ? "active" : ""} ${tab === "table" || tab === "picture" || tab === "link" ? `contextual ${tab}` : ""}`.trim()} onKeyDown={handleRibbonKeyDown} onClick={() => { setRibbonTab(tab); setRibbonCollapsed(false); }}>{tab[0].toUpperCase() + tab.slice(1)}{(tab === "table" || tab === "picture" || tab === "link") && <span className="sr-only"> contextual tools</span>}</button>)}
               </div>}
-              {mode === "visual" && <form className="ribbon-command-search" onSubmit={executeRibbonCommand} role="search"><Search aria-hidden="true"/><label className="sr-only" htmlFor="ribbon-command-input">Search ribbon commands</label><input id="ribbon-command-input" list="ribbon-command-options" value={ribbonCommand} onChange={(event) => setRibbonCommand(event.target.value)} placeholder="Search commands" autoComplete="off"/><datalist id="ribbon-command-options">{["New document","Open document","Save document","Home tools","Insert content","Page layout","References","Review","View","Native tools","Open EstiloAPA","Open TXT Test Generator","Open QTI 2.1","Table tools","Picture tools","Link tools","Accessibility review","Preview audit","Publication Readiness Command Center","Course Digital Twin","Inclusive Learner Journey Simulator","Learning Constellation Map","Universal LMS Preflight","Learning Experience Pulse","Semantic Change Impact","Blackboard audit","Next preview issue","Previous preview issue","Download preview report","Document outline","Final preview","HTML editor","Desktop preview","Tablet preview","Mobile preview","Compare previews","Read aloud","Stop reading","Focus mode","Exit focus mode","Page width","Reset view","Show rulers","Hide rulers","Show margin guides","Hide margin guides","Show formatting marks","Hide formatting marks","Show structure map","Hide structure map","Table of contents","Copy","Cut","Paste plain text","Format painter","Clear formatting"].map((item) => <option key={item} value={item}/>)}</datalist></form>}
+              {mode === "visual" && <form className="ribbon-command-search" onSubmit={executeRibbonCommand} role="search"><Search aria-hidden="true"/><label className="sr-only" htmlFor="ribbon-command-input">Search ribbon commands</label><input id="ribbon-command-input" list="ribbon-command-options" value={ribbonCommand} onChange={(event) => setRibbonCommand(event.target.value)} placeholder="Search commands" autoComplete="off"/><datalist id="ribbon-command-options">{["New document","Open document","Save document","Temporal Continuity Nexus","Home tools","Insert content","Page layout","References","Review","View","Native tools","Open EstiloAPA","Open TXT Test Generator","Open QTI 2.1","Table tools","Picture tools","Link tools","Accessibility review","Preview audit","Publication Readiness Command Center","Course Digital Twin","Inclusive Learner Journey Simulator","Learning Constellation Map","Universal LMS Preflight","Learning Experience Pulse","Semantic Change Impact","Blackboard audit","Next preview issue","Previous preview issue","Download preview report","Document outline","Final preview","HTML editor","Desktop preview","Tablet preview","Mobile preview","Compare previews","Read aloud","Stop reading","Focus mode","Exit focus mode","Page width","Reset view","Show rulers","Hide rulers","Show margin guides","Hide margin guides","Show formatting marks","Hide formatting marks","Show structure map","Hide structure map","Table of contents","Copy","Cut","Paste plain text","Format painter","Clear formatting"].map((item) => <option key={item} value={item}/>)}</datalist></form>}
               {mode === "visual" && <div className="ribbon-quick" role="group" aria-label="Quick access"><button type="button" onClick={() => command("undo")} aria-label="Undo" title="Undo"><Undo2 /></button><button type="button" onClick={() => command("redo")} aria-label="Redo" title="Redo"><Redo2 /></button><button type="button" className={ribbonCollapsed ? "collapsed" : ""} aria-expanded={!ribbonCollapsed} aria-controls="ribbon-panel" onClick={() => setRibbonCollapsed((collapsed) => !collapsed)} aria-label={ribbonCollapsed ? "Expand ribbon" : "Collapse ribbon"} title={ribbonCollapsed ? "Expand ribbon" : "Collapse ribbon"}><ChevronDown /></button></div>}
             </div>
             {mode === "visual" && !ribbonCollapsed && <div id="ribbon-panel" className="ribbon-panel" role="tabpanel" aria-labelledby={`ribbon-tab-${ribbonTab}`}>
               {ribbonTab === "file" && <>
                 <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row"><button type="button" className="ribbon-command" onClick={newDocument}><FilePlus2/><span>New</span></button><button type="button" className="ribbon-command" onClick={() => localFileInput.current?.click()}><Upload/><span>Open</span></button><button type="button" className="ribbon-command" onClick={save}><Save/><span>Save</span></button><ExportDialog ribbon html={html} title={title} language={documentLanguage} lmsProfile={lmsProfile} author={documentAuthor} description={documentDescription} pageSetup={pageSetup} downloadHtml={downloadDocument}/><button type="button" className="ribbon-command" onClick={() => window.print()}><Printer/><span>Print</span></button></div><span className="ribbon-group-label">Document</span></div>
                 <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row"><button type="button" className="ribbon-command" onClick={copyHtml}><Copy/><span>Copy for {activeLms.shortLabel}</span></button></div><span className="ribbon-group-label">Publish</span></div>
-                <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row"><HistoryDialog restoreSnapshot={restoreSnapshot} ribbon/><DocumentPropertiesDialog author={documentAuthor} description={documentDescription} setAuthor={setDocumentAuthor} setDescription={setDocumentDescription} ribbon/><ApplicationAboutDialog/></div><span className="ribbon-group-label">Information</span></div>
+                <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row"><HistoryDialog restoreSnapshot={restoreSnapshot} ribbon/><button type="button" className={`ribbon-command continuity-command ${continuityConflict ? "has-conflict" : ""}`} onClick={() => setContinuityOpen(true)}><LockKeyhole/><span>Continuity</span></button><DocumentPropertiesDialog author={documentAuthor} description={documentDescription} setAuthor={setDocumentAuthor} setDescription={setDocumentDescription} ribbon/><ApplicationAboutDialog/></div><span className="ribbon-group-label">Information</span></div>
               </>}
               {ribbonTab === "home" && <>
                 <div className="ribbon-group ribbon-clipboard-group"><div className="ribbon-group-body ribbon-command-row"><button type="button" className="ribbon-command" onClick={() => command("copy")} title="Copy selected content"><Copy/><span>Copy</span></button><button type="button" className="ribbon-command" onClick={() => command("cut")} title="Cut selected content"><Scissors/><span>Cut</span></button><button type="button" className="ribbon-command" onClick={pastePlainText} title="Paste without source formatting"><ClipboardPaste/><span>Paste Text</span></button><button type="button" className={`ribbon-command ${capturedFormat ? "is-active" : ""}`} aria-pressed={Boolean(capturedFormat)} onClick={useFormatPainter} title={capturedFormat ? "Apply captured formatting" : "Capture formatting"}><Palette/><span>Format Painter</span></button><button type="button" className="ribbon-command" onClick={clearFormatting} aria-label="Clear formatting" title="Clear formatting from the selected text"><Eraser/><span>Clear</span></button></div><span className="ribbon-group-label">Clipboard & Formatting</span></div>
@@ -3334,6 +3397,61 @@ function KeyboardShortcutsDialog({ ribbon = false }: { ribbon?: boolean }) {
     ["Ctrl/⌘ + Shift + 8", "Create bulleted list"],
   ];
   return <Dialog><DialogTrigger asChild>{ribbon ? <button type="button" className="ribbon-command"><Keyboard/><span>Shortcuts</span></button> : <Button variant="ghost" size="icon" aria-label="View keyboard shortcuts" title="Keyboard Shortcuts"><Keyboard size={17}/></Button>}</DialogTrigger><DialogContent className="shortcuts-dialog"><DialogHeader><DialogTitle>Keyboard Shortcuts</DialogTitle><DialogDescription>Edit and structure content without leaving the keyboard.</DialogDescription></DialogHeader><dl className="shortcut-list">{shortcuts.map(([keys, action]) => <div key={keys}><dt><kbd>{keys}</kbd></dt><dd>{action}</dd></div>)}</dl><p className="field-help">Heading and list shortcuts work in Design view. Standard bold, italic, underline, copy, paste, undo, and redo shortcuts remain available.</p></DialogContent></Dialog>;
+}
+
+function TemporalContinuityDialog({ open, onOpenChange, conflict, peerCount, onRestore }: { open: boolean; onOpenChange: (open: boolean) => void; conflict: string; peerCount: number; onRestore: (checkpoint: ContinuityCheckpoint) => Promise<void> }) {
+  const [checkpoints, setCheckpoints] = useState<ContinuityCheckpoint[]>([]);
+  const [verifiedCount, setVerifiedCount] = useState(0);
+  const [persistent, setPersistent] = useState(false);
+  const [usage, setUsage] = useState<{ used: number; quota: number }>({ used: 0, quota: 0 });
+  const [loading, setLoading] = useState(false);
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    try {
+      const stored = await listContinuityCheckpoints();
+      const checks = await Promise.all(stored.map(verifyContinuityCheckpoint));
+      setCheckpoints(stored);
+      setVerifiedCount(checks.filter(Boolean).length);
+      if (navigator.storage) {
+        setPersistent(await navigator.storage.persisted());
+        const estimate = await navigator.storage.estimate();
+        setUsage({ used: estimate.usage || 0, quota: estimate.quota || 0 });
+      }
+    } catch { setCheckpoints([]); setVerifiedCount(0); }
+    finally { setLoading(false); }
+  }, []);
+  useEffect(() => {
+    if (!open) return;
+    void refresh();
+    const update = () => void refresh();
+    window.addEventListener("ultrapage-continuity-updated", update);
+    return () => window.removeEventListener("ultrapage-continuity-updated", update);
+  }, [open, refresh]);
+  const requestPersistence = async () => {
+    if (!navigator.storage?.persist) { toast.info("Persistent storage is not available in this browser"); return; }
+    const granted = await navigator.storage.persist();
+    setPersistent(granted);
+    toast[granted ? "success" : "info"](granted ? "Persistent storage granted" : "The browser retained its current storage policy", { description: granted ? "The browser will protect continuity checkpoints from routine eviction." : "Download a Recovery Capsule for an independent backup." });
+  };
+  const exportCapsule = async () => {
+    if (!checkpoints.length) { toast.info("No checkpoints are available yet"); return; }
+    const valid: ContinuityCheckpoint[] = [];
+    for (const checkpoint of checkpoints) if (await verifyContinuityCheckpoint(checkpoint)) valid.push(checkpoint);
+    if (!valid.length) { toast.error("No verified checkpoints are available"); return; }
+    const capsule = await createRecoveryCapsule(valid);
+    downloadBlob(new Blob([JSON.stringify(capsule, null, 2)], { type: "application/json;charset=utf-8" }), exportFileName(valid[0].document.title || "ultrapage", "recovery.json"));
+    toast.success("Recovery Capsule downloaded", { description: `${valid.length} verified checkpoint${valid.length === 1 ? "" : "s"} with SHA-256 evidence.` });
+  };
+  const percentage = usage.quota ? Math.min(100, Math.round(usage.used / usage.quota * 100)) : 0;
+  const formatStorage = (bytes: number) => bytes ? `${(bytes / 1024 / 1024).toFixed(bytes >= 10 * 1024 * 1024 ? 0 : 1)} MB` : "Unavailable";
+  return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent className="continuity-dialog"><DialogHeader><DialogTitle>Temporal Continuity Nexus</DialogTitle><DialogDescription>A private flight recorder for verifiable recovery. Checkpoints remain in this browser unless you download a Recovery Capsule.</DialogDescription></DialogHeader>
+    {conflict && <div className="continuity-conflict" role="alert"><AlertTriangle/><div><strong>Parallel timeline detected</strong><p>{conflict}</p></div></div>}
+    <div className="continuity-hero"><span className={verifiedCount === checkpoints.length ? "verified" : "warning"}><LockKeyhole/></span><div><small>CONTINUITY STATUS</small><strong>{checkpoints.length ? `${verifiedCount}/${checkpoints.length} checkpoints verified` : loading ? "Scanning local memory…" : "Awaiting first checkpoint"}</strong><p>Content identity and recovery payloads use separate SHA-256 fingerprints.</p></div></div>
+    <div className="continuity-metrics"><div><span>Checkpoints</span><strong>{checkpoints.length}/50</strong><small>Transactional IndexedDB memory</small></div><div><span>Storage</span><strong>{formatStorage(usage.used)}</strong><small>{usage.quota ? `${percentage}% of ${formatStorage(usage.quota)}` : "Browser estimate unavailable"}</small></div><div><span>Retention</span><strong>{persistent ? "Protected" : "Best effort"}</strong><small>{persistent ? "Routine eviction protection active" : "Request persistence or export"}</small></div><div><span>Active tabs</span><strong>{peerCount}</strong><small>Divergence is never auto-merged</small></div></div>
+    <div className="continuity-actions"><Button variant="outline" onClick={requestPersistence} disabled={persistent}><LockKeyhole size={16}/>{persistent ? "Persistence Active" : "Protect Local Memory"}</Button><Button onClick={exportCapsule} disabled={!checkpoints.length}><Download size={16}/> Download Recovery Capsule</Button></div>
+    <section className="continuity-timeline" aria-label="Recovery checkpoints"><header><div><strong>Verified timeline</strong><small>Selecting Restore verifies the checkpoint again and sanitizes recovered HTML.</small></div><Button variant="ghost" size="sm" onClick={refresh} disabled={loading}>{loading ? <Loader2 className="spin" size={15}/> : <History size={15}/>} Refresh</Button></header>{checkpoints.length ? <div>{checkpoints.slice(0, 12).map((checkpoint, index) => <button key={checkpoint.id} onClick={() => void onRestore(checkpoint)}><span className="continuity-node">{index + 1}</span><span><strong>{checkpoint.document.title || "Untitled document"}</strong><small>{new Date(checkpoint.createdAt).toLocaleString("en-US")} · {checkpoint.contentHash.slice(0, 12)}…</small></span><span>Restore</span></button>)}</div> : <p className="empty-history">A checkpoint is created after document changes settle. The existing quick draft and manual version history remain active.</p>}</section>
+    <p className="continuity-note"><LockKeyhole size={15}/> Recovery Capsules can be imported through <strong>File → Open</strong>. UltraPage verifies every fingerprint before restoring anything.</p>
+  </DialogContent></Dialog>;
 }
 
 function HistoryDialog({ restoreSnapshot, ribbon = false }: { restoreSnapshot: (snapshot: DraftSnapshot) => void; ribbon?: boolean }) {

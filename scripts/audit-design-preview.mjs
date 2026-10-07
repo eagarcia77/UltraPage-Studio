@@ -83,6 +83,10 @@ requireSource("Learning Constellation Map", "interactive learning constellation 
 requireSource("learning-constellation.json", "downloadable Learning Constellation graph");
 requireSource("Course Digital Twin", "predictive multi-condition course simulation");
 requireSource("course-digital-twin.json", "downloadable Course Digital Twin report");
+requireSource("Temporal Continuity Nexus", "private transactional recovery center");
+requireSource("Recovery Capsule verified and imported", "verified Recovery Capsule import");
+requireSource("Parallel timeline detected", "visible cross-tab divergence warning");
+requireSource("ultrapage-continuity-updated", "transactional checkpoint refresh signal");
 requireSource("CASE-inspired relationship graph", "responsible interoperability positioning");
 requireSource("learnerDataIncluded: false", "explicit learner-data exclusion");
 requireSource("Deep-Space Learning Trajectories", "science-fiction-inspired trajectory simulator");
@@ -116,6 +120,8 @@ requireStyle(".ribbon-journey-command", "Ribbon Learner Simulator command stylin
 requireStyle(".constellation-workspace", "interactive constellation workspace styling");
 requireStyle(".ribbon-constellation-command", "Ribbon Learning Constellation command styling");
 requireStyle(".deep-space-trajectories", "deep-space trajectory cards styling");
+requireStyle(".continuity-timeline", "Temporal Continuity timeline styling");
+requireStyle(".continuity-conflict", "parallel timeline warning styling");
 
 const extractFunction = (name) => {
   const functionStart = page.indexOf(`function ${name}`);
