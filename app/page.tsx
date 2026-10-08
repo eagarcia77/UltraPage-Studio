@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast, Toaster } from "sonner";
 import { createCourseDigitalTwin, type CourseDigitalTwinResult, type TwinPerspective } from "@/lib/course-digital-twin";
 import { CONTINUITY_CAPSULE_FORMAT, createContinuityCheckpoint, createRecoveryCapsule, importRecoveryCapsule, listContinuityCheckpoints, newestRecoveryCheckpoint, storeContinuityCheckpoint, verifyContinuityCheckpoint, verifyRecoveryCapsule, type ContinuityCheckpoint, type ContinuityDocument } from "@/lib/temporal-continuity";
+import { MultiverseDialog } from "@/components/multiverse-dialog";
 
 const starterHtml = "";
 const exportedPageStyles = `
@@ -959,6 +960,7 @@ export default function Home() {
   const [courseTwinOpen, setCourseTwinOpen] = useState(false);
   const [courseTwinResult, setCourseTwinResult] = useState<CourseDigitalTwinResult | null>(null);
   const [continuityOpen, setContinuityOpen] = useState(false);
+  const [multiverseOpen, setMultiverseOpen] = useState(false);
   const [continuityConflict, setContinuityConflict] = useState("");
   const [continuityPeers, setContinuityPeers] = useState(1);
   const continuityTabId = useRef(globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`);
@@ -2101,6 +2103,10 @@ export default function Home() {
     setContinuityOpen(false);
     toast.success("Verified checkpoint restored", { description: "The recovered HTML was sanitized before editing." });
   };
+  const applyMultiverseDocument = (document: ContinuityDocument) => {
+    const safeHtml = sanitizePastedHtml(document.html);
+    restoreSnapshot({ id: crypto.randomUUID?.() || String(Date.now()), html: safeHtml, title: document.title, fileName: document.fileName, language: document.language, lmsProfile: isLmsProfile(document.lmsProfile) ? document.lmsProfile : "universal", author: document.author, description: document.description, pageSetup: isPageSetup(document.pageSetup) ? document.pageSetup : pageSetup, savedAt: new Date().toISOString() });
+  };
   const copyHtml = async () => {
     const currentHtml = mode === "visual" ? editor.current?.innerHTML || html : html;
     const compatibleMarkup = buildLmsHtml(currentHtml, documentLanguage, lmsProfile);
@@ -2884,6 +2890,7 @@ export default function Home() {
       "open qti 2.1": () => { window.location.href = "/tools#qti"; },
       "accessibility review": () => { setSidePanelTab("review"); setRightPanel(true); }, "preview audit": () => runPreviewAudit(true), "publication readiness command center": runPublicationReadiness, "course digital twin": runCourseDigitalTwin, "inclusive learner journey simulator": runLearnerJourneySimulator, "learning constellation map": runLearningConstellation, "universal lms preflight": runUniversalLmsPreflight, "learning experience pulse": runLearningExperiencePulse, "semantic change impact": runSemanticChangeImpact, "document outline": () => { setSidePanelTab("outline"); setRightPanel(true); },
       "temporal continuity nexus": () => setContinuityOpen(true),
+      "ultrapage multiverse engine": () => setMultiverseOpen(true),
       "blackboard audit": runBlackboardPreviewAudit, "next preview issue": () => navigatePreviewIssue(1), "previous preview issue": () => navigatePreviewIssue(-1),
       "inspect selection html": inspectDesignSelectionInHtml, "open split view": openHtmlSplit,
       "table tools": () => selectionContext === "table" ? openRibbonTab("table") : toast.info("Select a table cell first"),
@@ -2947,6 +2954,7 @@ export default function Home() {
     <LearningConstellationDialog open={learningConstellationOpen} onOpenChange={setLearningConstellationOpen} result={learningConstellationResult} onDownload={downloadLearningConstellation}/>
     <CourseDigitalTwinDialog open={courseTwinOpen} onOpenChange={setCourseTwinOpen} result={courseTwinResult} onDownload={downloadCourseDigitalTwin}/>
     <TemporalContinuityDialog open={continuityOpen} onOpenChange={setContinuityOpen} conflict={continuityConflict} peerCount={continuityPeers} onRestore={restoreContinuityCheckpoint}/>
+    <MultiverseDialog open={multiverseOpen} onOpenChange={setMultiverseOpen} document={{ html, title, fileName: documentFileName, language: documentLanguage, lmsProfile, author: documentAuthor, description: documentDescription, pageSetup }} onApplyDocument={applyMultiverseDocument}/>
     <PublicationReadinessDialog open={readinessCenterOpen} onOpenChange={setReadinessCenterOpen} result={publicationReadiness} onDownload={downloadReadinessPassport} onOpenPillar={openReadinessPillar}/>
     <input ref={localFileInput} className="sr-only" type="file" accept=".html,.htm,.txt,.docx,.ultrapage.json,.recovery.json,.json,text/html,text/plain,application/json,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onChange={(event) => importLocalDocument(event.target.files?.[0])} aria-label="Open an HTML, TXT, Word, UltraPage project, or Recovery Capsule file"/>
     <header className="topbar">
@@ -2970,6 +2978,7 @@ export default function Home() {
             </div>
             {mode === "visual" && !ribbonCollapsed && <div id="ribbon-panel" className="ribbon-panel" role="tabpanel" aria-labelledby={`ribbon-tab-${ribbonTab}`}>
               {ribbonTab === "file" && <>
+                <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row"><button type="button" className="ribbon-command multiverse-command" onClick={() => setMultiverseOpen(true)}><Orbit/><span>Multiverse</span></button></div><span className="ribbon-group-label">Causal Editing</span></div>
                 <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row"><button type="button" className="ribbon-command" onClick={newDocument}><FilePlus2/><span>New</span></button><button type="button" className="ribbon-command" onClick={() => localFileInput.current?.click()}><Upload/><span>Open</span></button><button type="button" className="ribbon-command" onClick={save}><Save/><span>Save</span></button><ExportDialog ribbon html={html} title={title} language={documentLanguage} lmsProfile={lmsProfile} author={documentAuthor} description={documentDescription} pageSetup={pageSetup} downloadHtml={downloadDocument}/><button type="button" className="ribbon-command" onClick={() => window.print()}><Printer/><span>Print</span></button></div><span className="ribbon-group-label">Document</span></div>
                 <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row"><button type="button" className="ribbon-command" onClick={copyHtml}><Copy/><span>Copy for {activeLms.shortLabel}</span></button></div><span className="ribbon-group-label">Publish</span></div>
                 <div className="ribbon-group"><div className="ribbon-group-body ribbon-command-row"><HistoryDialog restoreSnapshot={restoreSnapshot} ribbon/><button type="button" className={`ribbon-command continuity-command ${continuityConflict ? "has-conflict" : ""}`} onClick={() => setContinuityOpen(true)}><LockKeyhole/><span>Continuity</span></button><DocumentPropertiesDialog author={documentAuthor} description={documentDescription} setAuthor={setDocumentAuthor} setDescription={setDocumentDescription} ribbon/><ApplicationAboutDialog/></div><span className="ribbon-group-label">Information</span></div>
