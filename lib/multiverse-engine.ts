@@ -44,10 +44,31 @@ export type RevisionComparison = {
   metadataChanges: string[];
 };
 
+export type MultiverseBroadcast = {
+  documentKey?: string;
+  activeBranchId?: string;
+  senderId?: string;
+};
+
 export type MergePlan =
   | { status: "identical" | "target-ahead"; targetHead: string; sourceHead: string }
   | { status: "fast-forward"; targetHead: string; sourceHead: string }
   | { status: "diverged"; targetHead: string; sourceHead: string; commonAncestorId?: string };
+
+export class MultiverseConflictError extends Error {
+  readonly code = "MULTIVERSE_HEAD_CHANGED";
+
+  constructor() {
+    super("Another tab advanced this timeline. Create a new timeline to preserve this version, or load the latest revision before continuing.");
+    this.name = "MultiverseConflictError";
+  }
+}
+
+export function isForeignUniverseBroadcast(value: unknown, key: string, senderId: string) {
+  if (!value || typeof value !== "object") return false;
+  const message = value as MultiverseBroadcast;
+  return message.documentKey === key && typeof message.senderId === "string" && message.senderId !== senderId;
+}
 
 const HASH = /^[a-f0-9]{64}$/;
 const now = () => new Date().toISOString();
@@ -99,9 +120,10 @@ export function headRevision(universe: MultiverseUniverse, branchId = universe.a
   return branch ? universe.revisions.find((revision) => revision.id === branch.headRevisionId) : undefined;
 }
 
-export async function commitRevision(universe: MultiverseUniverse, document: ContinuityDocument, message = "Document update", createdAt = now()) {
+export async function commitRevision(universe: MultiverseUniverse, document: ContinuityDocument, message = "Document update", createdAt = now(), expectedHeadRevisionId?: string) {
   const branch = activeBranch(universe);
   const head = headRevision(universe);
+  if (expectedHeadRevisionId && head?.id !== expectedHeadRevisionId) throw new MultiverseConflictError();
   const contentHash = await sha256(stableStringify(document));
   if (head?.contentHash === contentHash) return { universe, revision: head, committed: false };
   if (universe.revisions.length >= MULTIVERSE_REVISION_LIMIT) throw new Error(`This document reached the ${MULTIVERSE_REVISION_LIMIT}-revision safety limit. Export or archive it before continuing.`);
