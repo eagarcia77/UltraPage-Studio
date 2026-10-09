@@ -842,7 +842,7 @@ numeric 1. What is 2 + 2?
       statusLabelEl.textContent = errors.length ? 'Errors' : 'Verified';
       const targetLabel = `${TARGET_DETAILS[target].label} — ${TARGET_DETAILS[target].format}`;
       const lines = [
-        'ULTRAPAGE STUDIO - ASSESSMENT CONVERTER REPORT',
+        'CURRALUME STUDIO - ASSESSMENT CONVERTER REPORT',
         `Generated: ${new Date().toISOString()}`,
         `Target: ${targetLabel}`,
         `Questions detected: ${blocks.length}`,
@@ -934,7 +934,7 @@ numeric 1. What is 2 + 2?
 
     function comparisonReportText(comparison) {
       const lines = [
-        'ULTRAPAGE STUDIO - CROSS-LMS ASSESSMENT COMPATIBILITY',
+        'CURRALUME STUDIO - CROSS-LMS ASSESSMENT COMPATIBILITY',
         `Generated: ${comparison.generatedAt.toISOString()}`,
         `Question bank: ${quizNameEl.value.trim() || 'Untitled assessment'}`,
         ''

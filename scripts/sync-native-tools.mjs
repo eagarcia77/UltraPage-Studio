@@ -66,7 +66,7 @@ function sha256(content) {
 
 async function fetchSource(source) {
   const response = await fetch(source.url, {
-    headers: { "User-Agent": "UltraPage-Studio-native-tools-sync" }
+    headers: { "User-Agent": "Curralume-Studio-native-tools-sync" }
   });
   if (!response.ok) {
     throw new Error(`Unable to fetch ${source.url}: ${response.status} ${response.statusText}`);

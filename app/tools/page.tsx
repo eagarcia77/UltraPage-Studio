@@ -200,7 +200,7 @@ export default function NativeToolsPage() {
   };
   const downloadAudit = () => {
     const lines = [
-      "ULTRAPAGE STUDIO - NATIVE TOOL AUDIT",
+      "CURRALUME STUDIO - NATIVE TOOL AUDIT",
       `Tool: ${active.name}`,
       `Integration status: ${activeAudit?.status === "reviewed" ? "Reviewed" : "Review required"}`,
       `Runtime status: ${frameState}`,
@@ -218,7 +218,7 @@ export default function NativeToolsPage() {
     const url = URL.createObjectURL(new Blob([lines.join("\n")], { type: "text/plain;charset=utf-8" }));
     const link = document.createElement("a");
     link.href = url;
-    link.download = `ultrapage-${selected}-audit.txt`;
+    link.download = `curralume-${selected}-audit.txt`;
     link.click();
     URL.revokeObjectURL(url);
   };
