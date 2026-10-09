@@ -4,8 +4,8 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://ultrapage-studio.onrender.com"),
-  applicationName: "UltraPage Studio",
-  title: "UltraPage Studio | Accessible Multi-LMS Content Editor",
+  applicationName: "Curralume Studio",
+  title: "Curralume Studio | Accessible Multi-LMS Content Editor",
   description: "Create accessible, responsive content for Blackboard Ultra, Canvas, Moodle, Brightspace, and standards-based LMS platforms.",
   authors: [{ name: "Eduardo Augusto García Rodríguez" }],
   creator: "Eduardo Augusto García Rodríguez",
@@ -17,14 +17,14 @@ export const metadata: Metadata = {
     apple: "/brand/apple-touch-icon.png",
   },
   openGraph: {
-    title: "UltraPage Studio",
+    title: "Curralume Studio",
     description: "Accessible multi-LMS content authoring with native Blackboard assessment tools.",
-    images: [{ url: "/brand/ultrapage-icon-512.png", width: 512, height: 512, alt: "UltraPage Studio logo" }],
+    images: [{ url: "/brand/curralume-icon-512.png", width: 512, height: 512, alt: "Curralume Studio logo" }],
   },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "UP Studio",
+    title: "CL Studio",
   },
   formatDetection: {
     telephone: false,
@@ -40,7 +40,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#5b2a86",
+  themeColor: "#087A70",
 };
 
 export default function RootLayout({

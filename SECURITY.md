@@ -1,8 +1,8 @@
-# UltraPage Studio Security Policy
+# Curralume Studio Security Policy
 
 ## Release status
 
-UltraPage Studio is currently pre-commercial software. No release should be represented as production-ready until the stability gate in `docs/COMMERCIALIZATION_READINESS.md` is approved.
+Curralume Studio is currently pre-commercial software. No release should be represented as production-ready until the stability gate in `docs/COMMERCIALIZATION_READINESS.md` is approved.
 
 ## Reporting a vulnerability
 

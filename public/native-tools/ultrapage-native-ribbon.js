@@ -1,4 +1,4 @@
-/* UltraPage Studio native Ribbon keyboard behavior.
+/* Curralume Studio native Ribbon keyboard behavior.
  * This integration file is not part of the original tool repositories.
  */
 (function () {

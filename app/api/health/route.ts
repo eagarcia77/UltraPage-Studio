@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 export function GET() {
   return NextResponse.json({
     status: "ok",
-    product: "UltraPage Studio",
+    product: "Curralume Studio",
     releaseStage: process.env.ULTRAPAGE_RELEASE_STAGE || "pre-commercial",
     version: process.env.ULTRAPAGE_VERSION || "development",
     checkedAt: new Date().toISOString(),

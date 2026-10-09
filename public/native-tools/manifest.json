@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "product": "UltraPage Studio",
+  "product": "Curralume Studio",
   "policy": {
     "mode": "read-only-source-copy",
     "sourceRepositoriesAreModified": false,

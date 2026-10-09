@@ -231,7 +231,7 @@ export default function NativeToolsPage() {
   return <main className="native-tools-page">
     <header className="native-tools-header">
       <a href="/" className="native-tools-back"><ArrowLeft size={17}/> Back to Studio</a>
-      <div className="native-tools-brand"><span className="brandmark" aria-hidden="true"><img src="/brand/ultrapage-mark.svg" alt="" /></span><span><strong>UltraPage Studio</strong><small>Native Tools</small></span></div>
+      <div className="native-tools-brand"><span className="brandmark" aria-hidden="true"><img src="/brand/curralume-mark.svg" alt="" /></span><span><strong>Curralume Studio</strong><small>Native Tools</small></span></div>
       <a href={active.original} target="_blank" rel="noopener noreferrer" className="native-tools-original">Original standalone version <ExternalLink size={15}/></a>
     </header>
 
@@ -277,7 +277,7 @@ export default function NativeToolsPage() {
         })}
         <div className="native-tools-note">
           <strong>Native, traceable copies</strong>
-          <span>These tools run from UltraPage Studio. Source repositories remain unchanged.</span>
+          <span>These tools run from Curralume Studio. Source repositories remain unchanged.</span>
           <span>Assessment import formats are LMS-specific. Use the Universal LMS profile in the Studio editor for portable page content.</span>
           {manifest?.lastSync?.checkedFiles && <small>{manifest.lastSync.checkedFiles} source files verified during the latest synchronization.</small>}
         </div>
@@ -314,14 +314,14 @@ export default function NativeToolsPage() {
           {(frameState === "loading" || frameState === "slow" || frameState === "error") && <div className={`native-tool-loading ${frameState}`}>
             {frameState === "error" ? <AlertTriangle size={28}/> : <RefreshCw className={frameState === "loading" ? "spin" : ""} size={28}/>}
             <strong>{frameState === "error" ? "The tool could not be loaded" : frameState === "slow" ? "This tool is taking longer than expected" : `Loading ${active.name}`}</strong>
-            <span>{online ? "UltraPage is preparing the native workspace." : "UltraPage is checking locally cached files. Export libraries that require the internet may be unavailable."}</span>
+            <span>{online ? "Curralume is preparing the native workspace." : "Curralume is checking locally cached files. Export libraries that require the internet may be unavailable."}</span>
             {(frameState === "slow" || frameState === "error") && <button type="button" onClick={reloadTool}><RefreshCw size={15}/> Try again</button>}
           </div>}
           <iframe
             ref={frameRef}
             key={`${active.id}-${frameKey}`}
             src={active.source}
-            title={`${active.name} native UltraPage Studio tool`}
+            title={`${active.name} native Curralume Studio tool`}
             className="native-tool-frame"
             allow="clipboard-write"
             sandbox="allow-scripts allow-same-origin allow-forms allow-downloads allow-modals allow-popups"
