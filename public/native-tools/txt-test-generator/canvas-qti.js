@@ -1,4 +1,4 @@
-// UltraPage Studio integration layer. The upstream CTEL-SG repository remains unchanged.
+// Curralume Studio integration layer. The upstream CTEL-SG repository remains unchanged.
 (function createCanvasQti(global) {
   "use strict";
 

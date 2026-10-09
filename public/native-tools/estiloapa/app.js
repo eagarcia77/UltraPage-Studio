@@ -696,7 +696,7 @@ async function downloadAccessiblePdf() {
         format: "pdf",
         html: clone.innerHTML,
         title,
-        author: "UltraPage Studio",
+        author: "Curralume Studio",
         language: "es-PR",
         description: "Academic document with APA 7 formatting and accessible structure.",
         pageSetup: { size: "letter", orientation: "portrait", margin: "wide" },

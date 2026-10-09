@@ -1,4 +1,4 @@
-/* UltraPage Studio local workflow bridge for TXT and QTI assessment tools.
+/* Curralume Studio local workflow bridge for TXT and QTI assessment tools.
  * Transfers editable source text only; target validation remains authoritative.
  */
 (function () {
@@ -82,7 +82,7 @@
       setStatus(`${content.length.toLocaleString()} characters prepared for ${settings.targetHash === "qti" ? "QTI 2.1" : "TXT Test Generator"}`, "saved");
       navigateToTarget();
     } catch (error) {
-      console.error("UltraPage assessment transfer error", error);
+      console.error("Curralume assessment transfer error", error);
       setStatus("The browser could not prepare this local transfer", "error");
     }
   }

@@ -1,12 +1,12 @@
-# UltraPage Studio Commercialization Readiness
+# Curralume Studio Commercialization Readiness
 
 Status: **PRE-COMMERCIAL — SALES DISABLED**
 
-UltraPage Studio must not accept payments, advertise guaranteed compliance, or be represented as institutionally certified until every blocking item in this document has passed and the product owner records a written Go decision.
+Curralume Studio must not accept payments, advertise guaranteed compliance, or be represented as institutionally certified until every blocking item in this document has passed and the product owner records a written Go decision.
 
 ## Recommended commercial position
 
-UltraPage Studio should be positioned as an accessible multi-LMS authoring workspace for instructors, instructional designers, and academic support teams. Blackboard Ultra is an important compatibility profile, but the product must not imply ownership by, endorsement from, or affiliation with Anthology, Blackboard, Canvas, Moodle, D2L, Microsoft, or 1EdTech.
+Curralume Studio should be positioned as an accessible multi-LMS authoring workspace for instructors, instructional designers, and academic support teams. Blackboard Ultra is an important compatibility profile, but the product must not imply ownership by, endorsement from, or affiliation with Anthology, Blackboard, Canvas, Moodle, D2L, Microsoft, or 1EdTech.
 
 The initial commercial model should be a hosted subscription with three clear offers:
 
@@ -59,8 +59,8 @@ Final prices require customer discovery and a cost model. Prices must not be pub
 
 - [ ] Complete a software-bill-of-materials and license/provenance review for every dependency, font, image, template, and copied native-tool file.
 - [ ] Record the source commit and permitted use for EstiloAPA, TXT Test Generator, and QTI 2.1 Blackboard while preserving their original repositories.
-- [ ] Decide which UltraPage Studio code is proprietary and which components remain under third-party or open-source terms; publish required notices.
-- [ ] Conduct a formal trademark clearance search for “UltraPage Studio” and confusingly similar marks in the USPTO and Puerto Rico registries before filing or investing in launch materials.
+- [ ] Decide which Curralume Studio code is proprietary and which components remain under third-party or open-source terms; publish required notices.
+- [ ] Conduct a formal trademark clearance search for “Curralume Studio” and confusingly similar marks in the USPTO and Puerto Rico registries before filing or investing in launch materials.
 - [ ] Use third-party LMS names only to describe compatibility and include an appropriate non-affiliation notice.
 
 ### Business and operations
@@ -68,7 +68,7 @@ Final prices require customer discovery and a cost model. Prices must not be pub
 - [ ] Select and register the operating entity; obtain legal, accounting, and tax advice appropriate to Puerto Rico and target markets.
 - [ ] Complete Puerto Rico legal-entity and merchant registration requirements and determine IVU/sales-tax obligations before charging customers.
 - [ ] Establish a business bank account, bookkeeping, invoicing, refund, cancellation, and revenue-recognition processes.
-- [ ] Select a payment processor only after the product and legal policies are approved; use hosted checkout so card data never reaches UltraPage Studio servers.
+- [ ] Select a payment processor only after the product and legal policies are approved; use hosted checkout so card data never reaches Curralume Studio servers.
 - [ ] Define support channels, hours, severity targets, onboarding, documentation, service status communication, and institutional escalation.
 - [ ] Price from measured hosting, storage, support, compliance, payment, tax, and acquisition costs—not from feature count alone.
 

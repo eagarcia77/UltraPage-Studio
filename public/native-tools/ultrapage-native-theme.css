@@ -1,24 +1,24 @@
 /*
- * UltraPage Studio native-tool design system.
- * Applied only to the copies in UltraPage Studio. Source repositories are untouched.
+ * Curralume Studio native-tool design system.
+ * Applied only to the copies in Curralume Studio. Source repositories are untouched.
  */
 :root {
-  --ups-purple: #6534c8;
-  --ups-purple-dark: #3d176f;
-  --ups-purple-deep: #25103f;
-  --ups-purple-soft: #f3effc;
-  --ups-violet: #8b5cf6;
+  --ups-purple: #087A70;
+  --ups-purple-dark: #123B5D;
+  --ups-purple-deep: #082936;
+  --ups-purple-soft: #E9F6F3;
+  --ups-violet: #2A9388;
   --ups-ink: #1d2533;
   --ups-muted: #667085;
   --ups-border: #d9dce5;
   --ups-surface: #ffffff;
   --ups-canvas: #f5f6fa;
-  --ups-focus: #7c3aed;
+  --ups-focus: #0B6F66;
   --ups-success: #157347;
   --ups-warning: #a15c00;
   --ups-danger: #b42318;
 
-  /* Map legacy tool tokens to the UltraPage visual system. */
+  /* Map legacy tool tokens to the Curralume visual system. */
   --verde: var(--ups-purple) !important;
   --verde-oscuro: var(--ups-purple-dark) !important;
   --amarillo: #d8c6fb !important;
@@ -76,7 +76,7 @@ body {
 }
 
 body::before {
-  content: "UltraPage Studio · Native Tool";
+  content: "Curralume Studio · Native Tool";
   position: sticky;
   top: 0;
   z-index: 10000;
@@ -84,7 +84,7 @@ body::before {
   min-height: 48px;
   padding: 14px clamp(16px, 4vw, 32px) 14px clamp(58px, 7vw, 74px);
   color: #fff;
-  background-image: url("/brand/ultrapage-mark.svg"), linear-gradient(105deg, var(--ups-purple-deep), var(--ups-purple-dark) 55%, var(--ups-purple));
+  background-image: url("/brand/curralume-mark.svg"), linear-gradient(105deg, var(--ups-purple-deep), var(--ups-purple-dark) 55%, var(--ups-purple));
   background-position: clamp(16px, 4vw, 32px) center, center;
   background-repeat: no-repeat;
   background-size: 30px 30px, cover;
@@ -101,7 +101,7 @@ body::before {
   display: none !important;
 }
 
-/* The original pages reference repository-only images. The native copy uses the UltraPage header instead. */
+/* The original pages reference repository-only images. The native copy uses the Curralume header instead. */
 img[src^="img/"],
 .header-logo[src^="img/"] {
   display: none !important;

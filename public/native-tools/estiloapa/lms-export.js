@@ -1,4 +1,4 @@
-// UltraPage Studio integration layer. The upstream EstiloAPA repository remains unchanged.
+// Curralume Studio integration layer. The upstream EstiloAPA repository remains unchanged.
 const PROFILE = {
   blackboard: {
     name: "Blackboard Ultra",

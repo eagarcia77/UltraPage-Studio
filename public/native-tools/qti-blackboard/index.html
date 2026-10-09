@@ -13,7 +13,7 @@
   <!-- University Center for Advancing and Nurturing Postbacc Quality (UCAN) -->
   <!-- Title V PPOHA #P031M230038 -->
 
-  <title>QTI 2.1 Package Builder | UltraPage Studio</title>
+  <title>QTI 2.1 Package Builder | Curralume Studio</title>
   <style>
     :root {
       --green: #007B5F;
@@ -27,7 +27,7 @@
       --danger: #b91c1c;
       --success: #15803d;
       --blue: #2563eb;
-      --purple: #7c3aed;
+      --purple: #0B6F66;
       --shadow: 0 18px 50px rgba(0,0,0,.10);
     }
 
@@ -740,7 +740,7 @@ ${resources}
         const name = document.getElementById('packageName').value;
         if (target === 'moodle') {
           const filename = sanitizeFileName(`${name || 'question_bank'}_moodle`, 'gift.txt');
-          downloadFile(filename, `// $CATEGORY: UltraPage/${escapeGift(name || 'Question Bank')}\n\n${buildMoodleGift(items)}\n`, 'text/plain;charset=utf-8');
+          downloadFile(filename, `// $CATEGORY: Curralume/${escapeGift(name || 'Question Bank')}\n\n${buildMoodleGift(items)}\n`, 'text/plain;charset=utf-8');
           setMessage('success', `${filename} downloaded. In Moodle, choose the GIFT import format.`);
           return;
         }

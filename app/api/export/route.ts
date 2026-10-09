@@ -327,7 +327,7 @@ async function createDocx(html: string, title: string, author: string, language:
   const document = new Document({
     creator: author,
     title,
-    subject: description || "Documento accesible exportado desde UltraPage Studio",
+    subject: description || "Documento accesible exportado desde Curralume Studio",
     description: description || "Documento estructurado con encabezados, listas, tablas y enlaces accesibles.",
     styles: {
       default: {
@@ -365,7 +365,7 @@ function createPdf(html: string, title: string, author: string, language: string
       pdfVersion: "1.7",
       lang: language,
       displayTitle: true,
-      info: { Title: title, Author: author, Subject: description || "Documento accesible exportado desde UltraPage Studio", Creator: "UltraPage Studio" },
+      info: { Title: title, Author: author, Subject: description || "Documento accesible exportado desde Curralume Studio", Creator: "Curralume Studio" },
     });
     pdf.on("data", (chunk) => chunks.push(Buffer.from(chunk)));
     pdf.on("end", () => resolve(Buffer.concat(chunks)));
@@ -518,7 +518,7 @@ export async function POST(request: NextRequest) {
     const format = body.format;
     const html = body.html || "";
     const title = cleanText(body.title || "Documento accesible").slice(0, 200);
-    const author = cleanText(body.author || "UltraPage Studio").slice(0, 120);
+    const author = cleanText(body.author || "Curralume Studio").slice(0, 120);
     const language = body.language === "en-US" ? "en-US" : "es-PR";
     const description = cleanText(body.description || "").slice(0, 300);
     const pageSetup = normalizedPageSetup(body.pageSetup);
