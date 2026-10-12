@@ -1,7 +1,6 @@
 const APP_VERSION = "3.4.8";
-const PDFJS_VERSION = "6.1.200";
-const PDFJS_URL = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_VERSION}/build/pdf.mjs`;
-const PDFJS_WORKER_URL = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_VERSION}/build/pdf.worker.mjs`;
+const PDFJS_URL = "/vendor/pdf.mjs";
+const PDFJS_WORKER_URL = "/vendor/pdf.worker.mjs";
 
 const els = {
   files: document.querySelector("#files"),
@@ -124,7 +123,7 @@ function debounce(fn, delay) {
 async function waitForGlobal(name, timeoutMs = 12000) {
   const started = Date.now();
   while (!window[name]) {
-    if (Date.now() - started > timeoutMs) throw new Error(`The ${name} library could not be loaded. Check your internet connection.`);
+    if (Date.now() - started > timeoutMs) throw new Error(`The local ${name} component could not be initialized. Reload the page and try again.`);
     await new Promise((resolve) => setTimeout(resolve, 60));
   }
   return window[name];

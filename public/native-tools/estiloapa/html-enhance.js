@@ -1,12 +1,3 @@
-import "./docx-images-v346.js";
-import "./source-images-v345.js";
-import "./pdf-figure-recovery-v347.js";
-import "./figure-apa.js";
-import "./exclude-banner-v343.js";
-import "./image-editor-v344.js";
-import "./reference-format-v345.js";
-import "./docx-banner-safe-v343.js";
-
 const HTML_ENHANCE_VERSION = "3.4.7";
 
 function institutionalHtmlProfileEnabled() {
