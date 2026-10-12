@@ -1,4 +1,4 @@
-const VERSION = "curralume-v48";
+const VERSION = "curralume-v49";
 const SHELL_CACHE = `${VERSION}-shell`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
 const APP_SHELL = [
@@ -38,6 +38,10 @@ const APP_SHELL = [
   "/native-tools/estiloapa/html-enhance.js",
   "/native-tools/estiloapa/lms-export.js",
   "/native-tools/estiloapa/docx-enhance.js",
+  "/vendor/mammoth.browser.min.js",
+  "/vendor/docx.iife.js",
+  "/vendor/pdf.mjs",
+  "/vendor/pdf.worker.mjs",
   "/native-tools/txt-test-generator/index.html",
   "/native-tools/txt-test-generator/canvas-qti.js",
   "/native-tools/txt-test-generator/img/LOGO-INTER-SG-HORIZONTAL_sticker.png",

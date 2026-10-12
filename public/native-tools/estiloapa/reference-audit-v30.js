@@ -299,10 +299,16 @@ function initializeReferenceAudit() {
   ensureReferenceAuditStyles();
   ensureReferenceAuditPanel();
   document.querySelector("#reauditBtn")?.addEventListener("click", () => setTimeout(renderReferenceFormattingAudit, 120));
-  document.querySelector("#preview")?.addEventListener("input", () => {
+  const preview = document.querySelector("#preview");
+  const scheduleAudit = () => {
     clearTimeout(window.__apaRefAuditTimer);
     window.__apaRefAuditTimer = setTimeout(renderReferenceFormattingAudit, 450);
-  });
+  };
+  preview?.addEventListener("input", scheduleAudit);
+  if (preview) {
+    const observer = new MutationObserver(scheduleAudit);
+    observer.observe(preview, { childList: true, subtree: true, characterData: true });
+  }
   setTimeout(renderReferenceFormattingAudit, 250);
 }
 

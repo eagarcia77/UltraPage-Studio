@@ -1,6 +1,8 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import vm from "node:vm";
 import * as cheerio from "cheerio";
+import { Document, Packer, Paragraph } from "docx";
 
 const root = process.cwd();
 const manifest = JSON.parse(await readFile(path.join(root, "public/native-tools/manifest.json"), "utf8"));
@@ -11,6 +13,12 @@ const lmsExportSource = await readFile(path.join(root, "public/native-tools/esti
 const canvasQtiSource = await readFile(path.join(root, "public/native-tools/txt-test-generator/canvas-qti.js"), "utf8");
 const serviceWorker = await readFile(path.join(root, "public/sw.js"), "utf8");
 const errors = [];
+const requiredVendorAssets = [
+  "mammoth.browser.min.js",
+  "docx.iife.js",
+  "pdf.mjs",
+  "pdf.worker.mjs",
+];
 
 function fail(tool, message) {
   errors.push(`${tool}: ${message}`);
@@ -24,6 +32,35 @@ if (manifest.tools.length !== 3) fail("manifest", `expected 3 tools, found ${man
 if (!serviceWorker.includes("/native-tools/ultrapage-native-recovery.js")) fail("service worker", "recovery asset is not cached");
 if (!serviceWorker.includes("/native-tools/estiloapa/lms-export.js")) fail("service worker", "EstiloAPA LMS export asset is not cached");
 if (!serviceWorker.includes("/native-tools/txt-test-generator/canvas-qti.js")) fail("service worker", "TXT Generator Canvas QTI asset is not cached");
+
+for (const asset of requiredVendorAssets) {
+  try {
+    await readFile(path.join(root, "public/vendor", asset));
+  } catch {
+    fail("EstiloAPA", `local browser library is missing: public/vendor/${asset}`);
+  }
+  if (!serviceWorker.includes(`/vendor/${asset}`)) fail("service worker", `local browser library is not cached: ${asset}`);
+}
+
+try {
+  const mammothBrowserSource = await readFile(path.join(root, "public/vendor/mammoth.browser.min.js"), "utf8");
+  const browserContext = { console, setTimeout, clearTimeout, TextDecoder, TextEncoder, Uint8Array, ArrayBuffer, Promise };
+  browserContext.window = browserContext;
+  browserContext.self = browserContext;
+  browserContext.globalThis = browserContext;
+  vm.createContext(browserContext);
+  vm.runInContext(mammothBrowserSource, browserContext, { filename: "mammoth.browser.min.js" });
+  if (typeof browserContext.mammoth?.convertToHtml !== "function") throw new Error("mammoth.convertToHtml was not exposed");
+
+  const probeText = "Curralume EstiloAPA browser audit";
+  const probeDocument = new Document({ sections: [{ children: [new Paragraph(probeText)] }] });
+  const probeBuffer = await Packer.toBuffer(probeDocument);
+  const probeArrayBuffer = probeBuffer.buffer.slice(probeBuffer.byteOffset, probeBuffer.byteOffset + probeBuffer.byteLength);
+  const probeResult = await browserContext.mammoth.convertToHtml({ arrayBuffer: probeArrayBuffer });
+  if (!probeResult.value.includes(probeText)) throw new Error("DOCX text was not converted");
+} catch (error) {
+  fail("EstiloAPA", `browser DOCX conversion failed: ${error.message}`);
+}
 
 for (const tool of manifest.tools) {
   const html = await readFile(entryFile(tool), "utf8");
@@ -61,6 +98,10 @@ for (const tool of manifest.tools) {
     if ($('meta[http-equiv="Permissions-Policy"]').length !== 1) fail(tool.id, "permissions policy missing");
   }
   if (tool.id === "estiloapa") {
+    for (const asset of requiredVendorAssets.slice(0, 2)) {
+      if ($(`script[src="/vendor/${asset}"]`).length !== 1) fail(tool.id, `local browser library is not loaded: ${asset}`);
+    }
+    if ($('script[src^="https://cdn.jsdelivr.net"]').length) fail(tool.id, "runtime dependency still uses the external jsDelivr CDN");
     if ($('script[data-ultrapage-lms-export]').length !== 1) fail(tool.id, "multi-LMS export controller missing");
     if (!tool.nativeAssets?.includes("lms-export.js")) fail(tool.id, "multi-LMS export asset absent from manifest");
     for (const id of ["lmsExportProfile", "checkLmsBtn", "copyLmsHtmlBtn", "downloadLmsHtmlBtn", "downloadLmsReportBtn", "lmsExportStatus", "lmsAuditDialog"]) {
@@ -110,6 +151,16 @@ for (const tool of manifest.tools) {
     try { new Function($(element).html() || ""); }
     catch (error) { fail(tool.id, `inline JavaScript syntax error: ${error.message}`); }
   });
+
+  for (const element of $("script[type=module][src]").toArray()) {
+    const source = $(element).attr("src");
+    if (!source || source.startsWith("/") || /^[a-z]+:/i.test(source)) continue;
+    try {
+      await readFile(path.resolve(path.dirname(entryFile(tool)), source));
+    } catch {
+      fail(tool.id, `module dependency does not exist: ${source}`);
+    }
+  }
 
   console.log(`✓ ${tool.name}: Ribbon, recovery, accessibility, links, IDs, and inline syntax`);
 }

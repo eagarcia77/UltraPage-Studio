@@ -1,7 +1,6 @@
 const PDF_ORIGINAL_MEDIA_VERSION = "3.4";
-const PDF_MEDIA_PDFJS_VERSION = "6.1.200";
-const PDF_MEDIA_PDFJS_URL = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDF_MEDIA_PDFJS_VERSION}/build/pdf.mjs`;
-const PDF_MEDIA_WORKER_URL = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDF_MEDIA_PDFJS_VERSION}/build/pdf.worker.mjs`;
+const PDF_MEDIA_PDFJS_URL = "/vendor/pdf.mjs";
+const PDF_MEDIA_WORKER_URL = "/vendor/pdf.worker.mjs";
 
 let pdfMediaJsPromise;
 let pdfMediaBusy = false;

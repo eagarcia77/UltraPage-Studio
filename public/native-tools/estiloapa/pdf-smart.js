@@ -1,7 +1,6 @@
 const PDF_SMART_VERSION = "2.3";
-const PDFJS_VERSION = "6.1.200";
-const PDFJS_URL = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_VERSION}/build/pdf.mjs`;
-const PDFJS_WORKER_URL = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_VERSION}/build/pdf.worker.mjs`;
+const PDFJS_URL = "/vendor/pdf.mjs";
+const PDFJS_WORKER_URL = "/vendor/pdf.worker.mjs";
 
 let pdfJsPromise;
 let processingPdf = false;
