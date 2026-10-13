@@ -58,12 +58,12 @@ function synchronizeApaEditorForExport() {
       block.classList.add("apa-heading-level-4", "level-4");
       block.dataset.apaHeadingLevel = "4";
       block.classList.remove("no-indent");
-      if (typeof window.normalizeEditorRunInHeading === "function") window.normalizeEditorRunInHeading(block, 4);
+      if (typeof window.normalizeEditorRunInHeading === "function") window.normalizeEditorRunInHeading(block, 4, { mergeFollowing: false });
     } else if (style === "h5") {
       block.classList.add("apa-heading-level-5", "level-5");
       block.dataset.apaHeadingLevel = "5";
       block.classList.remove("no-indent");
-      if (typeof window.normalizeEditorRunInHeading === "function") window.normalizeEditorRunInHeading(block, 5);
+      if (typeof window.normalizeEditorRunInHeading === "function") window.normalizeEditorRunInHeading(block, 5, { mergeFollowing: false });
     } else if (style === "reference") {
       block.classList.add("apa-reference", "thesis-reference", "no-indent");
     } else if (style === "table-label") {
