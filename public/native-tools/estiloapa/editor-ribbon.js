@@ -92,43 +92,26 @@ function enhanceRibbon() {
     panes.get(destination).append(group);
   }
 
-  const reviewPane = panes.get("review");
-  const auditGroup = document.createElement("div");
-  auditGroup.className = "tool-group apa-ribbon-tool-group apa-ribbon-review-shortcuts";
-  auditGroup.setAttribute("role", "group");
-  auditGroup.setAttribute("aria-label", "Document audit");
-  const runAudit = document.createElement("button");
-  runAudit.id = "apaRibbonRunAudit";
-  runAudit.type = "button";
-  runAudit.textContent = "Run audit";
-  runAudit.title = "Check document against the APA 7 rules";
-  const downloadReport = document.createElement("button");
-  downloadReport.id = "apaRibbonAuditReport";
-  downloadReport.type = "button";
-  downloadReport.textContent = "Audit report";
-  downloadReport.title = "Download the latest APA audit report";
-  const caption = document.createElement("span");
-  caption.className = "apa-ribbon-group-caption";
-  caption.textContent = "Quality";
-  caption.setAttribute("aria-hidden", "true");
-  auditGroup.append(runAudit, downloadReport, caption);
-  reviewPane.append(auditGroup);
-
-  function connectAuditShortcut(button, originalId) {
-    const original = document.querySelector(`#${originalId}`);
-    if (!original) {
-      button.disabled = true;
-      return;
+  const runAudit = document.querySelector("#reauditBtn");
+  const downloadReport = document.querySelector("#downloadAuditBtn");
+  if (runAudit && downloadReport) {
+    const auditGroup = document.createElement("div");
+    auditGroup.className = "tool-group apa-ribbon-tool-group apa-ribbon-review-shortcuts";
+    auditGroup.setAttribute("role", "group");
+    auditGroup.setAttribute("aria-label", "Document audit");
+    runAudit.title = "Check document against APA 7 requirements";
+    downloadReport.title = "Download APA 7 audit report";
+    const caption = document.createElement("span");
+    caption.className = "apa-ribbon-group-caption";
+    caption.textContent = "Quality";
+    caption.setAttribute("aria-hidden", "true");
+    auditGroup.append(runAudit, downloadReport, caption);
+    panes.get("review").append(auditGroup);
+    const redundantAuditToolbar = document.querySelector(".audit .native-action-ribbon");
+    if (redundantAuditToolbar && !redundantAuditToolbar.querySelector("button, input, select, a[href]")) {
+      redundantAuditToolbar.remove();
     }
-    const synchronize = () => { button.disabled = original.disabled; };
-    synchronize();
-    new MutationObserver(synchronize).observe(original, { attributes: true, attributeFilter: ["disabled"] });
-    button.addEventListener("click", () => {
-      if (!original.disabled) original.click();
-    });
   }
-  connectAuditShortcut(runAudit, "reauditBtn");
-  connectAuditShortcut(downloadReport, "downloadAuditBtn");
 
   toolbar.removeAttribute("role");
   toolbar.setAttribute("aria-label", "APA document editing commands");
@@ -149,7 +132,6 @@ function enhanceRibbon() {
   const quickCommands = [];
   for (const tab of RIBBON_TABS) {
     for (const button of panes.get(tab.id).querySelectorAll("button")) {
-      if (button.disabled) continue;
       const label = button.getAttribute("aria-label") || button.title || button.textContent.trim();
       if (!label) continue;
       const index = quickCommands.push({ tab: tab.id, button }) - 1;
@@ -166,10 +148,7 @@ function enhanceRibbon() {
   contextText.id = "apaRibbonContextText";
   contextText.textContent = "Select text to format";
   contextText.setAttribute("aria-live", "off");
-  const hint = document.createElement("span");
-  hint.className = "apa-ribbon-context-hint";
-  hint.textContent = "Changes apply to the selected paragraph";
-  context.append(contextText, hint);
+  context.append(contextText);
   toolbar.after(context);
 
   function activate(id, focus = false) {
