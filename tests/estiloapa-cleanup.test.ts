@@ -39,5 +39,12 @@ test("legacy unused utilities and stale presentation copy are absent", async () 
   assert.doesNotMatch(formatter, /function ensureTerminalPeriod\(/);
   assert.doesNotMatch(exporter, /APA_EDITOR_EXPORT_VERSION/);
   assert.doesNotMatch(css, /apa-ribbon-context-hint/);
-  assert.match(sw, /curralume-v55/);
+  const workspaceCss = await source("public/native-tools/estiloapa/editor-workspace.css");
+  const page = await source("public/native-tools/estiloapa/index.html");
+  const ribbon = await source("public/native-tools/estiloapa/editor-ribbon.js");
+  assert.doesNotMatch(workspaceCss, /#apaEditorShell \\{ display: contents; \\}/);
+  assert.doesNotMatch(workspaceCss, /#apaEditorToolbar \\{/);
+  assert.doesNotMatch(page, /id="lmsExportHelp"/);
+  assert.doesNotMatch(ribbon, /return \\{ label, block \\}/);
+  assert.match(sw, /curralume-v56/);
 });
