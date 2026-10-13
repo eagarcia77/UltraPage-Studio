@@ -150,14 +150,10 @@ function aesInstallStyles() {
 }
 
 function aesUpdateUi() {
-  const badge = document.querySelector(".badge");
-  if (badge) {
-    badge.textContent = `v${APA_EDIT_STABILITY_VERSION}`;
-    badge.setAttribute("aria-label", `Version ${APA_EDIT_STABILITY_VERSION}`);
-  }
   const help = document.querySelector("#previewHelp");
   if (help) {
-    help.innerHTML = "<strong>Protected editing v3.4.8:</strong> type, delete, cut, and paste directly in this preview without normalizers rebuilding the text while the cursor is active. APA 7 rules resume when you leave the editor, run the audit again, or export.";
+    help.classList.add("sr-only");
+    help.textContent = "Edit the preview directly, then run the audit before export.";
   }
 }
 

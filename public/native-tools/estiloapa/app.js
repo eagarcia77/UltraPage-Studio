@@ -809,7 +809,7 @@ function loadDemo() {
   applyPreviewStyles();
   renderAudit(auditDocument(els.preview));
   enableDownloads();
-  setStatus(`Sample processed successfully in APA7 Module Formatter v${APP_VERSION}.`, "success");
+  setStatus("Sample processed successfully.", "success");
 }
 
 function hasFormattedContent() {
@@ -1081,4 +1081,4 @@ window.addEventListener("error", (event) => {
   if (event?.message) setStatus(`Runtime error: ${event.message}`, "error");
 });
 
-setStatus(`APA7 Module Formatter v${APP_VERSION} is ready.`);
+setStatus("Ready.");

@@ -174,7 +174,6 @@ function ensurePanel() {
   panel.className = "advanced-audit";
   panel.innerHTML = `
     <h3>Advanced citation and reference review</h3>
-    <p class="advanced-note">Automatic fixes are limited to safe presentation changes. Verify bibliographic data against the original source.</p>
     <div class="advanced-actions">
       <button type="button" id="safeFixReferences">Apply safe fixes</button>
       <button type="button" id="refreshAdvancedAudit">Review now</button>

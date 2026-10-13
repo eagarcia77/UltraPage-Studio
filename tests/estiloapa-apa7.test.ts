@@ -84,9 +84,17 @@ test("enforces APA double spacing without blank lines around headings", async ()
 test("keeps the formatter interface concise without stale release commentary", async () => {
   const index = await source("public/native-tools/estiloapa/index.html");
   const html = await source("public/native-tools/estiloapa/html-enhance.js");
+  const stability = await source("public/native-tools/estiloapa/edit-stability-v348.js");
+  const media = await source("public/native-tools/estiloapa/pdf-original-media-v33.js");
+  const advancedAudit = await source("public/native-tools/estiloapa/enhancements.js");
+  const referenceAudit = await source("public/native-tools/estiloapa/reference-audit-v30.js");
   assert.doesNotMatch(index, /Version 3\.4 restored|The score is heuristic|Protected editing v3\.4\.9/);
   assert.doesNotMatch(index, /<footer>/);
   assert.match(index, /class="sr-only">Creates a tagged, accessible PDF/);
   assert.doesNotMatch(html, /function updateV347Ui/);
+  assert.doesNotMatch(stability, /badge\.textContent|Protected editing v3\.4\.8/);
+  assert.doesNotMatch(media, /function updateVersionUi/);
+  assert.doesNotMatch(advancedAudit, /Automatic fixes are limited/);
+  assert.doesNotMatch(referenceAudit, /Checks visible formatting and bibliographic patterns/);
 });
 
