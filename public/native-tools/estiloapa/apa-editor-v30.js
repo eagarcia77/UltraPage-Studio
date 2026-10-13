@@ -367,8 +367,12 @@ function insertReferencesHeading() {
 
 function applyApaParagraphPreset() {
   const blocks = selectedBlocks();
-  for (const block of blocks) {
+  for (const original of blocks) {
+    const block = normalizeEditableBlockTag(original);
+    clearApaEditorClasses(block);
     block.dataset.apaEditorStyle = "normal";
+    block.style.fontWeight = "";
+    block.style.fontStyle = "";
     block.dataset.apaEditorAlign = "left";
     block.dataset.apaEditorIndent = "first";
     block.dataset.apaEditorLine = "2";
@@ -382,8 +386,11 @@ function applyApaParagraphPreset() {
 
 function applyApaReferencePreset() {
   const blocks = selectedBlocks();
-  for (const block of blocks) {
+  for (const original of blocks) {
+    const block = normalizeEditableBlockTag(original);
     clearApaEditorClasses(block);
+    block.style.fontWeight = "";
+    block.style.fontStyle = "";
     block.classList.add("apa-reference", "no-indent");
     block.dataset.apaEditorStyle = "reference";
     block.dataset.apaEditorAlign = "left";
