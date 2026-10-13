@@ -29,7 +29,6 @@
   flex-wrap: nowrap;
   min-width: 0;
 }
-#apaWorkspaceBar .apa-workspace-find label { font-size: .85rem; font-weight: 700; }
 #apaWorkspaceFind {
   width: clamp(140px, 16vw, 240px);
   max-width: 100%;
