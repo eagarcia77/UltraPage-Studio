@@ -21,7 +21,7 @@ test("resets stale heading metadata before paragraph and reference preset applic
   assert.match(editor, /delete block\.dataset\.apaRunIn/);
   assert.match(editor, /"level-1", "level-2", "level-3", "level-4", "level-5"/);
   assert.match(editor, /function normalizeEditableBlockTag\(block\)/);
-  assert.match(editor, /const block = normalizeEditableBlockTag\(original\);\s+clearApaEditorClasses\(block\)/);
+  assert.match(editor, /const block = normalizeEditableBlockTag\(original\);\s+lastBlock = block;\s+clearApaEditorClasses\(block\)/);
   assert.match(editor, /const keepRunIn = \["h4", "h5"\]\.includes\(styleName\)/);
 });
 
@@ -39,7 +39,9 @@ test("preserves rich text and hyperlinks inside APA 7 level 4 and 5 headings", a
 test("insert-link restores the selected range after the URL prompt", async () => {
   const editor = await source("public/native-tools/estiloapa/apa-editor-v30.js");
   assert.match(editor, /const safeUrl = validatedEditorLink\(url\)/);
-  assert.match(editor, /if \(!restoreEditorSelection\(\) && !selectionInsidePreview\(\)\) return;/);
+  assert.match(editor, /const selected = selectionInsidePreview\(\) \? window.getSelection\(\)\?\.getRangeAt\(0\)\.cloneRange\(\)/);
+  assert.match(editor, /selection\.addRange\(selected\)/);
+  assert.match(editor, /document\.execCommand\("insertHTML", false,/);
   assert.match(editor, /document\.execCommand\("createLink", false, safeUrl\)/);
 });
 

@@ -1,3 +1,5 @@
+import { setupDocumentFind } from "./editor-search.js";
+
 const ALLOWED_ZOOMS = new Set(["75", "90", "100", "110", "125"]);
 
 export function summarizeDocumentText(input) {
@@ -22,6 +24,13 @@ function initializeDocumentWorkspace() {
       <strong>Document workspace</strong>
       <output id="apaWorkspaceStats" aria-live="off">0 words · 0 characters</output>
     </div>
+    <div class="apa-workspace-find" role="search" aria-label="Find text in document">
+      <label for="apaWorkspaceFind">Find</label>
+      <input type="search" id="apaWorkspaceFind" placeholder="Search document" autocomplete="off" aria-label="Find text in document">
+      <button type="button" id="apaFindPrevious" aria-label="Previous match" title="Previous match" disabled>↑</button>
+      <button type="button" id="apaFindNext" aria-label="Next match" title="Next match" disabled>↓</button>
+      <output id="apaFindCounter" aria-live="polite"></output>
+    </div>
     <div class="apa-workspace-actions">
       <label for="apaWorkspaceOutline">Outline</label>
       <select id="apaWorkspaceOutline" aria-label="Jump to document heading">
@@ -42,6 +51,7 @@ function initializeDocumentWorkspace() {
   if (editorShell) editorShell.before(bar);
   else scrollArea.before(bar);
 
+  const refreshFind = setupDocumentFind(documentArea, bar);
   const stats = bar.querySelector("#apaWorkspaceStats");
   const outline = bar.querySelector("#apaWorkspaceOutline");
   let headingTargets = [];
@@ -54,6 +64,7 @@ function initializeDocumentWorkspace() {
     const isPlaceholder = documentArea.querySelector(":scope > .placeholder") && documentArea.children.length === 1;
     const count = summarizeDocumentText(isPlaceholder ? "" : documentArea.innerText || documentArea.textContent);
     stats.textContent = `${count.words.toLocaleString()} words · ${count.characters.toLocaleString()} characters`;
+    refreshFind();
     const headingSelector = "h1,h2,h3,h4,h5,[data-apa-heading-level],.apa-references-heading";
     headingTargets = [...documentArea.querySelectorAll(headingSelector)].filter((node) => node.textContent.trim());
     outline.replaceChildren(new Option("Jump to heading…", ""));
@@ -84,6 +95,7 @@ function initializeDocumentWorkspace() {
     documentArea.focus({ preventScroll: true });
     selection.removeAllRanges();
     selection.addRange(range);
+    window.apaSaveEditorSelection?.();
     outline.value = "";
   });
 

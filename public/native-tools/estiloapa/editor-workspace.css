@@ -22,6 +22,39 @@
 #apaWorkspaceStats { color: #526172; font-size: .84rem; font-variant-numeric: tabular-nums; }
 #apaWorkspaceBar .apa-workspace-actions { display: flex; flex-wrap: wrap; gap: .55rem; align-items: center; }
 #apaWorkspaceBar label { font-size: .85rem; font-weight: 700; }
+#apaWorkspaceBar .apa-workspace-find {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+#apaWorkspaceBar .apa-workspace-find label { font-size: .85rem; font-weight: 700; }
+#apaWorkspaceFind {
+  width: clamp(140px, 16vw, 240px);
+  max-width: 100%;
+  min-height: 40px;
+  padding: .45rem .7rem;
+  border: 1px solid #aebbb8;
+  border-radius: 8px;
+  background: white;
+  color: #1e293b;
+}
+#apaFindPrevious, #apaFindNext {
+  min-height: 40px;
+  min-width: 40px;
+  padding: .3rem;
+  border: 1px solid #b8c5d2;
+  background: white;
+}
+#apaFindCounter {
+  min-width: 46px;
+  color: #526172;
+  font-size: .8rem;
+  text-align: center;
+  white-space: nowrap;
+}
+#apaWorkspaceFind:focus-visible { outline: 3px solid #2563eb; outline-offset: 2px; }
 #apaWorkspaceOutline {
   width: min(240px, 42vw);
   min-width: 135px;
@@ -94,6 +127,8 @@ body.apa-workspace-focus .preview-panel { width: 100%; }
 @media (max-width: 640px) {
   #apaWorkspaceBar { align-items: flex-start; }
   #apaWorkspaceBar .apa-workspace-actions { width: 100%; justify-content: space-between; }
+  #apaWorkspaceBar .apa-workspace-find { width: 100%; }
+  #apaWorkspaceFind { flex: 1 1 110px; min-width: 0; width: auto; }
   #apaWorkspaceOutline { width: min(210px, 48vw); min-width: 115px; }
   #apaEditorToolbar { scroll-padding-inline: .75rem; }
 }

@@ -1,7 +1,5 @@
 import { validatedEditorLink } from "./editor-link-validation.js";
 
-const APA_EDITOR_VERSION = "3.0";
-
 const preview = () => document.querySelector("#preview");
 let savedRange = null;
 
@@ -29,17 +27,37 @@ function saveEditorSelection() {
 }
 
 function restoreEditorSelection() {
-  if (!savedRange) return false;
   const root = preview();
-  if (!root || !root.contains(savedRange.commonAncestorContainer)) return false;
   const sel = window.getSelection();
-  sel.removeAllRanges();
-  sel.addRange(savedRange);
-  return true;
+  if (!root || !sel) return false;
+  if (selectionInsidePreview()) return true;
+  if (!savedRange || !root.contains(savedRange.commonAncestorContainer)) return false;
+  try {
+    sel.removeAllRanges();
+    sel.addRange(savedRange);
+    return selectionInsidePreview();
+  } catch {
+    savedRange = null;
+    return false;
+  }
 }
 
+function placeEditorCaret(block) {
+  const root = preview();
+  const sel = window.getSelection();
+  if (!root || !sel || !block || !root.contains(block)) return false;
+  const range = document.createRange();
+  range.selectNodeContents(block);
+  range.collapse(false);
+  sel.removeAllRanges();
+  sel.addRange(range);
+  savedRange = range.cloneRange();
+  return true;
+}
+window.apaSaveEditorSelection = saveEditorSelection;
+
 function selectedBlocks() {
-  restoreEditorSelection();
+  if (!restoreEditorSelection()) return [];
   const root = preview();
   const sel = window.getSelection();
   if (!root || !sel || !sel.rangeCount) return [];
@@ -101,7 +119,7 @@ function normalizeEditableBlockTag(block) {
   return paragraph;
 }
 
-function normalizeEditorRunInHeading(block, level) {
+function normalizeEditorRunInHeading(block, level, { mergeFollowing = true } = {}) {
   if (![4, 5].includes(level)) return block;
   const paragraph = block.tagName === "P" ? block : document.createElement("p");
   if (paragraph !== block) {
@@ -118,7 +136,7 @@ function normalizeEditorRunInHeading(block, level) {
     // Move nodes rather than re-create plain text; preserve links, italics, and emphasis.
     while (paragraph.firstChild) label.append(paragraph.firstChild);
     paragraph.append(label);
-    const following = block.nextElementSibling;
+    const following = mergeFollowing ? block.nextElementSibling : null;
     if (following?.tagName === "P" && !following.matches(".apa-reference,.apa-note,.apa-heading,[data-apa-heading-level]")) {
       // Following paragraph becomes the body text on the same line, as APA levels 4–5 require.
       paragraph.append(document.createTextNode(" "), ...[...following.childNodes]);
@@ -137,8 +155,11 @@ window.normalizeEditorRunInHeading = normalizeEditorRunInHeading;
 function applyEditorBlockStyle(styleName) {
   const blocks = selectedBlocks();
   if (!blocks.length) return;
+  let lastBlock = null;
   for (const original of blocks) {
+    if (!preview()?.contains(original)) continue;
     const block = normalizeEditableBlockTag(original);
+    lastBlock = block;
     const keepRunIn = ["h4", "h5"].includes(styleName) && Boolean(block.querySelector(":scope > .apa-run-in-heading"));
     clearApaEditorClasses(block, { keepRunIn });
     block.dataset.apaEditorStyle = styleName;
@@ -174,7 +195,7 @@ function applyEditorBlockStyle(styleName) {
       if (level >= 4) {
         block.style.textIndent = ".5in";
         block.classList.remove("no-indent");
-        normalizeEditorRunInHeading(block, level);
+        lastBlock = normalizeEditorRunInHeading(block, level, { mergeFollowing: blocks.length === 1 });
       }
     } else if (styleName === "reference") {
       block.classList.add("apa-reference", "no-indent");
@@ -211,7 +232,8 @@ function applyEditorBlockStyle(styleName) {
       block.style.fontStyle = "italic";
     }
   }
-  dispatchEditorChange(`APA 7 v${APA_EDITOR_VERSION}: style applied to ${blocks.length} block(s).`);
+  placeEditorCaret(lastBlock);
+  dispatchEditorChange(`APA 7 style applied to ${blocks.length} paragraph(s).`);
 }
 
 function applyAlignment(value) {
@@ -330,6 +352,8 @@ function insertFigureCaption() {
 }
 
 function insertLink() {
+  // Save the selected text before the prompt steals focus (notably on iOS).
+  const selected = selectionInsidePreview() ? window.getSelection()?.getRangeAt(0).cloneRange() : savedRange?.cloneRange();
   const url = window.prompt("Link URL (https:// or mailto:):", "https://");
   if (url === null || !url.trim()) return;
   const safeUrl = validatedEditorLink(url);
@@ -338,8 +362,20 @@ function insertLink() {
     if (status) { status.textContent = "Enter a valid HTTP(S) or email link."; status.className = "status error"; }
     return;
   }
-  if (!restoreEditorSelection() && !selectionInsidePreview()) return;
-  if (document.execCommand("createLink", false, safeUrl)) dispatchEditorChange("Link inserted.");
+  const root = preview();
+  const selection = window.getSelection();
+  if (!root || !selection || !selected || !root.contains(selected.commonAncestorContainer)) return;
+  selection.removeAllRanges();
+  selection.addRange(selected);
+  let inserted = false;
+  if (selected.collapsed) {
+    // A collapsed caret has no text for createLink; insert a readable URL instead.
+    const escaped = editorEscape(safeUrl);
+    inserted = document.execCommand("insertHTML", false, `<a href="${escaped}">${escaped}</a>`);
+  } else {
+    inserted = document.execCommand("createLink", false, safeUrl);
+  }
+  if (inserted) dispatchEditorChange("Link inserted.");
 }
 
 function insertPageBreak() {
@@ -367,8 +403,11 @@ function insertReferencesHeading() {
 
 function applyApaParagraphPreset() {
   const blocks = selectedBlocks();
+  let lastBlock = null;
   for (const original of blocks) {
+    if (!preview()?.contains(original)) continue;
     const block = normalizeEditableBlockTag(original);
+    lastBlock = block;
     clearApaEditorClasses(block);
     block.dataset.apaEditorStyle = "normal";
     block.style.fontWeight = "";
@@ -381,13 +420,18 @@ function applyApaParagraphPreset() {
     block.style.paddingLeft = "";
     block.style.lineHeight = "2";
   }
-  dispatchEditorChange("APA 7 paragraph applied: left aligned, double-spaced, with a 0.5-inch first-line indent.");
+  if (!blocks.length) return;
+  placeEditorCaret(lastBlock);
+  dispatchEditorChange("APA 7 paragraph applied.");
 }
 
 function applyApaReferencePreset() {
   const blocks = selectedBlocks();
+  let lastBlock = null;
   for (const original of blocks) {
+    if (!preview()?.contains(original)) continue;
     const block = normalizeEditableBlockTag(original);
+    lastBlock = block;
     clearApaEditorClasses(block);
     block.style.fontWeight = "";
     block.style.fontStyle = "";
@@ -401,7 +445,9 @@ function applyApaReferencePreset() {
     block.style.textIndent = "-.5in";
     block.style.lineHeight = "2";
   }
-  dispatchEditorChange("APA 7 reference applied: double-spaced with a 0.5-inch hanging indent.");
+  if (!blocks.length) return;
+  placeEditorCaret(lastBlock);
+  dispatchEditorChange("APA 7 reference applied.");
 }
 
 function ensureEditorStyles() {
