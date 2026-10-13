@@ -156,7 +156,7 @@ for (const tool of manifest.tools) {
     const source = $(element).attr("src");
     if (!source || source.startsWith("/") || /^[a-z]+:/i.test(source)) continue;
     try {
-      await readFile(path.resolve(path.dirname(entryFile(tool)), source));
+      await readFile(path.resolve(path.dirname(entryFile(tool)), source.split(/[?#]/, 1)[0]));
     } catch {
       fail(tool.id, `module dependency does not exist: ${source}`);
     }
