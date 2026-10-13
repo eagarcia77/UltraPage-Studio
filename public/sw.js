@@ -1,4 +1,4 @@
-const VERSION = "curralume-v53";
+const VERSION = "curralume-v54";
 const SHELL_CACHE = `${VERSION}-shell`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
 const APP_SHELL = [
@@ -18,6 +18,7 @@ const APP_SHELL = [
   "/native-tools/estiloapa/index.html",
   "/native-tools/estiloapa/styles.css",
   "/native-tools/estiloapa/editor-workspace.css",
+  "/native-tools/estiloapa/editor-ribbon.css",
   "/native-tools/estiloapa/scrollbar-v31.css",
   "/native-tools/estiloapa/ultrapage-theme.css",
   "/native-tools/estiloapa/app.js",
@@ -30,6 +31,7 @@ const APP_SHELL = [
   "/native-tools/estiloapa/thesis-alignment.js",
   "/native-tools/estiloapa/apa-editor-v30.js",
   "/native-tools/estiloapa/editor-workspace.js",
+  "/native-tools/estiloapa/editor-ribbon.js",
   "/native-tools/estiloapa/editor-search.js",
   "/native-tools/estiloapa/editor-link-validation.js",
   "/native-tools/estiloapa/list-normalizer-v31.js",
