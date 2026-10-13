@@ -43,8 +43,11 @@ test("ribbon moves original buttons without cloning or rewiring core events", as
   assert.match(editor, /querySelectorAll\("button\[data-cmd\]"\)/);
   assert.match(editor, /querySelectorAll\("button\[data-align\]"\)/);
   assert.match(editor, /querySelectorAll\("button\[data-indent\]"\)/);
-  assert.match(ribbon, /connectAuditShortcut\(runAudit, "reauditBtn"\)/);
-  assert.match(ribbon, /connectAuditShortcut\(downloadReport, "downloadAuditBtn"\)/);
+  assert.match(ribbon, /document\.querySelector\("#reauditBtn"\)/);
+  assert.match(ribbon, /document\.querySelector\("#downloadAuditBtn"\)/);
+  assert.match(ribbon, /auditGroup\.append\(runAudit, downloadReport, caption\)/);
+  assert.match(ribbon, /redundantAuditToolbar\.remove\(\)/);
+  assert.doesNotMatch(ribbon, /connectAuditShortcut/);
   assert.match(ribbon, /command\.button\.click\(\)/);
 });
 
@@ -53,7 +56,7 @@ test("ribbon is part of the local-first cached EstiloAPA application", async () 
   const sw = await read("public/sw.js");
   assert.match(index, /<script type="module" src="editor-ribbon\.js"><\/script>/);
   assert.match(index, /<link rel="stylesheet" href="editor-ribbon\.css">/);
-  assert.match(sw, /curralume-v54/);
+  assert.match(sw, /curralume-v55/);
   assert.match(sw, /\/native-tools\/estiloapa\/editor-ribbon\.js/);
   assert.match(sw, /\/native-tools\/estiloapa\/editor-ribbon\.css/);
 });

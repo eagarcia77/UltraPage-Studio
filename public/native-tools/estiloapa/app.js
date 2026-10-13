@@ -350,11 +350,6 @@ function normalizeHeadingLevels(root) {
   }
 }
 
-function ensureTerminalPeriod(text) {
-  const value = String(text || "").trim();
-  return /[.!?]$/.test(value) ? value : `${value}.`;
-}
-
 function normalizeRunInHeadings(root) {
   const candidates = [...root.querySelectorAll("h4,h5,h6,.level-4,.level-5,.apa-heading-level-4,.apa-heading-level-5")];
   for (const heading of candidates) {
