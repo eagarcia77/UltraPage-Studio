@@ -49,7 +49,7 @@ test("legacy unused utilities and stale presentation copy are absent", async () 
   const headingJs = await source("public/native-tools/estiloapa/editor-workspace.js");
   const ribbonStyles = await source("public/native-tools/estiloapa/editor-ribbon.css");
   const thesisStyles = await source("public/native-tools/estiloapa/thesis-alignment.js");
-  assert.doesNotMatch(headingJs, /<strong>Document workspace<\\/strong>/);
+  assert.equal(headingJs.includes("<strong>Document workspace</strong>"), false);
   assert.doesNotMatch(ribbon, /apaRibbonCommandPicker|quickCommands/);
   assert.doesNotMatch(ribbonStyles, /apa-ribbon-head|apa-ribbon-quick-actions|apaRibbonCommandPicker/);
   assert.doesNotMatch(thesisStyles, /THESIS_ALIGNMENT_VERSION/);
