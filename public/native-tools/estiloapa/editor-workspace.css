@@ -18,12 +18,6 @@
   background: #f7f9fb;
   color: #1e293b;
 }
-#apaWorkspaceBar .apa-workspace-summary {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: .25rem 1rem;
-}
 #apaWorkspaceStats { color: #526172; font-size: .84rem; font-variant-numeric: tabular-nums; }
 #apaWorkspaceBar .apa-workspace-actions { display: flex; flex-wrap: wrap; gap: .55rem; align-items: center; }
 #apaWorkspaceBar label { font-size: .85rem; font-weight: 700; }
