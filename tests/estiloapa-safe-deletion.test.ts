@@ -12,6 +12,11 @@ async function deletionHarness() {
   const sourceCode = await source("public/native-tools/estiloapa/edit-stability-v348.js");
   const handlers = new Map<string, Handler[]>();
   const documentListeners = new Map<string, Handler[]>();
+  let mutationCallback: Handler | null = null;
+  class FakeMutationObserver {
+    constructor(callback: Handler) { mutationCallback = callback; }
+    observe(_root: any, _options: any) {}
+  }
   const root = {
     dataset: { apaUserEditing: "false" },
     classList: { toggle(_name: string, _value: boolean) {} },
@@ -64,6 +69,7 @@ async function deletionHarness() {
     document: doc,
     window: windowMock,
     Node: { ELEMENT_NODE: 1 },
+    MutationObserver: FakeMutationObserver,
     Event: LocalEvent,
     console
   });
@@ -80,7 +86,15 @@ async function deletionHarness() {
   };
   const before = (event: any) => handlers.get("beforeinput")?.forEach((fn) => fn(event));
   const after = (event: any) => handlers.get("input")?.forEach((fn) => fn(event));
-  return { root, status, before, after, deletion, select(n: number) { selectedLength = n; } };
+  return {
+    root, status, before, after, deletion, select(n: number) { selectedLength = n; },
+    notifyMutation() { mutationCallback?.([]); },
+    clickClear() {
+      for (const handler of documentListeners.get("click") || []) {
+        handler({ target: { closest(selector: string) { return selector.includes("#clearBtn") ? {} : null; } } });
+      }
+    }
+  };
 }
 
 test("normal deletion of a line does not block editing or restore old text", async () => {
@@ -119,6 +133,50 @@ test("when a delete unexpectedly clears a whole document, its prior markup is re
   assert.match(h.status.textContent, /Large document deletion blocked/);
 });
 
+test("a delayed document-wide DOM rewrite after deleting a line restores the original paper", async () => {
+  const h = await deletionHarness();
+  h.select(12);
+  const e = h.deletion();
+  const originalMarkup = h.root.innerHTML;
+  h.before(e);
+  h.root.textContent = "A".repeat(285) + "B".repeat(300);
+  h.root.innerHTML = "<section><p>" + "A".repeat(285) + "</p><p>" + "B".repeat(300) + "</p></section>";
+  h.after(e);
+  assert.equal(h.status.textContent, "");
+  // Reproduce a background DOM normalizer running after the browser's input.
+  h.root.textContent = "";
+  h.root.innerHTML = "";
+  h.notifyMutation();
+  assert.equal(h.root.innerHTML, originalMarkup);
+  assert.match(h.status.textContent, /Large document deletion blocked/);
+});
+
+test("asynchronous harmless formatting never reverts a legitimate line edit", async () => {
+  const h = await deletionHarness();
+  h.select(12);
+  const e = h.deletion();
+  h.before(e);
+  h.root.textContent = "A".repeat(285) + "B".repeat(300);
+  h.root.innerHTML = "<section><p>" + "A".repeat(285) + "</p><p>" + "B".repeat(300) + "</p></section>";
+  h.after(e);
+  h.notifyMutation();
+  assert.equal(h.root.textContent.length, 585);
+  assert.equal(h.status.textContent, "");
+});
+
+test("the Clear command is exempt from the deletion recovery watch", async () => {
+  const h = await deletionHarness();
+  const e = h.deletion();
+  h.before(e);
+  h.after(e);
+  h.clickClear();
+  h.root.textContent = "";
+  h.root.innerHTML = "";
+  h.notifyMutation();
+  assert.equal(h.root.innerHTML, "");
+  assert.equal(h.status.textContent, "");
+});
+
 test("unrelated editing input does not roll back a document", async () => {
   const h = await deletionHarness();
   const e = h.deletion();
@@ -138,5 +196,9 @@ test("dangerous normalizers are deferred during editing, not executed on delete"
   assert.match(guard, /root\.addEventListener\("beforeinput", aesBeforeDeletion, true\)/);
   assert.match(guard, /root\.addEventListener\("input", aesAfterDeletion, true\)/);
   const sw = await source("public/sw.js");
-  assert.match(sw, /curralume-v61/);
+  assert.match(sw, /curralume-v62/);
+  assert.match(sw, /url\.pathname\.startsWith\("\/native-tools\/estiloapa\/"\)/);
+  const html = await source("public/native-tools/estiloapa/index.html");
+  assert.match(html, /src="edit-stability-v348\.js\?v=62"/);
+  assert.match(sw, /edit-stability-v348\.js\?v=62/);
 });
