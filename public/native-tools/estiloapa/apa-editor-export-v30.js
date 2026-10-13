@@ -1,5 +1,3 @@
-const APA_EDITOR_EXPORT_VERSION = "3.0";
-
 function exportProfile() {
   return document.querySelector("#formatProfile")?.value || "";
 }
