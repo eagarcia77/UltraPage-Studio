@@ -1,0 +1,197 @@
+/* Editable Document Ribbon. All formatting remains scoped to the editing UI. */
+.preview-panel { overflow: visible !important; }
+#apaEditorShell.apa-modern-ribbon {
+  display: block;
+  position: sticky;
+  top: 48px;
+  z-index: 42;
+  margin: .75rem 0 1rem;
+  border: 1px solid #cbd8de;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 9px 28px rgba(20, 54, 65, .12);
+}
+#apaEditorShell .apa-ribbon-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-right: 8px;
+  border-bottom: 1px solid #dce6e8;
+  border-radius: 13px 13px 0 0;
+  background: #f5fbf9;
+}
+#apaEditorShell .apa-ribbon-quick-actions { flex: 0 0 auto; min-width: 0; }
+#apaRibbonCommandPicker {
+  width: min(220px, 25vw);
+  min-height: 36px;
+  padding: 6px 10px;
+  margin: 4px 0;
+  font-size: 12px;
+  color: #365d65 !important;
+  background: #fff !important;
+  border-color: #a9c3c7 !important;
+}
+#apaRibbonCommandPicker:focus-visible { outline: 3px solid #146db8 !important; outline-offset: 1px; }
+#apaRibbonTabs {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  max-width: 100%;
+  min-height: 46px;
+  padding: 5px 8px 0;
+  overflow-x: auto;
+  background: linear-gradient(115deg, #f5fbf9 0%, #eff5f8 100%);
+  border-radius: 13px 13px 0 0;
+  border-bottom: 1px solid #dce6e8;
+  scrollbar-width: thin;
+}
+#apaRibbonTabs .apa-ribbon-tab {
+  flex: 0 0 auto;
+  position: relative;
+  min-height: 40px;
+  padding: 8px 16px;
+  margin: 0;
+  background: transparent !important;
+  border: 1px solid transparent !important;
+  border-radius: 8px 8px 0 0 !important;
+  color: #3a5863 !important;
+  font-size: 13px;
+  font-weight: 750;
+  letter-spacing: .005em;
+  white-space: nowrap;
+}
+#apaRibbonTabs .apa-ribbon-tab:hover { background: #eaf2f1 !important; color: #134e52 !important; }
+#apaRibbonTabs .apa-ribbon-tab[aria-selected="true"] {
+  background: #fff !important;
+  color: #086a61 !important;
+  border-color: #cbd8de !important;
+  border-bottom-color: #fff !important;
+}
+#apaRibbonTabs .apa-ribbon-tab[aria-selected="true"]::after {
+  content: "";
+  position: absolute;
+  height: 3px;
+  left: 14px;
+  right: 14px;
+  bottom: 0;
+  border-radius: 999px;
+  background: #0b766b;
+}
+#apaEditorShell.apa-modern-ribbon #apaEditorToolbar {
+  display: block;
+  position: static;
+  min-height: 88px;
+  width: 100%;
+  max-width: 100%;
+  padding: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: #fff;
+}
+#apaEditorToolbar .apa-ribbon-pane { display: flex; align-items: stretch; gap: 0; min-width: min-content; }
+#apaEditorToolbar .apa-ribbon-pane[hidden] { display: none !important; }
+#apaEditorToolbar .apa-ribbon-tool-group {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  flex-wrap: wrap;
+  align-content: center;
+  gap: 5px;
+  min-width: max-content;
+  min-height: 86px;
+  padding: 8px 12px 4px;
+  border-right: 1px solid #e6ecee;
+  white-space: nowrap;
+}
+#apaEditorToolbar .apa-ribbon-tool-group:last-child { border-right: 0; }
+#apaEditorToolbar .apa-ribbon-tool-group button {
+  min-height: 40px;
+  padding: 8px 11px;
+  border: 1px solid #d2dce0;
+  border-radius: 9px !important;
+  background: #fff;
+  color: #22414d;
+  font-weight: 650;
+  transition: background-color .12s ease, border-color .12s ease;
+}
+#apaEditorToolbar .apa-ribbon-tool-group button:hover:not(:disabled) {
+  border-color: #7faba7;
+  background: #eaf6f2;
+}
+#apaEditorToolbar .apa-ribbon-tool-group button[aria-pressed="true"] {
+  background: #d9f1e9;
+  color: #075c53;
+  border-color: #198a7d;
+}
+#apaEditorToolbar .apa-ribbon-tool-group button.icon-tool { min-width: 43px; font-size: 18px; }
+#apaEditorToolbar .apa-ribbon-tool-group select {
+  min-height: 40px;
+  max-width: 210px;
+  padding: 7px 9px;
+  border: 1px solid #b4c7cd;
+  background: #fff;
+  font-size: 13px;
+}
+#apaEditorToolbar .apa-ribbon-group-caption {
+  display: block;
+  flex: 1 0 100%;
+  margin-top: 1px;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  font-size: 9px;
+  font-weight: 750;
+  color: #617680;
+}
+#apaEditorShell.apa-modern-ribbon .apa-ribbon-context {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .8rem;
+  min-height: 29px;
+  padding: 5px 13px;
+  border-top: 1px solid #e3eaed;
+  border-radius: 0 0 12px 12px;
+  background: #f8fbfa;
+  color: #45616b;
+  font-size: 11px;
+}
+#apaRibbonContextText { font-weight: 800; color: #086a61; }
+#apaRibbonTabs button:focus-visible,
+#apaEditorToolbar button:focus-visible,
+#apaEditorToolbar select:focus-visible {
+  outline: 3px solid #146db8 !important;
+  outline-offset: 1px !important;
+}
+#apaEditorShell.apa-modern-ribbon #apaRulesPanel {
+  max-height: min(36vh, 280px);
+  overflow-y: auto;
+  border: 0;
+  border-top: 1px solid #dce6e8;
+  border-radius: 0;
+  background: #fff;
+}
+#apaEditorToolbar .apa-ribbon-review-shortcuts button { min-width: 95px; }
+@media (max-width: 820px) {
+  #apaEditorShell.apa-modern-ribbon { top: 44px; margin: .65rem 0; }
+  #apaEditorShell.apa-modern-ribbon #apaEditorToolbar { min-height: 78px; }
+  #apaEditorToolbar .apa-ribbon-tool-group { min-height: 78px; padding: 6px 9px 3px; }
+  #apaEditorShell .apa-ribbon-head { display: block; padding-right: 0; }
+  #apaEditorShell .apa-ribbon-quick-actions { padding: 1px 9px 5px; }
+  #apaRibbonCommandPicker { width: 100%; margin: 0; min-height: 40px; }
+  #apaRibbonTabs { padding-inline: 5px; scroll-snap-type: x proximity; }
+  #apaRibbonTabs .apa-ribbon-tab { scroll-snap-align: start; padding-inline: 12px; }
+  #apaEditorToolbar .apa-ribbon-group-caption { font-size: 9px; }
+  #apaEditorShell .apa-ribbon-context-hint { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #apaEditorToolbar .apa-ribbon-tool-group button { transition: none; }
+}
+@media print {
+  #apaEditorShell.apa-modern-ribbon { display: none !important; }
+  .preview-panel { overflow: visible !important; }
+}
