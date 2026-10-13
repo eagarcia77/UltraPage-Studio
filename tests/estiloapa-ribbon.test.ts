@@ -48,7 +48,9 @@ test("ribbon moves original buttons without cloning or rewiring core events", as
   assert.match(ribbon, /auditGroup\.append\(runAudit, downloadReport, caption\)/);
   assert.match(ribbon, /redundantAuditToolbar\.remove\(\)/);
   assert.doesNotMatch(ribbon, /connectAuditShortcut/);
-  assert.match(ribbon, /command\.button\.click\(\)/);
+  assert.doesNotMatch(ribbon, /apaRibbonCommandPicker|quickCommands|picker\.addEventListener/);
+  assert.match(ribbon, /shell\.insertBefore\(tabList, toolbar\)/);
+  assert.match(ribbon, /tabList\.addEventListener\("keydown"/);
 });
 
 test("ribbon is part of the local-first cached EstiloAPA application", async () => {
@@ -56,7 +58,7 @@ test("ribbon is part of the local-first cached EstiloAPA application", async () 
   const sw = await read("public/sw.js");
   assert.match(index, /<script type="module" src="editor-ribbon\.js"><\/script>/);
   assert.match(index, /<link rel="stylesheet" href="editor-ribbon\.css">/);
-  assert.match(sw, /curralume-v56/);
+  assert.match(sw, /curralume-v57/);
   assert.match(sw, /\/native-tools\/estiloapa\/editor-ribbon\.js/);
   assert.match(sw, /\/native-tools\/estiloapa\/editor-ribbon\.css/);
 });
