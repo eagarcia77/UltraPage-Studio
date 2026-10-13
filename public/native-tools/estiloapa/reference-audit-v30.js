@@ -164,7 +164,6 @@ function ensureReferenceAuditPanel() {
   panel.className = "reference-format-audit";
   panel.innerHTML = `
     <h3>APA 7 reference-format validation</h3>
-    <p class="muted">Checks visible formatting and bibliographic patterns. “Passes automated checks” means no problem was detected in rules the program can test; source data must still be verified.</p>
     <div class="ref-audit-actions">
       <button type="button" id="auditReferencesNow">Audit references</button>
       <button type="button" id="formatReferenceList">Apply APA 7 list format</button>

@@ -485,21 +485,8 @@ function addOriginalMediaStyles() {
   document.head.append(style);
 }
 
-function updateVersionUi() {
-  const badge = document.querySelector(".badge");
-  if (badge) {
-    badge.textContent = "v3.4";
-    badge.setAttribute("aria-label", "Version 3.4");
-  }
-  const footer = document.querySelector("footer p");
-  if (footer) {
-    footer.textContent = "APA7 Academic Formatter v3.4 · Unnumbered module banner · Original figures preserved · APA 7 tables · Numbered lists · Reference audit.";
-  }
-}
-
 function initializeOriginalPdfMedia() {
   addOriginalMediaStyles();
-  updateVersionUi();
 
   const preview = document.querySelector("#preview");
   if (!preview) return;
