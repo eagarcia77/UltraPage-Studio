@@ -22,8 +22,12 @@ test("isolates zoom and focus controls from the exportable document", async () =
   assert.match(script, /scrollArea\.style\.setProperty\("--apa-workspace-zoom"/);
   assert.match(script, /new MutationObserver\(queueStats\)/);
   assert.match(script, /setAttribute\("aria-pressed"/);
-  assert.match(styles, /#apaEditorShell \{ display: contents; \}/);
-  assert.match(styles, /#apaEditorToolbar \{[\s\S]*?position: sticky;/);
+  const ribbonCss = await source("public/native-tools/estiloapa/editor-ribbon.css");
+  const editor = await source("public/native-tools/estiloapa/apa-editor-v30.js");
+  assert.doesNotMatch(styles, /#apaEditorShell \{ display: contents; \}/);
+  assert.doesNotMatch(styles, /#apaEditorToolbar \{[\s\S]*?position: sticky;/);
+  assert.match(ribbonCss, /#apaEditorShell\.apa-modern-ribbon \{[\s\S]*position: sticky;/);
+  assert.match(editor, /\.apa-editor-toolbar \{[\s\S]*position:sticky;/);
   assert.match(styles, /@media print/);
   assert.match(worker, /\/native-tools\/estiloapa\/editor-workspace\.js/);
   assert.match(worker, /\/native-tools\/estiloapa\/editor-workspace\.css/);

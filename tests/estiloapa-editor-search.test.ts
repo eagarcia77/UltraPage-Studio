@@ -46,6 +46,6 @@ test("APA style changes preserve an editable caret and independent paragraphs", 
 
 test("service worker includes updated search module", async () => {
   const worker = await source("public/sw.js");
-  assert.match(worker, /curralume-v55/);
+  assert.match(worker, /curralume-v56/);
   assert.match(worker, /\/native-tools\/estiloapa\/editor-search\.js/);
 });
