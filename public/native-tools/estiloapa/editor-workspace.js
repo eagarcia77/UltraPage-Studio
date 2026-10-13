@@ -60,7 +60,7 @@ function initializeDocumentWorkspace() {
     headingTargets.forEach((node, index) => {
       const level = Number(node.dataset.apaHeadingLevel || (/^H[1-5]$/.test(node.tagName) ? node.tagName.slice(1) : "1"));
       const label = node.querySelector(":scope > .apa-run-in-heading")?.textContent || node.textContent;
-      const trimmed = label.replace(/\\s+/g, " ").trim().slice(0, 92);
+      const trimmed = label.replace(/\s+/g, " ").trim().slice(0, 92);
       outline.append(new Option(`L${Math.min(5, Math.max(1, level || 1))} · ${trimmed}`, String(index)));
     });
     outline.disabled = !headingTargets.length;
