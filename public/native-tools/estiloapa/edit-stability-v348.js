@@ -83,9 +83,16 @@ window.setTimeout = function(callback, delay = 0, ...args) {
     callback(...args);
   }, delay);
 };
-// Record a single deletion operation, never the entire editing session. This is a
-// last-resort safeguard for browser/contenteditable defects that remove the paper.
+// Keep a short-lived, per-deletion recovery point: third-party DOM observers
+// may rewrite the editable document AFTER the browser has fired its input event.
 let aesDeletionSnapshot = null;
+let aesDeletionWatchTimer = null;
+
+function aesCancelDeletionWatch() {
+  aesNativeClearTimeout(aesDeletionWatchTimer);
+  aesDeletionWatchTimer = null;
+  aesDeletionSnapshot = null;
+}
 
 function aesWarnAboutDeletion() {
   const status = document.querySelector("#status");
@@ -95,42 +102,16 @@ function aesWarnAboutDeletion() {
   }
 }
 
-function aesBeforeDeletion(event) {
-  if (!String(event.inputType || "").startsWith("delete")) {
-    aesDeletionSnapshot = null;
-    return;
-  }
-  const root = aesPreview();
-  const length = root?.textContent?.trim().length || 0;
-  if (!root || length < 80) {
-    aesDeletionSnapshot = null;
-    return;
-  }
-  const selection = window.getSelection();
-  const selectedLength = selection?.anchorNode && selection?.focusNode
-    && root.contains(selection.anchorNode) && root.contains(selection.focusNode)
-    ? selection.toString().length : 0;
-  // A line or paragraph should not select almost an entire academic paper.
-  // The dedicated Clear button remains available for intentional full deletion.
-  if (selectedLength >= Math.max(70, length * 0.8) && event.cancelable) {
-    event.preventDefault();
-    aesDeletionSnapshot = null;
-    aesWarnAboutDeletion();
-    return;
-  }
-  aesDeletionSnapshot = { html: root.innerHTML, length };
-}
-
-function aesAfterDeletion(event) {
+function aesCheckForDocumentWipe() {
   const previous = aesDeletionSnapshot;
-  aesDeletionSnapshot = null;
-  if (!previous || !String(event.inputType || "").startsWith("delete")) return;
+  if (!previous) return false;
   const root = aesPreview();
-  if (!root) return;
+  if (!root) return false;
   const remaining = root.textContent?.trim().length || 0;
-  // Do not undo ordinary edits. Recover only when a single deletion destroys
-  // more than 95% of substantial content (including a total blank page).
-  if (remaining > 0 && remaining >= previous.length * 0.05) return;
+  // A single deletion of one line cannot legitimately remove almost an entire
+  // substantial academic document. Ordinary line and paragraph edits are kept.
+  if (remaining > 0 && remaining >= previous.length * 0.05) return false;
+  aesCancelDeletionWatch();
   root.innerHTML = previous.html;
   const selection = window.getSelection();
   if (selection) {
@@ -143,6 +124,39 @@ function aesAfterDeletion(event) {
   window.apaSaveEditorSelection?.();
   aesWarnAboutDeletion();
   root.dispatchEvent(new Event("input", { bubbles: true }));
+  return true;
+}
+
+function aesBeforeDeletion(event) {
+  if (!String(event.inputType || "").startsWith("delete")) {
+    aesCancelDeletionWatch();
+    return;
+  }
+  const root = aesPreview();
+  const length = root?.textContent?.trim().length || 0;
+  if (!root || length < 80) {
+    aesCancelDeletionWatch();
+    return;
+  }
+  const selection = window.getSelection();
+  const selectedLength = selection?.anchorNode && selection?.focusNode
+    && root.contains(selection.anchorNode) && root.contains(selection.focusNode)
+    ? selection.toString().length : 0;
+  if (selectedLength >= Math.max(70, length * 0.8) && event.cancelable) {
+    event.preventDefault();
+    aesCancelDeletionWatch();
+    aesWarnAboutDeletion();
+    return;
+  }
+  aesDeletionSnapshot = { html: root.innerHTML, length };
+  aesNativeClearTimeout(aesDeletionWatchTimer);
+  // Keep the snapshot across the input event and asynchronous normalizers.
+  // Clearing it immediately on input previously left a data-loss window.
+  aesDeletionWatchTimer = aesNativeSetTimeout(aesCancelDeletionWatch, 3000);
+}
+
+function aesAfterDeletion() {
+  aesCheckForDocumentWipe();
 }
 
 function aesMarkEditing() {
@@ -204,6 +218,11 @@ function aesInitialize() {
 
   root.addEventListener("beforeinput", aesBeforeDeletion, true);
   root.addEventListener("input", aesAfterDeletion, true);
+  // Detect data loss caused by delayed MutationObserver-driven normalizers.
+  // This observer never changes the document unless a recent deletion wiped it.
+  new MutationObserver(aesCheckForDocumentWipe).observe(root, {
+    childList: true, characterData: true, subtree: true
+  });
 
   root.addEventListener("compositionstart", () => {
     apaEditComposing = true;
@@ -221,12 +240,18 @@ function aesInitialize() {
     aesScheduleFinish();
   }, true);
 
+  // Keyboard activation of toolbar buttons should also cancel the watch:
+  // only an actual user delete operation is eligible for automatic recovery.
+  document.addEventListener("click", (event) => {
+    if (event.target?.closest?.("#formatBtn,#demoBtn,#clearBtn")) aesCancelDeletionWatch();
+  }, true);
+
   document.addEventListener("pointerdown", (event) => {
     const action = event.target?.closest?.(
       "#formatBtn,#demoBtn,#clearBtn,#reauditBtn,#downloadDocxBtn,#downloadHtmlBtn,#downloadPdfBtn,#downloadAuditBtn,#formatReferenceList,#auditReferencesNow"
     );
     if (!action) return;
-    aesDeletionSnapshot = null;
+    aesCancelDeletionWatch();
     aesFinishEditing({ dispatch: false });
   }, true);
 
