@@ -21,7 +21,6 @@ function initializeDocumentWorkspace() {
   bar.setAttribute("aria-label", "Document workspace controls");
   bar.innerHTML = `
     <div class="apa-workspace-summary">
-      <strong>Document workspace</strong>
       <output id="apaWorkspaceStats" aria-live="off">0 words · 0 characters</output>
     </div>
     <div class="apa-workspace-find" role="search" aria-label="Find text in document">
