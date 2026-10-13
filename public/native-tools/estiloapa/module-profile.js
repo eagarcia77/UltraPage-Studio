@@ -229,19 +229,19 @@ function ensureModuleProfileStyles() {
       text-align: center !important;
       font-weight: 700 !important;
       font-style: normal !important;
-      margin: 1em 0 0 !important;
+      margin: 0 !important;
     }
     .apa-paper.module11c-profile .apa-heading-level-2 {
       text-align: left !important;
       font-weight: 700 !important;
       font-style: normal !important;
-      margin: 1em 0 0 !important;
+      margin: 0 !important;
     }
     .apa-paper.module11c-profile .apa-heading-level-3 {
       text-align: left !important;
       font-weight: 700 !important;
       font-style: italic !important;
-      margin: 1em 0 0 !important;
+      margin: 0 !important;
     }
     .apa-paper.module11c-profile .references-heading,
     .apa-paper.module11c-profile .apa-references-heading {
@@ -249,7 +249,7 @@ function ensureModuleProfileStyles() {
       font-size: 12pt !important;
       font-weight: 700 !important;
       font-style: normal !important;
-      margin: 1em 0 0 !important;
+      margin: 0 !important;
     }
 
     .apa-paper.module11c-profile .module-lead,

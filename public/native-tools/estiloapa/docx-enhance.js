@@ -1,4 +1,4 @@
-const DOCX_ENHANCE_VERSION = "3.1";
+const DOCX_ENHANCE_VERSION = "3.5";
 
 async function waitDocx(timeoutMs = 12000) {
   const started = Date.now();
@@ -45,9 +45,11 @@ function inlineRuns(node, api, font, size, inherited = {}) {
   }
   if (node.nodeType !== Node.ELEMENT_NODE) return [];
   const tag = node.tagName;
+  const runInHeading = node.classList?.contains("apa-run-in-heading");
+  const levelFiveHeading = runInHeading && node.closest?.(".level-5,.apa-heading-level-5");
   const style = {
-    bold: inherited.bold || ["B", "STRONG"].includes(tag),
-    italics: inherited.italics || ["I", "EM"].includes(tag),
+    bold: inherited.bold || ["B", "STRONG"].includes(tag) || runInHeading,
+    italics: inherited.italics || ["I", "EM"].includes(tag) || Boolean(levelFiveHeading),
     underline: inherited.underline || tag === "U"
   };
   if (tag === "BR") return [new TextRun({ break: 1, font, size })];
@@ -81,11 +83,15 @@ function detectedHeadingLevel(element, institutional) {
 }
 
 function paragraphFromElement(element, api, font, size, firstLineIndent, hangingReferences, institutional) {
-  const { Paragraph, AlignmentType, TextRun } = api;
+  const { Paragraph, AlignmentType, TextRun, HeadingLevel } = api;
   const text = element.textContent.replace(/\s+/g, " ").trim();
   if (!text) return null;
 
   const isRef = element.classList.contains("apa-reference");
+  const isTitle = element.classList.contains("apa-title") || element.classList.contains("apa-editor-title");
+  const isCoverLine = element.classList.contains("apa-cover-line");
+  const isCoverTitle = element.classList.contains("apa-cover-title");
+  const isBodyTitle = element.classList.contains("apa-body-title");
   const headingLevel = detectedHeadingLevel(element, institutional);
   const isHeading = headingLevel > 0;
   const isReferencesHeading = element.classList.contains("apa-references-heading") || element.classList.contains("references-heading");
@@ -99,7 +105,9 @@ function paragraphFromElement(element, api, font, size, firstLineIndent, hanging
   let runs = inlineRuns(element, api, font, size, { bold: isModuleKeywords });
   if (!runs.length) runs = [new TextRun({ text, font, size })];
 
-  if (isHeading) {
+  if (isTitle) {
+    runs = [new TextRun({ text, font, size, bold: true })];
+  } else if (isHeading && !([4, 5].includes(headingLevel) && element.querySelector(".apa-run-in-heading"))) {
     const headingItalic = [3, 5].includes(headingLevel);
     runs = [new TextRun({ text, font, size, bold: true, italics: headingItalic })];
   } else if (isTableLabel || isFigureLabel) {
@@ -109,20 +117,29 @@ function paragraphFromElement(element, api, font, size, firstLineIndent, hanging
   }
 
   let alignment = AlignmentType.LEFT;
-  if (headingLevel === 1 || isReferencesHeading) alignment = AlignmentType.CENTER;
+  if (isTitle || isCoverLine || headingLevel === 1 || isReferencesHeading) alignment = AlignmentType.CENTER;
 
   const options = {
     children: runs,
-    spacing: { line: 480, after: 0, before: isHeading ? 120 : 0 },
+    spacing: { line: 480, after: 0, before: 0 },
     alignment,
-    keepNext: isHeading || isTableLabel || isTableTitle || isFigureLabel || isFigureTitle,
+    keepNext: (isHeading && headingLevel <= 3) || isTableLabel || isTableTitle || isFigureLabel || isFigureTitle,
   };
+  if (isTitle && HeadingLevel?.TITLE) options.heading = HeadingLevel.TITLE;
+  else if (isHeading && HeadingLevel?.[`HEADING_${headingLevel}`]) options.heading = HeadingLevel[`HEADING_${headingLevel}`];
+  if (isCoverTitle) {
+    options.spacing.before = 720;
+    options.spacing.after = 480;
+  }
+  if (isBodyTitle) options.pageBreakBefore = true;
 
   if (isRef && hangingReferences) {
     options.indent = { left: 720, hanging: 720 };
   } else {
-    const noIndent = isHeading || isFigureLabel || isFigureTitle || isTableLabel || isTableTitle || isNote || element.classList.contains("no-indent");
-    if (!noIndent && firstLineIndent) options.indent = { firstLine: 720 };
+    const runInHeading = [4, 5].includes(headingLevel);
+    const noIndent = isTitle || (isHeading && !runInHeading) || isFigureLabel || isFigureTitle || isTableLabel || isTableTitle || isNote || element.classList.contains("no-indent");
+    if (runInHeading && firstLineIndent) options.indent = { firstLine: 720 };
+    else if (!noIndent && firstLineIndent) options.indent = { firstLine: 720 };
   }
 
   return new Paragraph(options);
@@ -174,12 +191,12 @@ function apaTableFromElement(element, api, font, size, institutional) {
       if (isHeader && cellIndex > 0) alignment = AlignmentType.CENTER;
       else if (!isHeader && looksNumeric(text)) alignment = AlignmentType.RIGHT;
 
-      const borders = institutional ? {
+      const borders = {
         top: isHeader ? single : none,
         bottom: (isHeader || isLast) ? single : none,
         left: none,
         right: none,
-      } : undefined;
+      };
 
       return new TableCell({
         borders,
@@ -187,7 +204,7 @@ function apaTableFromElement(element, api, font, size, institutional) {
         children: [new Paragraph({
           alignment,
           children: inlineRuns(cell, api, font, size, { bold: isHeader }),
-          spacing: { line: institutional ? 240 : 360, after: 0, before: 0 },
+          spacing: { line: institutional ? 240 : 480, after: 0, before: 0 },
         })]
       });
     });
@@ -197,14 +214,14 @@ function apaTableFromElement(element, api, font, size, institutional) {
   return new Table({
     rows,
     width: { size: 100, type: WidthType.PERCENTAGE },
-    borders: institutional ? {
+    borders: {
       top: none,
       bottom: none,
       left: none,
       right: none,
       insideHorizontal: none,
       insideVertical: none,
-    } : undefined,
+    },
   });
 }
 
@@ -229,8 +246,6 @@ async function enhancedDocxExport() {
   if (!preview) return false;
   if (typeof window.normalizeNumberedLists === "function") window.normalizeNumberedLists(preview);
   const institutional = institutionalProfileEnabled();
-  const hasFigures = Boolean(preview.querySelector("img.apa-figure-image"));
-  if (!institutional && !hasFigures) return false;
 
   const api = await waitDocx();
   const { Document, Packer, Paragraph, TextRun, Header, PageNumber, AlignmentType, ImageRun } = api;
@@ -319,13 +334,13 @@ async function enhancedDocxExport() {
   });
 
   const blob = await Packer.toBlob(doc);
-  triggerDownload(blob, institutional ? "modulo-institucional-APA7-v3.1.docx" : "modulo-APA7-PDF-Smart-v3.1.docx");
+  triggerDownload(blob, institutional ? "modulo-institucional-APA7-v3.5.docx" : "trabajo-estudiantil-APA7-v3.5.docx");
 
   const status = document.querySelector("#status");
   if (status) {
     status.textContent = institutional
       ? `DOCX generated with APA 7 v${DOCX_ENHANCE_VERSION}; ${orderedListCounter} numbered list(s) use independent sequences.`
-      : `DOCX generated with PDF Smart v${DOCX_ENHANCE_VERSION}; numbered lists restart correctly.`;
+      : `DOCX generated with APA 7 v${DOCX_ENHANCE_VERSION}; Word heading levels, student title page, tables, and numbered lists were preserved.`;
     status.className = "status success";
   }
   return true;
@@ -336,8 +351,6 @@ document.addEventListener("click", (event) => {
   if (!button) return;
   const preview = document.querySelector("#preview");
   if (!preview) return;
-  const shouldEnhance = institutionalProfileEnabled() || Boolean(preview.querySelector("img.apa-figure-image"));
-  if (!shouldEnhance) return;
   event.preventDefault();
   event.stopPropagation();
   event.stopImmediatePropagation();

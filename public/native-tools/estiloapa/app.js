@@ -1,4 +1,4 @@
-const APP_VERSION = "3.4.8";
+const APP_VERSION = "3.4.9";
 const PDFJS_URL = "/vendor/pdf.mjs";
 const PDFJS_WORKER_URL = "/vendor/pdf.worker.mjs";
 
@@ -6,6 +6,7 @@ const els = {
   files: document.querySelector("#files"),
   dropZone: document.querySelector("#dropZone"),
   fileList: document.querySelector("#fileList"),
+  formatProfile: document.querySelector("#formatProfile"),
   fontFamily: document.querySelector("#fontFamily"),
   firstLineIndent: document.querySelector("#firstLineIndent"),
   hangingReferences: document.querySelector("#hangingReferences"),
@@ -190,10 +191,18 @@ async function readDocx(file) {
     { arrayBuffer },
     {
       styleMap: [
-        "p[style-name='Title'] => h1:fresh",
+        "p[style-name='Title'] => p.apa-title:fresh",
+        "p[style-name='Título'] => p.apa-title:fresh",
         "p[style-name='Heading 1'] => h1:fresh",
         "p[style-name='Heading 2'] => h2:fresh",
-        "p[style-name='Heading 3'] => h3:fresh"
+        "p[style-name='Heading 3'] => h3:fresh",
+        "p[style-name='Heading 4'] => h4:fresh",
+        "p[style-name='Heading 5'] => h5:fresh",
+        "p[style-name='Título 1'] => h1:fresh",
+        "p[style-name='Título 2'] => h2:fresh",
+        "p[style-name='Título 3'] => h3:fresh",
+        "p[style-name='Título 4'] => h4:fresh",
+        "p[style-name='Título 5'] => h5:fresh"
       ],
       includeDefaultStyleMap: true,
     }
@@ -243,13 +252,141 @@ function replaceDivsWithParagraphs(root) {
   }
 }
 
+function normalizePaperTitles(root) {
+  const containers = root.matches?.("section") ? [root] : [...root.querySelectorAll("section[data-source-file]")];
+  if (!containers.length) containers.push(root);
+  for (const container of containers) {
+    if (container.querySelector(":scope > .apa-title")) continue;
+    const firstParagraph = [...container.children].find((element) => element.tagName === "P" && element.textContent.trim());
+    if (!firstParagraph || firstParagraph.classList.contains("apa-title")) continue;
+    const meaningfulChildren = [...firstParagraph.childNodes].filter((node) => node.nodeType !== Node.TEXT_NODE || node.nodeValue.trim());
+    const emphasized = meaningfulChildren.length > 0 && meaningfulChildren.every((node) => node.nodeType === Node.ELEMENT_NODE && ["STRONG", "B"].includes(node.tagName));
+    if (emphasized && firstParagraph.textContent.trim().length <= 200) firstParagraph.classList.add("apa-title", "no-indent");
+  }
+}
+
+function isFullyBoldParagraph(element) {
+  if (element?.tagName !== "P" || !element.textContent.trim()) return false;
+  const meaningful = [...element.childNodes].filter((node) => node.nodeType !== Node.TEXT_NODE || node.nodeValue.trim());
+  return meaningful.length > 0 && meaningful.every((node) =>
+    node.nodeType === Node.ELEMENT_NODE && ["STRONG", "B"].includes(node.tagName)
+  );
+}
+
+function applyInferredHeading(element, level) {
+  element.classList.remove("apa-title", "level-1", "level-2", "level-3", "level-4", "level-5");
+  element.classList.add("apa-heading", `level-${level}`, `apa-heading-level-${level}`, "no-indent");
+  element.dataset.apaHeadingLevel = String(level);
+}
+
+function normalizeStandardStudentPaper(root) {
+  if (els.formatProfile?.value !== "apa7") return;
+  const containers = root.matches?.("section[data-source-file]") ? [root] : [...root.querySelectorAll("section[data-source-file]")];
+  if (!containers.length) containers.push(root);
+
+  for (const container of containers) {
+    const paragraphs = [...container.children].filter((element) => element.tagName === "P" && element.textContent.trim());
+    if (!paragraphs.length) continue;
+
+    const bodyStart = paragraphs.find((element) => /^(parte\s+\d+\s*:|pregunta|problema)\b/i.test(element.textContent.trim()));
+    if (bodyStart && !container.querySelector(":scope > .apa-body-title")) {
+      const cover = paragraphs.slice(0, paragraphs.indexOf(bodyStart));
+      if (cover.length >= 4) {
+        cover.forEach((element) => {
+          element.classList.remove("apa-title", "apa-heading", "level-1", "level-2", "level-3", "level-4", "level-5");
+          element.classList.add("apa-cover-line", "no-indent");
+          delete element.dataset.apaHeadingLevel;
+        });
+        const title = cover
+          .filter(isFullyBoldParagraph)
+          .sort((a, b) => b.textContent.trim().length - a.textContent.trim().length)[0];
+        if (title) {
+          title.classList.add("apa-title", "apa-cover-title");
+          const titleIndex = cover.indexOf(title);
+          const author = cover[titleIndex + 1];
+          const affiliation = cover.slice(0, titleIndex);
+          const remainingMetadata = cover.slice(titleIndex + 2);
+          const orderedCover = [title, author, ...affiliation, ...remainingMetadata].filter(Boolean);
+          bodyStart.before(...orderedCover);
+          for (const element of [...container.children]) {
+            if (element === bodyStart) break;
+            if (element.tagName === "P" && !element.textContent.trim()) element.remove();
+          }
+          const repeatedTitle = document.createElement("p");
+          repeatedTitle.className = "apa-title apa-body-title no-indent";
+          repeatedTitle.dataset.apaBodyTitle = "true";
+          repeatedTitle.textContent = title.textContent.trim();
+          bodyStart.before(repeatedTitle);
+        }
+      }
+    }
+
+    let currentMajorLevel = 0;
+    for (const element of [...container.children]) {
+      if (!isFullyBoldParagraph(element)) continue;
+      const text = element.textContent.replace(/\s+/g, " ").trim();
+      if (/^(tabla|table|figura|figure|nota|note)\s+/i.test(text) || referenceHeadingRegex.test(text)) continue;
+      let level = 0;
+      if (/^parte\s+\d+\s*:/i.test(text)) level = 1;
+      else if (/^(pregunta|problema)\s+\d+\b/i.test(text)) level = 2;
+      else if (/^(?:[a-e]\.|parte\s+[a-e]\.|procedimiento\b)/i.test(text)) level = 3;
+      else if (currentMajorLevel >= 2 && text.length <= 100) level = 3;
+      if (!level) continue;
+      applyInferredHeading(element, level);
+      currentMajorLevel = level;
+    }
+  }
+}
+
 function normalizeHeadingLevels(root) {
   const headingMap = new Map([
     ["H1", "level-1"], ["H2", "level-2"], ["H3", "level-3"],
-    ["H4", "level-3"], ["H5", "level-3"], ["H6", "level-3"],
+    ["H4", "level-4"], ["H5", "level-5"], ["H6", "level-5"],
   ]);
   for (const heading of root.querySelectorAll("h1,h2,h3,h4,h5,h6")) {
-    heading.classList.add("apa-heading", headingMap.get(heading.tagName) || "level-2");
+    const level = Math.min(Number(heading.tagName.slice(1)), 5);
+    heading.classList.add("apa-heading", headingMap.get(heading.tagName) || "level-2", `apa-heading-level-${level}`);
+    heading.dataset.apaHeadingLevel = String(level);
+  }
+}
+
+function ensureTerminalPeriod(text) {
+  const value = String(text || "").trim();
+  return /[.!?]$/.test(value) ? value : `${value}.`;
+}
+
+function normalizeRunInHeadings(root) {
+  const candidates = [...root.querySelectorAll("h4,h5,h6,.level-4,.level-5,.apa-heading-level-4,.apa-heading-level-5")];
+  for (const heading of candidates) {
+    if (heading.dataset.apaRunIn === "true") continue;
+    const level = Number(heading.dataset.apaHeadingLevel || (heading.matches("h4") ? 4 : 5));
+    if (![4, 5].includes(level)) continue;
+
+    const paragraph = heading.tagName === "P" ? heading : document.createElement("p");
+    if (paragraph !== heading) {
+      paragraph.className = heading.className;
+      for (const { name, value } of [...heading.attributes]) {
+        if (name !== "class") paragraph.setAttribute(name, value);
+      }
+    }
+    paragraph.classList.add("apa-heading", `level-${level}`, `apa-heading-level-${level}`);
+    paragraph.dataset.apaHeadingLevel = String(level);
+    paragraph.dataset.apaRunIn = "true";
+    paragraph.classList.remove("no-indent");
+
+    const label = document.createElement("span");
+    label.className = "apa-run-in-heading";
+    label.setAttribute("role", "heading");
+    label.setAttribute("aria-level", String(level));
+    label.textContent = ensureTerminalPeriod(heading.textContent);
+    paragraph.replaceChildren(label);
+
+    const following = heading.nextElementSibling;
+    if (following?.tagName === "P" && !following.matches(".apa-reference,.apa-note,.apa-figure-label,.apa-figure-title,.apa-heading,[data-apa-heading-level]")) {
+      paragraph.append(document.createTextNode(" "), ...[...following.childNodes]);
+      following.remove();
+    }
+    if (paragraph !== heading) heading.replaceWith(paragraph);
   }
 }
 
@@ -343,7 +480,10 @@ function autoLinkUrls(root) {
 
 function applyApaRules(root) {
   replaceDivsWithParagraphs(root);
+  normalizeStandardStudentPaper(root);
+  normalizePaperTitles(root);
   normalizeHeadingLevels(root);
+  normalizeRunInHeadings(root);
   normalizeReferences(root);
   normalizeFigures(root);
   autoLinkUrls(root);
@@ -354,7 +494,8 @@ function applyPreviewStyles() {
   els.preview.style.fontFamily = `"${font}", serif`;
   els.preview.style.fontSize = fontSettings[font].cssSize;
   for (const p of els.preview.querySelectorAll("p")) {
-    const exempt = p.matches(".apa-reference,.apa-title,.apa-heading,.apa-figure-label,.apa-figure-title,.apa-note,.no-indent");
+    const runInHeading = p.matches("[data-apa-run-in='true'],.apa-heading-level-4,.apa-heading-level-5");
+    const exempt = p.matches(".apa-reference,.apa-title,.apa-heading,.apa-figure-label,.apa-figure-title,.apa-note,.no-indent") && !runInHeading;
     p.style.textIndent = !exempt && els.firstLineIndent.checked ? ".5in" : "0";
   }
   for (const ref of els.preview.querySelectorAll(".apa-reference")) {
@@ -439,6 +580,34 @@ function parseCitations(root) {
   return citations;
 }
 
+function auditApaHeadings(root) {
+  const headings = [...root.querySelectorAll("[data-apa-heading-level],h1,h2,h3,h4,h5,h6")]
+    .filter((element, index, all) => all.indexOf(element) === index)
+    .map((element) => ({
+      element,
+      level: Math.min(5, Number(element.dataset.apaHeadingLevel || element.tagName?.slice(1) || 0)),
+      text: element.querySelector(".apa-run-in-heading")?.textContent?.trim() || element.textContent.trim(),
+    }))
+    .filter((item) => item.level >= 1 && item.level <= 5 && !item.element.classList.contains("apa-references-heading"));
+  const problems = [];
+
+  if (headings[0]?.level > 1) problems.push(`The first section heading starts at level ${headings[0].level}; APA 7 heading hierarchy should begin at level 1.`);
+  for (let index = 1; index < headings.length; index += 1) {
+    if (headings[index].level > headings[index - 1].level + 1) {
+      problems.push(`The heading “${headings[index].text.slice(0, 55)}” jumps from level ${headings[index - 1].level} to level ${headings[index].level}.`);
+    }
+  }
+  for (const heading of headings.filter((item) => item.level >= 4)) {
+    const label = heading.element.querySelector(".apa-run-in-heading");
+    const labelText = label?.textContent?.trim() || "";
+    const bodyText = label ? heading.element.textContent.slice(label.textContent.length).trim() : "";
+    if (!label || heading.element.dataset.apaRunIn !== "true") problems.push(`Level ${heading.level} heading “${heading.text.slice(0, 55)}” is not formatted as a run-in heading.`);
+    else if (!/[.!?]$/.test(labelText)) problems.push(`Level ${heading.level} heading “${heading.text.slice(0, 55)}” needs terminal punctuation.`);
+    else if (!bodyText) problems.push(`Level ${heading.level} heading “${heading.text.slice(0, 55)}” has no paragraph text continuing on the same line.`);
+  }
+  return { headings, problems };
+}
+
 function auditDocument(root) {
   const findings = [];
   let points = 35;
@@ -448,10 +617,33 @@ function auditDocument(root) {
   const citationKeys = new Set(citations.map((citation) => citation.key));
   const unmatchedCitations = citations.filter((citation) => !referenceKeys.has(citation.key));
   const uncitedReferences = references.filter((ref) => ref.key && !citationKeys.has(ref.key));
+  const headingAudit = auditApaHeadings(root);
 
   findings.push({ level: "ok", text: "One-inch margins and double spacing are configured for export." });
   findings.push({ level: "ok", text: `APA-compatible font selected: ${els.fontFamily.value}.` });
   if (els.pageNumbers.checked) findings.push({ level: "ok", text: "The DOCX export will include page numbers in the header." });
+  if (els.formatProfile?.value === "apa7") {
+    const coverTitle = root.querySelector(".apa-cover-title");
+    const bodyTitle = root.querySelector(".apa-body-title");
+    const coverLines = root.querySelectorAll(".apa-cover-line").length;
+    if (coverTitle && bodyTitle && coverLines >= 4) {
+      points += 5;
+      findings.push({ level: "ok", text: "The student title page is centered, separated from the body, and the paper title is repeated on page 2." });
+    } else {
+      findings.push({ level: "warn", text: "The Standard APA 7 profile could not confirm a complete student title page; review the title, author, affiliation, course, instructor, and due date." });
+    }
+  }
+
+  if (headingAudit.headings.length) {
+    if (headingAudit.problems.length) {
+      headingAudit.problems.slice(0, 5).forEach((text) => findings.push({ level: "error", text }));
+    } else {
+      points += 10;
+      findings.push({ level: "ok", text: `${headingAudit.headings.length} heading(s) follow the APA 7 level hierarchy, including run-in levels 4–5.` });
+    }
+  } else {
+    findings.push({ level: "warn", text: "No APA heading levels were detected; confirm that the paper does not need section headings." });
+  }
 
   const refsHeading = root.querySelector(".apa-references-heading");
   if (refsHeading) {
@@ -519,6 +711,8 @@ function auditDocument(root) {
       unmatchedCitations: unmatchedCitations.length,
       uncitedReferences: uncitedReferences.length,
       imagesMissingAlt: missingAlt,
+      headings: headingAudit.headings.length,
+      headingProblems: headingAudit.problems.length,
     },
   };
 }
@@ -538,6 +732,9 @@ function renderAudit(result) {
     <span><strong>${result.metrics.references}</strong> references</span>
     <span><strong>${result.metrics.unmatchedCitations}</strong> unmatched citations</span>
     <span><strong>${result.metrics.uncitedReferences}</strong> uncited references</span>`;
+  els.metrics.insertAdjacentHTML("beforeend", `
+    <span><strong>${result.metrics.headings}</strong> headings</span>
+    <span><strong>${result.metrics.headingProblems}</strong> heading issues</span>`);
   els.downloadAuditBtn.disabled = false;
 }
 
@@ -592,10 +789,18 @@ function loadDemo() {
   const demo = document.createElement("section");
   demo.dataset.sourceFile = "ejemplo-APA7";
   demo.innerHTML = `
-    <h1>Inteligencia artificial y aprendizaje</h1>
+    <p class="apa-title no-indent">Inteligencia artificial y aprendizaje</p>
     <p>La inteligencia artificial puede apoyar la retroalimentación formativa cuando existe una intención pedagógica clara. Según García (2026), el uso responsable requiere transparencia y revisión humana. Otros estudios también destacan la importancia de integrar accesibilidad y diseño universal (López & Rivera, 2025).</p>
-    <h2>Aplicación educativa</h2>
+    <h1>Aplicación educativa</h1>
     <p>El docente debe evaluar la calidad de las respuestas generadas y mantener criterios académicos definidos (García, 2026).</p>
+    <h2>Evaluación formativa</h2>
+    <p>La revisión combina criterios académicos y retroalimentación útil para el estudiante.</p>
+    <h3>Integración de criterios</h3>
+    <p>Los criterios se aplican en orden, sin omitir niveles dentro de la jerarquía del documento.</p>
+    <h4>Criterios de revisión</h4>
+    <p>El análisis comprueba la precisión, la claridad y el uso responsable de las fuentes.</p>
+    <h5>Accesibilidad</h5>
+    <p>El contenido conserva una estructura semántica que facilita la navegación asistida.</p>
     <h1>Referencias</h1>
     <p>García, E. A. (2026). Innovación educativa y uso responsable de inteligencia artificial. Editorial Académica.</p>
     <p>López, M., & Rivera, J. (2025). Diseño universal y tecnología educativa. Revista de Innovación Educativa, 12(2), 20–35. https://doi.org/10.1000/ejemplo</p>`;
@@ -667,6 +872,8 @@ function downloadAudit() {
     `References detected: ${lastAudit.metrics.references}`,
     `Citations without a reference: ${lastAudit.metrics.unmatchedCitations}`,
     `References without a citation: ${lastAudit.metrics.uncitedReferences}`,
+    `Headings detected: ${lastAudit.metrics.headings}`,
+    `Heading issues: ${lastAudit.metrics.headingProblems}`,
     "",
     "Findings:",
     ...lastAudit.findings.map((item) => `- [${item.level.toUpperCase()}] ${item.text}`),
@@ -698,6 +905,7 @@ async function downloadAccessiblePdf() {
         author: "Curralume Studio",
         language: "es-PR",
         description: "Academic document with APA 7 formatting and accessible structure.",
+        styleProfile: "apa7",
         pageSetup: { size: "letter", orientation: "portrait", margin: "wide" },
       }),
     });
@@ -725,10 +933,15 @@ function downloadHtml() {
 body { margin: 0; font-family: "${font}", serif; font-size: ${fontSize}; line-height: 2; color: #000; }
 section[data-source-file] { display: contents; }
 p { margin: 0; ${els.firstLineIndent.checked ? "text-indent: .5in;" : "text-indent: 0;"} }
-h1,h2,h3,h4,h5,h6 { font: inherit; margin: 1em 0 0; }
-.level-1 { text-align: center; font-weight: 700; }.level-2 { text-align: left; font-weight: 700; }.level-3 { text-align: left; font-weight: 700; font-style: italic; }
+h1,h2,h3,h4,h5,h6 { font: inherit; line-height:2; margin:0; }
+.level-1,.apa-heading-level-1 { text-align: center; font-weight: 700; }.level-2,.apa-heading-level-2 { text-align: left; font-weight: 700; }.level-3,.apa-heading-level-3 { text-align: left; font-weight: 700; font-style: italic; }
+.level-4,.apa-heading-level-4,.level-5,.apa-heading-level-5 { text-align:left; text-indent:.5in; font-weight:400; font-style:normal; }
+.apa-run-in-heading { font-weight:700; }.level-5 .apa-run-in-heading,.apa-heading-level-5 .apa-run-in-heading { font-style:italic; }
+.apa-title { text-align:center; font-weight:700; text-indent:0; }
+.apa-cover-line { text-align:center; text-indent:0; }.apa-cover-title { margin-top:.5in; margin-bottom:2em; }.apa-body-title { break-before:page; page-break-before:always; }
 .apa-reference { ${els.hangingReferences.checked ? "padding-left: .5in; text-indent: -.5in;" : "padding-left: 0; text-indent: 0;"} }
-.apa-heading,.apa-figure-label,.apa-note { text-indent: 0; }.apa-figure-label { font-weight: 700; }a { color: inherit; }
+.apa-heading:not(.level-4):not(.level-5):not(.apa-heading-level-4):not(.apa-heading-level-5),.apa-figure-label,.apa-note { text-indent: 0; }.apa-figure-label { font-weight: 700; }a { color: inherit; }
+table { width:100%; border-collapse:collapse; border-top:1px solid #000; border-bottom:1px solid #000; }th,td { border:0; padding:.3em; }thead th,tr:first-child>th,tr:first-child>td { border-bottom:1px solid #000; }
 </style></head><body>${clone.innerHTML}</body></html>`;
   downloadBlob(new Blob([html], { type: "text/html;charset=utf-8" }), "APA7-module.html");
 }
@@ -742,9 +955,11 @@ function textRunsFromNode(node, api, font, size, inherited = {}) {
   }
   if (node.nodeType !== Node.ELEMENT_NODE) return [];
   const tag = node.tagName;
+  const runInHeading = node.classList?.contains("apa-run-in-heading");
+  const levelFiveHeading = runInHeading && node.closest?.(".level-5,.apa-heading-level-5");
   const style = {
-    bold: inherited.bold || ["B", "STRONG"].includes(tag),
-    italics: inherited.italics || ["I", "EM"].includes(tag),
+    bold: inherited.bold || ["B", "STRONG"].includes(tag) || runInHeading,
+    italics: inherited.italics || ["I", "EM"].includes(tag) || Boolean(levelFiveHeading),
     underline: inherited.underline || tag === "U",
   };
   if (tag === "BR") return [new TextRun({ break: 1, font, size })];
@@ -756,23 +971,29 @@ function domBlockToDocxParagraph(element, api, font, size) {
   const text = element.textContent.replace(/\s+/g, " ").trim();
   if (!text) return null;
   const isRef = element.classList.contains("apa-reference");
+  const isTitle = element.classList.contains("apa-title");
   const isLevel1 = element.classList.contains("level-1") || element.tagName === "H1";
   const isLevel2 = element.classList.contains("level-2") || element.tagName === "H2";
-  const isLevel3 = element.classList.contains("level-3") || ["H3", "H4", "H5", "H6"].includes(element.tagName);
-  const isHeading = isLevel1 || isLevel2 || isLevel3;
+  const isLevel3 = element.classList.contains("level-3") || element.tagName === "H3";
+  const isLevel4 = element.classList.contains("level-4") || element.classList.contains("apa-heading-level-4") || element.tagName === "H4";
+  const isLevel5 = element.classList.contains("level-5") || element.classList.contains("apa-heading-level-5") || ["H5", "H6"].includes(element.tagName);
+  const isHeading = isLevel1 || isLevel2 || isLevel3 || isLevel4 || isLevel5;
   const isFigureLabel = element.classList.contains("apa-figure-label");
-  const noIndent = isRef || isHeading || isFigureLabel || element.classList.contains("apa-note") || element.classList.contains("no-indent");
+  const noIndent = isRef || isTitle || isHeading || isFigureLabel || element.classList.contains("apa-note") || element.classList.contains("no-indent");
   let runs = textRunsFromNode(element, api, font, size);
   if (!runs.length) runs = [new TextRun({ text, font, size })];
-  if (isHeading || isFigureLabel || isLevel3) {
-    runs = [new TextRun({ text, font, size, bold: isHeading || isFigureLabel, italics: isLevel3 })];
+  if ((isLevel4 || isLevel5) && element.querySelector(".apa-run-in-heading")) {
+    runs = textRunsFromNode(element, api, font, size);
+  } else if (isTitle || isHeading || isFigureLabel) {
+    runs = [new TextRun({ text, font, size, bold: isTitle || isHeading || isFigureLabel, italics: isLevel3 || isLevel5 })];
   }
   const options = {
     children: runs,
     spacing: { line: 480, after: 0, before: 0 },
-    alignment: isLevel1 ? AlignmentType.CENTER : AlignmentType.LEFT,
+    alignment: isLevel1 || isTitle ? AlignmentType.CENTER : AlignmentType.LEFT,
   };
   if (isRef && els.hangingReferences.checked) options.indent = { left: 720, hanging: 720 };
+  else if ((isLevel4 || isLevel5) && els.firstLineIndent.checked) options.indent = { firstLine: 720 };
   else if (!noIndent && els.firstLineIndent.checked) options.indent = { firstLine: 720 };
   return new Paragraph(options);
 }

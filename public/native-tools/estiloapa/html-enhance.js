@@ -4,18 +4,6 @@ function institutionalHtmlProfileEnabled() {
   return document.querySelector("#formatProfile")?.value === "modulo11c";
 }
 
-function updateV347Ui() {
-  const badge = document.querySelector(".badge");
-  if (badge) {
-    badge.textContent = `v${HTML_ENHANCE_VERSION}`;
-    badge.setAttribute("aria-label", `Version ${HTML_ENHANCE_VERSION}`);
-  }
-  const footer = document.querySelector("footer p");
-  if (footer) footer.textContent = `APA7 Academic Formatter v${HTML_ENHANCE_VERSION} · DOCX/PDF images included · Opening banner excluded · APA 7 figures · APA 7 references.`;
-  const help = document.querySelector("#previewHelp");
-  if (help) help.innerHTML = "The document remains editable. <strong>v3.4.7:</strong> embeds DOCX images and recovers PDF figures even when each page arrives as one paragraph with line breaks. Figures that already include a number, title, and note in the image are preserved without a duplicate caption. The opening banner is excluded.";
-}
-
 async function downloadInstitutionalHtml() {
   const preview = document.querySelector("#preview");
   if (!preview) return;
@@ -40,8 +28,8 @@ async function downloadInstitutionalHtml() {
 @page { size: letter; margin: 1in; } * { box-sizing: border-box; }
 body { margin: 0; font-family: Arial, Helvetica, sans-serif; font-size: 12pt; line-height: 2; color: #000; background: #fff; }
 section[data-source-file] { display: contents; } p { margin: 0; text-indent: .5in; }
-.module-heading { text-align: left; font-size: 12pt; font-weight: 700; line-height: 2; margin: 1em 0 0; text-indent: 0; }
-.references-heading,.apa-references-heading { text-align:center; font-size:12pt; font-weight:700; font-style:normal; line-height:2; text-indent:0; margin:1em 0 0; }
+.module-heading { text-align: left; font-size: 12pt; font-weight: 700; line-height: 2; margin: 0; text-indent: 0; }
+.references-heading,.apa-references-heading { text-align:center; font-size:12pt; font-weight:700; font-style:normal; line-height:2; text-indent:0; margin:0; }
 .module-subheading,.module-keywords,.module-lead,.no-indent { text-indent: 0; } .module-subheading,.module-keywords { font-weight: 700; }
 ul,ol { margin: 0 0 .6em .45in; padding-left: .25in; } li { margin: 0; padding: 0; }
 .apa-figure-label,.module-table-label { font-weight: 700; text-indent: 0; text-align:left; margin: .85em 0 0; }
@@ -94,6 +82,3 @@ document.addEventListener("click", (event) => {
     })
     .finally(() => { button.disabled = false; });
 }, true);
-
-if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", updateV347Ui, { once: true });
-else updateV347Ui();
