@@ -47,6 +47,15 @@ export function setupDocumentFind(root, controls) {
   let locations = [];
   let segments = [];
   function refresh() {
+    if (!input.value.trim()) {
+      current = -1;
+      locations = [];
+      segments = [];
+      previous.disabled = true;
+      next.disabled = true;
+      counter.textContent = "";
+      return;
+    }
     const scan = collectText(root);
     segments = scan.segments;
     locations = findOccurrences(scan.text, input.value);
