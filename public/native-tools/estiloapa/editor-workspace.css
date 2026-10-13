@@ -1,0 +1,92 @@
+/* Workspace presentation only. APA 7 formatting and exported document markup are unchanged. */
+#apaWorkspaceBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem 1.25rem;
+  margin: .85rem 0 0;
+  padding: .75rem .9rem;
+  border: 1px solid #d9e1df;
+  border-radius: 12px 12px 0 0;
+  background: #f7f9fb;
+  color: #1e293b;
+}
+#apaWorkspaceBar .apa-workspace-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: .25rem 1rem;
+}
+#apaWorkspaceBar .apa-workspace-summary strong { font-size: .95rem; letter-spacing: -.01em; }
+#apaWorkspaceStats { color: #526172; font-size: .84rem; font-variant-numeric: tabular-nums; }
+#apaWorkspaceBar .apa-workspace-actions { display: flex; flex-wrap: wrap; gap: .55rem; align-items: center; }
+#apaWorkspaceBar label { font-size: .85rem; font-weight: 700; }
+#apaWorkspaceZoom {
+  width: auto;
+  min-width: 86px;
+  padding: .45rem .65rem;
+  min-height: 40px;
+  background: #fff;
+}
+#apaWorkspaceFocus {
+  min-height: 40px;
+  padding: .45rem .85rem;
+  background: #fff;
+  border: 1px solid #b8c5d2;
+  color: #24344a;
+}
+#apaWorkspaceFocus[aria-pressed="true"] { background: #24344a; color: white; }
+/* Flatten the short toolbar wrapper so sticky positioning lasts across the entire preview panel. */
+#apaEditorShell { display: contents; }
+#apaEditorToolbar {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  width: 100%;
+  max-width: 100%;
+  min-height: 62px;
+  position: sticky;
+  top: 0;
+  z-index: 15;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+  border: 1px solid #d9e1df;
+  border-top: 0;
+  border-radius: 0 0 12px 12px;
+  box-shadow: 0 5px 16px rgba(26, 35, 50, .08);
+  background: #fff;
+}
+#apaEditorToolbar .tool-group {
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+#apaEditorToolbar button, #apaEditorToolbar select { flex: 0 0 auto; }
+#apaEditorToolbar button:focus-visible, #apaWorkspaceBar button:focus-visible,
+#apaWorkspaceBar select:focus-visible, #apaEditorToolbar select:focus-visible {
+  outline: 3px solid #2563eb;
+  outline-offset: 2px;
+}
+#apaRulesPanel { border: 1px solid #d9e1df; border-top: 0; }
+.preview-panel .paper-wrap { margin-top: .85rem; min-height: 50vh; }
+.preview-panel .paper-wrap .apa-paper { zoom: var(--apa-workspace-zoom, 1); }
+body.apa-workspace-focus .layout {
+  display: block;
+  max-width: 1600px;
+  width: 100%;
+}
+body.apa-workspace-focus .layout > .controls,
+body.apa-workspace-focus .layout > .audit { display: none !important; }
+body.apa-workspace-focus .preview-panel { width: 100%; }
+@media (max-width: 640px) {
+  #apaWorkspaceBar { align-items: flex-start; }
+  #apaWorkspaceBar .apa-workspace-actions { width: 100%; justify-content: space-between; }
+  #apaEditorToolbar { scroll-padding-inline: .75rem; }
+}
+@media print {
+  #apaWorkspaceBar, #apaEditorToolbar, #apaRulesPanel { display: none !important; }
+  .preview-panel .paper-wrap .apa-paper { zoom: 1 !important; }
+}
