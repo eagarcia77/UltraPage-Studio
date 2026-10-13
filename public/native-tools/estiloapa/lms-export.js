@@ -1,4 +1,3 @@
-// Curralume Studio integration layer. The upstream EstiloAPA repository remains unchanged.
 const PROFILE = {
   blackboard: {
     name: "Blackboard Ultra",
@@ -40,7 +39,7 @@ const exportedStyle = {
   indent: "text-indent:.5in;",
   noIndent: "text-indent:0;",
   reference: "margin:0;padding-left:.5in;text-indent:-.5in;text-align:left;",
-  heading: "margin:1em 0 0;text-indent:0;font-size:12pt;font-weight:700;line-height:2;",
+  heading: "margin:0;text-indent:0;font-size:12pt;font-weight:700;line-height:2;",
   heading1: "text-align:center;",
   heading2: "text-align:left;",
   heading3: "text-align:left;font-style:italic;",

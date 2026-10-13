@@ -80,6 +80,36 @@ function clearApaEditorClasses(block) {
   classes.forEach((name) => block.classList.remove(name));
 }
 
+function normalizeEditorRunInHeading(block, level) {
+  if (![4, 5].includes(level)) return block;
+  let paragraph = block;
+  if (block.tagName !== "P") {
+    paragraph = document.createElement("p");
+    paragraph.className = block.className;
+    for (const { name, value } of [...block.attributes]) {
+      if (name !== "class") paragraph.setAttribute(name, value);
+    }
+  }
+  if (!paragraph.querySelector(":scope > .apa-run-in-heading")) {
+    const label = document.createElement("span");
+    label.className = "apa-run-in-heading";
+    label.setAttribute("role", "heading");
+    label.setAttribute("aria-level", String(level));
+    const value = block.textContent.trim();
+    label.textContent = /[.!?]$/.test(value) ? value : `${value}.`;
+    paragraph.replaceChildren(label);
+    const following = block.nextElementSibling;
+    if (following?.tagName === "P" && !following.matches(".apa-reference,.apa-note,.apa-heading,[data-apa-heading-level]")) {
+      paragraph.append(document.createTextNode(" "), ...[...following.childNodes]);
+      following.remove();
+    }
+  }
+  paragraph.dataset.apaRunIn = "true";
+  if (paragraph !== block) block.replaceWith(paragraph);
+  return paragraph;
+}
+window.normalizeEditorRunInHeading = normalizeEditorRunInHeading;
+
 function applyEditorBlockStyle(styleName) {
   const blocks = selectedBlocks();
   if (!blocks.length) return;
@@ -108,9 +138,12 @@ function applyEditorBlockStyle(styleName) {
       block.dataset.apaEditorAlign = level === 1 ? "center" : "left";
       block.dataset.apaEditorIndent = level >= 4 ? "first" : "none";
       block.style.textAlign = level === 1 ? "center" : "left";
-      block.style.fontWeight = "700";
-      block.style.fontStyle = [3, 5].includes(level) ? "italic" : "normal";
-      if (level >= 4) block.classList.remove("no-indent");
+      block.style.fontWeight = level >= 4 ? "400" : "700";
+      block.style.fontStyle = level === 3 ? "italic" : "normal";
+      if (level >= 4) {
+        block.classList.remove("no-indent");
+        normalizeEditorRunInHeading(block, level);
+      }
     } else if (styleName === "reference") {
       block.classList.add("apa-reference", "no-indent");
       block.dataset.apaEditorAlign = "left";
@@ -348,8 +381,9 @@ function ensureEditorStyles() {
     .apa-paper .apa-heading-level-1 { text-align:center !important; font-weight:700 !important; text-indent:0 !important; }
     .apa-paper .apa-heading-level-2 { text-align:left !important; font-weight:700 !important; text-indent:0 !important; }
     .apa-paper .apa-heading-level-3 { text-align:left !important; font-weight:700 !important; font-style:italic !important; text-indent:0 !important; }
-    .apa-paper .apa-heading-level-4 { text-align:left !important; font-weight:700 !important; text-indent:.5in !important; }
-    .apa-paper .apa-heading-level-5 { text-align:left !important; font-weight:700 !important; font-style:italic !important; text-indent:.5in !important; }
+    .apa-paper .apa-heading-level-4, .apa-paper .apa-heading-level-5 { text-align:left !important; font-weight:400 !important; font-style:normal !important; text-indent:.5in !important; }
+    .apa-paper .apa-run-in-heading { font-weight:700 !important; }
+    .apa-paper .apa-heading-level-5 .apa-run-in-heading { font-style:italic !important; }
     .apa-paper .apa-page-break { min-height:1.2rem; border-top:1px dashed #aaa; color:#666; text-align:center !important; text-indent:0 !important; margin:.7rem 0 !important; }
     .page-break-marker { font:12px Arial,sans-serif; }
     @media print { .apa-editor-shell { display:none !important; } .apa-paper .apa-page-break { border:0; color:transparent; } .page-break-marker { display:none; } }
@@ -429,7 +463,7 @@ function ensureEditorToolbar() {
     <div id="apaRulesPanel" class="apa-rules-panel" hidden>
       <div class="apa-rules-grid">
         <div class="apa-rule-card"><strong>Body text</strong>Left aligned, double-spaced, with a 0.5-inch first-line indent. Do not justify the right margin.</div>
-        <div class="apa-rule-card"><strong>Headings</strong>Level 1 centered/bold; level 2 left/bold; level 3 left/bold/italic; levels 4–5 indented with text continuing on the same line.</div>
+        <div class="apa-rule-card"><strong>Headings 1–5</strong>Level 1: centered bold. Level 2: flush-left bold. Level 3: flush-left bold italic. Level 4: indented bold, ending in punctuation. Level 5: indented bold italic, ending in punctuation. Body text for levels 4–5 continues on the same line.</div>
         <div class="apa-rule-card"><strong>References</strong>Centered bold heading, double spacing, alphabetical order, no bullets, and a 0.5-inch hanging indent.</div>
         <div class="apa-rule-card"><strong>DOI and URL</strong>Format DOI as https://doi.org/...; do not add a final period after a DOI or URL.</div>
         <div class="apa-rule-card"><strong>Tables</strong>Bold number, italic title, no vertical lines, and only necessary horizontal rules.</div>

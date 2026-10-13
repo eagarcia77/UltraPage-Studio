@@ -35,6 +35,7 @@ type ExportRequest = {
   author?: string;
   language?: string;
   description?: string;
+  styleProfile?: "apa7";
   pageSetup?: { size?: "letter" | "a4"; orientation?: "portrait" | "landscape"; margin?: "normal" | "narrow" | "wide" };
 };
 
@@ -352,7 +353,7 @@ async function createDocx(html: string, title: string, author: string, language:
   return Packer.toBuffer(document);
 }
 
-function createPdf(html: string, title: string, author: string, language: string, description: string, pageSetup: ExportPageSetup) {
+function createPdf(html: string, title: string, author: string, language: string, description: string, pageSetup: ExportPageSetup, styleProfile?: ExportRequest["styleProfile"]) {
   return new Promise<Buffer>((resolve, reject) => {
     const chunks: Buffer[] = [];
     const margin = pageSetup.margin === "narrow" ? 36 : pageSetup.margin === "wide" ? 72 : 54;
@@ -374,6 +375,8 @@ function createPdf(html: string, title: string, author: string, language: string
     const fontRoot = path.join(process.cwd(), "node_modules/@fontsource/dejavu-sans/files");
     pdf.registerFont("AccessibleSans", path.join(fontRoot, "dejavu-sans-latin-400-normal.woff"));
     pdf.registerFont("AccessibleSansBold", path.join(fontRoot, "dejavu-sans-latin-700-normal.woff"));
+    pdf.registerFont("AccessibleSansItalic", path.join(fontRoot, "dejavu-sans-latin-400-italic.woff"));
+    pdf.registerFont("AccessibleSansBoldItalic", path.join(fontRoot, "dejavu-sans-latin-700-italic.woff"));
 
     const root = pdf.struct("Document", { title, lang: language });
     pdf.addStructure(root);
@@ -429,8 +432,32 @@ function createPdf(html: string, title: string, author: string, language: string
       if (classes.has("ultrapage-watermark")) return;
       const text = cleanText($(element).text());
       if (!text && tag !== "figure" && tag !== "img") return;
+      if (styleProfile === "apa7" && classes.has("apa-body-title") && pdf.y > pdf.page.margins.top + 2) pdf.addPage();
+      if (styleProfile === "apa7" && classes.has("apa-cover-title")) pdf.y += 36;
       ensureSpace(tag === "table" ? 140 : 70);
-      if (/^h[1-6]$/.test(tag)) {
+      const dataHeadingLevel = Number(element.attribs?.["data-apa-heading-level"] || 0);
+      const classHeadingLevel = [1, 2, 3, 4, 5].find((level) => classes.has(`level-${level}`) || classes.has(`apa-heading-level-${level}`)) || 0;
+      const apaHeadingLevel = styleProfile === "apa7" ? Math.min(5, dataHeadingLevel || classHeadingLevel || (/^h[1-6]$/.test(tag) ? Number(tag[1]) : 0)) : 0;
+      if (styleProfile === "apa7" && classes.has("apa-title")) {
+        pdf.font("AccessibleSansBold").fontSize(11).fillColor("#000000").text(text, pdf.page.margins.left, pdf.y, { width: bodyWidth, align: "center", lineGap: 11, paragraphGap: 0, structParent: root, structType: "P" });
+        if (classes.has("apa-cover-title")) pdf.y += 22;
+      } else if (apaHeadingLevel) {
+        const runIn = [4, 5].includes(apaHeadingLevel) && (classes.has("apa-heading-level-4") || classes.has("apa-heading-level-5") || element.attribs?.["data-apa-run-in"] === "true");
+        if (runIn) {
+          const label = $(element).find(".apa-run-in-heading").first();
+          const headingText = cleanText(label.text()) || text;
+          const bodyClone = $(element).clone();
+          bodyClone.find(".apa-run-in-heading").remove();
+          const bodyText = cleanText(bodyClone.text());
+          const x = pdf.page.margins.left;
+          const options = { width: bodyWidth, lineGap: 11, indent: 36, paragraphGap: 0, continued: Boolean(bodyText), structParent: root, structType: "P" } as const;
+          pdf.font(apaHeadingLevel === 5 ? "AccessibleSansBoldItalic" : "AccessibleSansBold").fontSize(11).fillColor("#000000").text(`${headingText}${bodyText ? " " : ""}`, x, pdf.y, options);
+          if (bodyText) pdf.font("AccessibleSans").fontSize(11).text(bodyText, { width: bodyWidth, lineGap: 11, paragraphGap: 0, continued: false, structParent: root, structType: "P" });
+        } else {
+          const font = apaHeadingLevel === 3 ? "AccessibleSansBoldItalic" : "AccessibleSansBold";
+          pdf.font(font).fontSize(11).fillColor("#000000").text(text, pdf.page.margins.left, pdf.y, { width: bodyWidth, align: apaHeadingLevel === 1 ? "center" : "left", lineGap: 11, paragraphGap: 0, structParent: root, structType: `H${apaHeadingLevel}` });
+        }
+      } else if (/^h[1-6]$/.test(tag)) {
         const level = Number(tag[1]);
         const format = pdfFormatting(element, level === 1 ? 22 : Math.max(12, 19 - level), "#242439");
         pdf.font("AccessibleSansBold").fontSize(format.fontSize).fillColor(format.color).text(text, pdf.page.margins.left + format.left, pdf.y, { width: bodyWidth - format.left, align: format.align, lineGap: format.lineGap, indent: format.indent, paragraphGap: 8, structParent: root, structType: `H${level}` });
@@ -463,7 +490,7 @@ function createPdf(html: string, title: string, author: string, language: string
         pdf.x = boxX; pdf.y = boxY + boxHeight + 14;
       } else if (tag === "ul" || tag === "ol") {
         const items = $(element).children("li").toArray().map((li) => cleanText($(li).text())).filter(Boolean);
-        pdf.font("AccessibleSans").fontSize(11).fillColor("#222222").list(items, { width: bodyWidth, listType: tag === "ol" ? "numbered" : "bullet", paragraphGap: 4, structParent: root });
+        pdf.font("AccessibleSans").fontSize(11).fillColor("#222222").list(items, { width: bodyWidth, listType: tag === "ol" ? "numbered" : "bullet", lineGap: styleProfile === "apa7" ? 11 : 3, paragraphGap: styleProfile === "apa7" ? 0 : 4, structParent: root });
         pdf.moveDown(0.4);
       } else if (tag === "table") {
         const tableStyle = $(element).attr("data-table-style") || "grid";
@@ -503,7 +530,7 @@ function createPdf(html: string, title: string, author: string, language: string
         const semanticLeft = tag === "blockquote" || apaReference ? 24 : 0;
         const left = Math.max(semanticLeft, format.left);
         const indent = apaReference ? -Math.max(24, Math.abs(format.indent)) : format.indent || (tag === "blockquote" ? 24 : 0);
-        pdf.font("AccessibleSans").fontSize(format.fontSize).fillColor(format.color).text(text, pdf.page.margins.left + left, pdf.y, { width: bodyWidth - left, align: format.align, lineGap: format.lineGap, paragraphGap: 8, indent, structParent: root, structType: "P" });
+        pdf.font("AccessibleSans").fontSize(format.fontSize).fillColor(format.color).text(text, pdf.page.margins.left + left, pdf.y, { width: bodyWidth - left, align: format.align, lineGap: styleProfile === "apa7" ? format.fontSize : format.lineGap, paragraphGap: styleProfile === "apa7" ? 0 : 8, indent, structParent: root, structType: "P" });
       }
     });
     pdf.end();
@@ -526,7 +553,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Formato o contenido no válido." }, { status: 400 });
     }
     const safeHtml = sanitizeServerHtml(html);
-    const data = format === "docx" ? await createDocx(safeHtml, title, author, language, description, pageSetup) : await createPdf(safeHtml, title, author, language, description, pageSetup);
+    const data = format === "docx" ? await createDocx(safeHtml, title, author, language, description, pageSetup) : await createPdf(safeHtml, title, author, language, description, pageSetup, body.styleProfile);
     const name = `${safeFileName(title)}.${format}`;
     return new NextResponse(new Uint8Array(data), {
       headers: {

@@ -77,6 +77,11 @@ function normalizeTableCaptions(root) {
       label.textContent = `Tabla ${number}`;
       table.before(label);
     }
+    const duplicateLabel = meaningfulPrevious(label);
+    if (duplicateLabel && isTableLabelText(duplicateLabel.textContent)
+      && mediaText(duplicateLabel.textContent).toLowerCase() === mediaText(label.textContent).toLowerCase()) {
+      duplicateLabel.remove();
+    }
     stripHeadingSemantics(label);
     label.classList.add("apa-table-label", "module-table-label", "thesis-table-label", "no-indent");
     label.style.textAlign = "left";
@@ -94,6 +99,7 @@ function normalizeTableCaptions(root) {
     }
 
     table.dataset.apaTableNumber = String(number);
+    table.dataset.tableStyle = "apa7";
   });
 }
 

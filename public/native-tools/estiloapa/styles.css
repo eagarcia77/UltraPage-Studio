@@ -20,6 +20,7 @@ button, select, input[type="file"] { min-height: 44px; }
 button { cursor: pointer; }
 .skip-link { position: absolute; left: -9999px; top: 0; z-index: 1000; padding: .8rem 1rem; background: #000; color: #fff; }
 .skip-link:focus { left: 1rem; top: 1rem; }
+.sr-only { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: -1px !important; overflow: hidden !important; clip: rect(0, 0, 0, 0) !important; white-space: nowrap !important; border: 0 !important; }
 .site-header { background: linear-gradient(135deg, var(--green-dark), var(--green)); color: white; border-bottom: 6px solid var(--yellow); }
 .header-inner { max-width: 1240px; margin: 0 auto; padding: 2.2rem 1.25rem; display: flex; gap: 2rem; align-items: flex-start; justify-content: space-between; }
 h1, h2, h3 { line-height: 1.2; }
@@ -68,16 +69,23 @@ select { width: 100%; padding: .55rem; border: 1px solid #aebbb8; border-radius:
 .apa-paper section[data-source-file] { display: contents; }
 .apa-paper p { margin: 0; text-indent: .5in; }
 .apa-paper p.no-indent, .apa-paper .apa-title, .apa-paper .apa-heading, .apa-paper .apa-reference, .apa-paper .apa-figure-label, .apa-paper .apa-note { text-indent: 0; }
-.apa-paper .apa-title { text-align: center; font-weight: 700; margin: 0 0 1em; }
-.apa-paper h1, .apa-paper h2, .apa-paper h3, .apa-paper h4, .apa-paper h5, .apa-paper h6, .apa-paper .apa-heading { font: inherit; margin: 1em 0 0; }
-.apa-paper h1, .apa-paper .level-1 { text-align: center; font-weight: 700; }
-.apa-paper h2, .apa-paper .level-2 { text-align: left; font-weight: 700; }
-.apa-paper h3, .apa-paper .level-3 { text-align: left; font-weight: 700; font-style: italic; }
+.apa-paper .apa-title { text-align: center; font-weight: 700; margin: 0; }
+.apa-paper .apa-cover-line { text-align: center; text-indent: 0; }
+.apa-paper .apa-cover-title { margin-top: .5in; margin-bottom: 2em; }
+.apa-paper .apa-body-title { break-before: page; page-break-before: always; }
+.apa-paper h1, .apa-paper h2, .apa-paper h3, .apa-paper h4, .apa-paper h5, .apa-paper h6, .apa-paper .apa-heading { font: inherit; line-height: 2; margin: 0; }
+.apa-paper h1, .apa-paper .level-1, .apa-paper .apa-heading-level-1 { text-align: center; font-weight: 700; }
+.apa-paper h2, .apa-paper .level-2, .apa-paper .apa-heading-level-2 { text-align: left; font-weight: 700; }
+.apa-paper h3, .apa-paper .level-3, .apa-paper .apa-heading-level-3 { text-align: left; font-weight: 700; font-style: italic; }
+.apa-paper .level-4, .apa-paper .apa-heading-level-4, .apa-paper .level-5, .apa-paper .apa-heading-level-5 { text-align:left; text-indent:.5in; font-weight:400; font-style:normal; }
+.apa-paper .apa-run-in-heading { font-weight:700; }
+.apa-paper .level-5 .apa-run-in-heading, .apa-paper .apa-heading-level-5 .apa-run-in-heading { font-style:italic; }
 .apa-paper .apa-reference { padding-left: .5in; text-indent: -.5in; }
 .apa-paper .apa-figure-label { font-weight: 700; }.apa-paper .apa-figure-title { font-style: italic; text-indent: 0; }.apa-paper .apa-note { font-size: 11pt; }
 .apa-paper a { color: inherit; text-decoration: underline; }.apa-paper .placeholder { color: #666; text-indent: 0; }
 .apa-paper .document-separator { border: 0; border-top: 1px solid #aaa; margin: 1.5em 0; }
-.apa-paper table { width: 100%; border-collapse: collapse; margin: 1em 0; }.apa-paper th, .apa-paper td { border: 1px solid #777; padding: .3em; text-align: left; vertical-align: top; }
-footer { max-width: 1240px; margin: 0 auto; padding: 0 1.25rem 2rem; color: var(--muted); font-size: .9rem; }
+.apa-paper table { width: 100%; border-collapse: collapse; margin: 1em 0; border-top: 1px solid #000; border-bottom: 1px solid #000; }
+.apa-paper th, .apa-paper td { border: 0; padding: .3em; text-align: left; vertical-align: top; }
+.apa-paper thead th, .apa-paper tr:first-child > th, .apa-paper tr:first-child > td { border-bottom: 1px solid #000; }
 @media (max-width: 820px) { .layout { grid-template-columns: 1fr; }.preview-panel { grid-column: auto; }.header-inner { flex-direction: column; }.apa-paper { padding: .65in; }.metrics { grid-template-columns: 1fr; } }
 @media print { body { background: white; }.site-header, .controls, .audit, .preview-toolbar, .muted, footer { display: none !important; }.layout, .panel, .paper-wrap { display: block; margin: 0; padding: 0; border: 0; box-shadow: none; background: white; }.apa-paper { width: 8.5in; min-height: 11in; margin: 0; box-shadow: none; padding: 1in; } }

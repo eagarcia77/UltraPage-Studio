@@ -38,24 +38,21 @@
   <header class="site-header">
     <div class="header-inner">
       <div>
-        <p class="eyebrow">Academic tool · local processing</p>
         <h1>APA7 Academic Formatter</h1>
-        <p class="subtitle">Version 3.4 restored with controlled APA 7 figure handling. It preserves unnumbered banners, avoids duplicate embedded captions, and exports content in the current preview order.</p>
       </div>
-      <span class="badge" aria-label="Version 3.4.8">v3.4.8</span>
+      <span class="badge" aria-label="Version 3.4.9">v3.4.9</span>
     </div>
   </header>
   <main id="main" class="layout">
     <section class="panel controls" aria-labelledby="upload-title">
       <h2 id="upload-title">1. Load and process</h2>
-      <p>Select one or more documents. To test the application without uploading a file, select <strong>Try sample</strong>.</p>
+      <p>Select a document or choose <strong>Try sample</strong>.</p>
       <label class="drop-zone" for="files" id="dropZone">
         <span class="drop-icon" aria-hidden="true">⇧</span>
         <strong>Select or drop files here</strong>
         <span>DOCX, PDF, TXT, MD, HTML, and HTM. Content is processed locally in your browser.</span>
         <input id="files" type="file" multiple accept=".docx,.pdf,.txt,.md,.html,.htm,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/html">
       </label>
-      <p class="muted"><strong>v3.4.8:</strong> preserves the stable v3.4 foundation, incorporates images, and protects preview editing so normalizers do not erase or replace text while you type.</p>
       <div id="fileList" class="file-list" aria-live="polite"></div>
       <fieldset>
         <legend>Formatting settings</legend>
@@ -99,7 +96,6 @@
         <div><p class="eyebrow">Automated review</p><h2 id="audit-title">2. APA 7 and structure audit</h2></div>
         <span id="score" class="score" aria-live="polite">—</span>
       </div>
-      <p class="muted">The score is heuristic. The audit reviews citations, structure, references, lists, tables, figures, and original media.</p>
       <div id="metrics" class="metrics" aria-label="Audit metrics"></div>
       <div class="button-row compact native-action-ribbon" role="toolbar" aria-label="APA review commands" data-native-ribbon>
         <div class="native-ribbon-group" role="group" aria-label="Review"><div class="native-ribbon-actions"><button id="reauditBtn" type="button" disabled>Run audit</button></div><span class="native-ribbon-label">Review</span></div>
@@ -124,8 +120,8 @@
           </div>
         </div>
       </div>
-      <p id="pdfExportHelp" class="muted">Creates a tagged PDF with document language, metadata, headings, lists, tables, links, and image descriptions.</p>
-      <p id="lmsExportHelp" class="muted">LMS Export creates conservative, self-contained HTML for Blackboard Ultra, Moodle, Canvas, or another LMS. Run the compatibility check before copying or downloading.</p>
+      <p id="pdfExportHelp" class="sr-only">Creates a tagged, accessible PDF.</p>
+      <p id="lmsExportHelp" class="sr-only">Check LMS compatibility before export.</p>
       <p id="lmsExportStatus" class="native-lms-status" role="status" aria-live="polite">LMS compatibility has not been checked.</p>
       <dialog id="lmsAuditDialog" class="native-lms-dialog" aria-labelledby="lmsAuditTitle">
         <div class="native-lms-dialog-head"><div><p class="eyebrow">LMS portability</p><h2 id="lmsAuditTitle">Compatibility report</h2></div><button id="closeLmsAuditBtn" type="button" aria-label="Close compatibility report">×</button></div>
@@ -133,10 +129,9 @@
         <ol id="lmsAuditFindings" class="native-lms-findings"></ol>
         <div class="native-lms-dialog-actions"><button id="closeLmsAuditFooterBtn" type="button">Close</button></div>
       </dialog>
-      <p id="previewHelp" class="muted"><strong>Protected editing v3.4.8:</strong> type, delete, cut, and paste directly in this preview without normalizers rebuilding text while the cursor is active. APA 7 rules resume when you leave the editor, rerun the audit, or export.</p>
+      <p id="previewHelp" class="sr-only">Edit the preview directly, then run the audit before export.</p>
       <div class="paper-wrap" tabindex="0" aria-label="Scrollable document preview area"><article id="preview" class="apa-paper" contenteditable="true" aria-label="Editable document preview" aria-describedby="previewHelp" lang="es-PR" spellcheck="true"><p class="placeholder">Formatted content will appear here.</p></article></div>
     </section>
   </main>
-  <footer><p>APA7 Academic Formatter v3.4.8 · v3.4 foundation · Protected editing · DOCX/PDF images · APA 7 figures · APA tables · APA 7 references.</p></footer>
 </body>
 </html>
