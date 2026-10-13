@@ -20,7 +20,7 @@ function editingContext(root) {
   const anchor = selection.anchorNode.nodeType === Node.ELEMENT_NODE
     ? selection.anchorNode : selection.anchorNode.parentElement;
   const block = anchor?.closest?.("p,h1,h2,h3,h4,h5,h6,li");
-  if (!block || !root.contains(block)) return { label: "Editing document", block: null };
+  if (!block || !root.contains(block)) return "Editing document";
   const level = Number(block.dataset.apaHeadingLevel || (/^H[1-5]$/.test(block.tagName) ? block.tagName.slice(1) : "0"));
   const preset = block.dataset.apaEditorStyle;
   let label = "APA paragraph";
@@ -30,7 +30,7 @@ function editingContext(root) {
   else if (preset === "note" || block.classList.contains("apa-note")) label = "Table / figure note";
   else if (preset === "table-label" || block.classList.contains("apa-table-label")) label = "Table number";
   else if (preset === "figure-label" || block.classList.contains("apa-figure-label")) label = "Figure number";
-  return { label, block };
+  return label;
 }
 
 function enhanceRibbon() {
@@ -193,7 +193,7 @@ function enhanceRibbon() {
     pending = false;
     const state = editingContext(preview);
     if (!state) return;
-    contextText.textContent = state.label;
+    contextText.textContent = state;
     for (const [command, button] of stateButtons) {
       if (!button) continue;
       let pressed = false;
