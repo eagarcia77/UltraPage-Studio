@@ -364,28 +364,30 @@ function normalizeRunInHeadings(root) {
 
     const paragraph = heading.tagName === "P" ? heading : document.createElement("p");
     if (paragraph !== heading) {
-      paragraph.className = heading.className;
-      for (const { name, value } of [...heading.attributes]) {
-        if (name !== "class") paragraph.setAttribute(name, value);
-      }
+      for (const { name, value } of [...heading.attributes]) paragraph.setAttribute(name, value);
+      while (heading.firstChild) paragraph.append(heading.firstChild);
     }
     paragraph.classList.add("apa-heading", `level-${level}`, `apa-heading-level-${level}`);
     paragraph.dataset.apaHeadingLevel = String(level);
     paragraph.dataset.apaRunIn = "true";
     paragraph.classList.remove("no-indent");
 
-    const label = document.createElement("span");
-    label.className = "apa-run-in-heading";
+    let label = paragraph.querySelector(":scope > .apa-run-in-heading");
+    if (!label) {
+      label = document.createElement("span");
+      label.className = "apa-run-in-heading";
+      // Preserve inline emphasis, citations, hyperlinks, and other text nodes.
+      while (paragraph.firstChild) label.append(paragraph.firstChild);
+      paragraph.append(label);
+      const following = heading.nextElementSibling;
+      if (following?.tagName === "P" && !following.matches(".apa-reference,.apa-note,.apa-figure-label,.apa-figure-title,.apa-heading,[data-apa-heading-level]")) {
+        paragraph.append(document.createTextNode(" "), ...[...following.childNodes]);
+        following.remove();
+      }
+    }
     label.setAttribute("role", "heading");
     label.setAttribute("aria-level", String(level));
-    label.textContent = ensureTerminalPeriod(heading.textContent);
-    paragraph.replaceChildren(label);
-
-    const following = heading.nextElementSibling;
-    if (following?.tagName === "P" && !following.matches(".apa-reference,.apa-note,.apa-figure-label,.apa-figure-title,.apa-heading,[data-apa-heading-level]")) {
-      paragraph.append(document.createTextNode(" "), ...[...following.childNodes]);
-      following.remove();
-    }
+    if (label.textContent.trim() && !/[.!?]$/.test(label.textContent.trim())) label.append(document.createTextNode("."));
     if (paragraph !== heading) heading.replaceWith(paragraph);
   }
 }
