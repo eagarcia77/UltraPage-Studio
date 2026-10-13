@@ -21,7 +21,7 @@ test("resets stale heading metadata before paragraph and reference preset applic
   assert.match(editor, /delete block\.dataset\.apaRunIn/);
   assert.match(editor, /"level-1", "level-2", "level-3", "level-4", "level-5"/);
   assert.match(editor, /function normalizeEditableBlockTag\(block\)/);
-  assert.match(editor, /const block = normalizeEditableBlockTag\(original\);\s+clearApaEditorClasses\(block\)/);
+  assert.match(editor, /const block = normalizeEditableBlockTag\(original\);\s+lastBlock = block;\s+clearApaEditorClasses\(block\)/);
   assert.match(editor, /const keepRunIn = \["h4", "h5"\]\.includes\(styleName\)/);
 });
 
