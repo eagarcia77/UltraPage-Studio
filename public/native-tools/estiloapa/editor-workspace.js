@@ -26,14 +26,14 @@ function initializeDocumentWorkspace() {
     </div>
     <div class="apa-workspace-find" role="search" aria-label="Find text in document">
       <label for="apaWorkspaceFind">Find</label>
-      <input type="search" id="apaWorkspaceFind" placeholder="Search document" autocomplete="off" aria-label="Find text in document">
+      <input type="search" id="apaWorkspaceFind" placeholder="Search document" autocomplete="off">
       <button type="button" id="apaFindPrevious" aria-label="Previous match" title="Previous match" disabled>↑</button>
       <button type="button" id="apaFindNext" aria-label="Next match" title="Next match" disabled>↓</button>
       <output id="apaFindCounter" aria-live="polite"></output>
     </div>
     <div class="apa-workspace-actions">
       <label for="apaWorkspaceOutline">Outline</label>
-      <select id="apaWorkspaceOutline" aria-label="Jump to document heading">
+      <select id="apaWorkspaceOutline">
         <option value="">Jump to heading…</option>
       </select>
       <label for="apaWorkspaceZoom">Zoom</label>
