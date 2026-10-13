@@ -1,4 +1,4 @@
-const VERSION = "curralume-v61";
+const VERSION = "curralume-v62";
 const SHELL_CACHE = `${VERSION}-shell`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
 const APP_SHELL = [
@@ -22,7 +22,7 @@ const APP_SHELL = [
   "/native-tools/estiloapa/scrollbar-v31.css",
   "/native-tools/estiloapa/ultrapage-theme.css",
   "/native-tools/estiloapa/app.js",
-  "/native-tools/estiloapa/edit-stability-v348.js",
+  "/native-tools/estiloapa/edit-stability-v348.js?v=62",
   "/native-tools/estiloapa/enhancements.js",
   "/native-tools/estiloapa/pdf-smart.js",
   "/native-tools/estiloapa/apa-table-v29.js",
@@ -113,6 +113,13 @@ self.addEventListener("fetch", (event) => {
   if (url.origin !== self.location.origin || url.pathname.startsWith("/api/")) return;
 
   if (request.mode === "navigate") {
+    event.respondWith(networkFirst(request));
+    return;
+  }
+
+  // Critical editor scripts must not serve a stale release from cache while
+  // the network is available. networkFirst retains offline fallback.
+  if (url.pathname.startsWith("/native-tools/estiloapa/")) {
     event.respondWith(networkFirst(request));
     return;
   }
