@@ -47,7 +47,7 @@ function aesLooksLikeNormalization(callback) {
   if (typeof callback !== "function") return false;
   let source = "";
   try { source = Function.prototype.toString.call(callback); } catch { return false; }
-  return /(applyModuleProfile|markModuleSemantics|normalizeMedia|normalizeApaMedia|normalizeFigures|normalizeTableCaptions|normalizeNumberedLists|recoverParagraphNumberRuns|applyApaFigureFormatting|classifyEmbeddedImages|repairMediaRoles|preserveOriginalPdfMedia|recoverPdfFiguresV34\d|formatReferencesApa7|scheduleSourceImages|scheduleApaFigureFormatting|scheduleListNormalization|scheduleMediaNormalization)/.test(source);
+  return /(applyModuleProfile|markModuleSemantics|normalizeMedia|normalizeApaMedia|normalizeFigures|normalizeTableCaptions|normalizeApaTables|runApaTableNormalization|applyThesisProfile|markThesisStructure|normalizeNumberedLists|recoverParagraphNumberRuns|applyApaFigureFormatting|classifyEmbeddedImages|repairMediaRoles|preserveOriginalPdfMedia|recoverPdfFiguresV34\d|formatReferencesApa7|scheduleSourceImages|scheduleApaFigureFormatting|scheduleListNormalization|scheduleMediaNormalization)/.test(source);
 }
 
 function aesQueueNormalization(callback, args) {
@@ -83,6 +83,68 @@ window.setTimeout = function(callback, delay = 0, ...args) {
     callback(...args);
   }, delay);
 };
+// Record a single deletion operation, never the entire editing session. This is a
+// last-resort safeguard for browser/contenteditable defects that remove the paper.
+let aesDeletionSnapshot = null;
+
+function aesWarnAboutDeletion() {
+  const status = document.querySelector("#status");
+  if (status) {
+    status.textContent = "Large document deletion blocked to protect your text. Select a smaller passage, or use Clear to empty the document.";
+    status.className = "status error";
+  }
+}
+
+function aesBeforeDeletion(event) {
+  if (!String(event.inputType || "").startsWith("delete")) {
+    aesDeletionSnapshot = null;
+    return;
+  }
+  const root = aesPreview();
+  const length = root?.textContent?.trim().length || 0;
+  if (!root || length < 80) {
+    aesDeletionSnapshot = null;
+    return;
+  }
+  const selection = window.getSelection();
+  const selectedLength = selection?.anchorNode && selection?.focusNode
+    && root.contains(selection.anchorNode) && root.contains(selection.focusNode)
+    ? selection.toString().length : 0;
+  // A line or paragraph should not select almost an entire academic paper.
+  // The dedicated Clear button remains available for intentional full deletion.
+  if (selectedLength >= Math.max(70, length * 0.8) && event.cancelable) {
+    event.preventDefault();
+    aesDeletionSnapshot = null;
+    aesWarnAboutDeletion();
+    return;
+  }
+  aesDeletionSnapshot = { html: root.innerHTML, length };
+}
+
+function aesAfterDeletion(event) {
+  const previous = aesDeletionSnapshot;
+  aesDeletionSnapshot = null;
+  if (!previous || !String(event.inputType || "").startsWith("delete")) return;
+  const root = aesPreview();
+  if (!root) return;
+  const remaining = root.textContent?.trim().length || 0;
+  // Do not undo ordinary edits. Recover only when a single deletion destroys
+  // more than 95% of substantial content (including a total blank page).
+  if (remaining > 0 && remaining >= previous.length * 0.05) return;
+  root.innerHTML = previous.html;
+  const selection = window.getSelection();
+  if (selection) {
+    const range = document.createRange();
+    range.selectNodeContents(root);
+    range.collapse(false);
+    selection.removeAllRanges();
+    selection.addRange(range);
+  }
+  window.apaSaveEditorSelection?.();
+  aesWarnAboutDeletion();
+  root.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
 function aesMarkEditing() {
   aesNativeClearTimeout(apaEditIdleTimer);
   aesSetEditing(true);
@@ -140,6 +202,9 @@ function aesInitialize() {
     root.addEventListener(eventName, aesMarkEditing, true);
   }
 
+  root.addEventListener("beforeinput", aesBeforeDeletion, true);
+  root.addEventListener("input", aesAfterDeletion, true);
+
   root.addEventListener("compositionstart", () => {
     apaEditComposing = true;
     aesMarkEditing();
@@ -161,6 +226,7 @@ function aesInitialize() {
       "#formatBtn,#demoBtn,#clearBtn,#reauditBtn,#downloadDocxBtn,#downloadHtmlBtn,#downloadPdfBtn,#downloadAuditBtn,#formatReferenceList,#auditReferencesNow"
     );
     if (!action) return;
+    aesDeletionSnapshot = null;
     aesFinishEditing({ dispatch: false });
   }, true);
 
