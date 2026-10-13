@@ -117,30 +117,8 @@ function enhanceRibbon() {
   toolbar.setAttribute("aria-label", "APA document editing commands");
   toolbar.replaceChildren(...RIBBON_TABS.map((tab) => panes.get(tab.id)));
 
-  const head = document.createElement("div");
-  head.className = "apa-ribbon-head";
-  const actions = document.createElement("div");
-  actions.className = "apa-ribbon-quick-actions";
-  const pickerLabel = document.createElement("label");
-  pickerLabel.className = "sr-only";
-  pickerLabel.htmlFor = "apaRibbonCommandPicker";
-  pickerLabel.textContent = "Quick access command";
-  const picker = document.createElement("select");
-  picker.id = "apaRibbonCommandPicker";
-  picker.setAttribute("aria-label", "Choose an editing command");
-  picker.add(new Option("Find a command…", ""));
-  const quickCommands = [];
-  for (const tab of RIBBON_TABS) {
-    for (const button of panes.get(tab.id).querySelectorAll("button")) {
-      const label = button.getAttribute("aria-label") || button.title || button.textContent.trim();
-      if (!label) continue;
-      const index = quickCommands.push({ tab: tab.id, button }) - 1;
-      picker.add(new Option(`${tab.label} · ${label}`, String(index)));
-    }
-  }
-  actions.append(pickerLabel, picker);
-  head.append(tabList, actions);
-  shell.insertBefore(head, toolbar);
+  // Keep one set of commands in the four Ribbon tabs.
+  shell.insertBefore(tabList, toolbar);
 
   const context = document.createElement("div");
   context.className = "apa-ribbon-context";
@@ -162,14 +140,6 @@ function enhanceRibbon() {
     }
   }
   for (const [id, button] of tabs) button.addEventListener("click", () => activate(id));
-  picker.addEventListener("change", () => {
-    const command = quickCommands[Number(picker.value)];
-    if (picker.value !== "" && command && !command.button.disabled) {
-      activate(command.tab);
-      command.button.click();
-    }
-    picker.value = "";
-  });
   tabList.addEventListener("keydown", (event) => {
     if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
     const active = RIBBON_TABS.findIndex((tab) => tabs.get(tab.id) === document.activeElement);

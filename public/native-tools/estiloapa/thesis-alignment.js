@@ -1,5 +1,3 @@
-const THESIS_ALIGNMENT_VERSION = "2.8";
-
 function ensureThesisAlignmentStyles() {
   if (document.querySelector("#thesis-alignment-v28")) return;
   const style = document.createElement("style");
