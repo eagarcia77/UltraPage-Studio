@@ -97,9 +97,12 @@ function clearApaEditorClasses(block, { keepRunIn = false } = {}) {
     "apa-heading-level-3", "apa-heading-level-4", "apa-heading-level-5",
     "level-1", "level-2", "level-3", "level-4", "level-5",
     "apa-references-heading", "references-heading", "thesis-major-heading",
-    "thesis-section-heading", "apa-reference", "thesis-reference",
-    "apa-note", "apa-table-label", "apa-table-title", "apa-figure-label",
-    "apa-figure-title", "no-indent"
+    "thesis-section-heading", "thesis-chapter-heading", "thesis-chapter-title",
+    "apa-reference", "thesis-reference", "apa-note", "thesis-note",
+    "apa-table-label", "apa-table-title", "apa-figure-label", "apa-figure-title",
+    "thesis-table-label", "thesis-table-title", "thesis-figure-label",
+    "thesis-figure-title", "module-table-label", "module-table-title",
+    "module-figure-label", "module-figure-title", "apa-title", "no-indent"
   ];
   classes.forEach((name) => block.classList.remove(name));
   if (!keepRunIn) {
@@ -119,7 +122,7 @@ function normalizeEditableBlockTag(block) {
   return paragraph;
 }
 
-function normalizeEditorRunInHeading(block, level, { mergeFollowing = true } = {}) {
+function normalizeEditorRunInHeading(block, level) {
   if (![4, 5].includes(level)) return block;
   const paragraph = block.tagName === "P" ? block : document.createElement("p");
   if (paragraph !== block) {
@@ -136,12 +139,6 @@ function normalizeEditorRunInHeading(block, level, { mergeFollowing = true } = {
     // Move nodes rather than re-create plain text; preserve links, italics, and emphasis.
     while (paragraph.firstChild) label.append(paragraph.firstChild);
     paragraph.append(label);
-    const following = mergeFollowing ? block.nextElementSibling : null;
-    if (following?.tagName === "P" && !following.matches(".apa-reference,.apa-note,.apa-heading,[data-apa-heading-level]")) {
-      // Following paragraph becomes the body text on the same line, as APA levels 4–5 require.
-      paragraph.append(document.createTextNode(" "), ...[...following.childNodes]);
-      following.remove();
-    }
   }
   label.setAttribute("role", "heading");
   label.setAttribute("aria-level", String(level));
@@ -195,7 +192,7 @@ function applyEditorBlockStyle(styleName) {
       if (level >= 4) {
         block.style.textIndent = ".5in";
         block.classList.remove("no-indent");
-        lastBlock = normalizeEditorRunInHeading(block, level, { mergeFollowing: blocks.length === 1 });
+        lastBlock = normalizeEditorRunInHeading(block, level);
       }
     } else if (styleName === "reference") {
       block.classList.add("apa-reference", "no-indent");

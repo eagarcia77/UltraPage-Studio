@@ -38,14 +38,15 @@ test("APA style changes preserve an editable caret and independent paragraphs", 
   assert.match(editor, /function placeEditorCaret\(block\)/);
   assert.match(editor, /savedRange = range\.cloneRange\(\)/);
   assert.match(editor, /if \(!restoreEditorSelection\(\)\) return \[\];/);
-  assert.match(editor, /mergeFollowing: blocks\.length === 1/);
+  assert.match(editor, /lastBlock = normalizeEditorRunInHeading\(block, level\);/);
+  assert.doesNotMatch(editor, /mergeFollowing|following\.remove\(\)/);
   assert.match(editor, /if \(!preview\(\)\?\.contains\(original\)\) continue;/);
-  assert.match(exporter, /normalizeEditorRunInHeading\(block, 4, \{ mergeFollowing: false \}\)/);
-  assert.match(exporter, /normalizeEditorRunInHeading\(block, 5, \{ mergeFollowing: false \}\)/);
+  assert.match(exporter, /normalizeEditorRunInHeading\(block, 4\)/);
+  assert.match(exporter, /normalizeEditorRunInHeading\(block, 5\)/);
 });
 
 test("service worker includes updated search module", async () => {
   const worker = await source("public/sw.js");
-  assert.match(worker, /curralume-v57/);
+  assert.match(worker, /curralume-v58/);
   assert.match(worker, /\/native-tools\/estiloapa\/editor-search\.js/);
 });

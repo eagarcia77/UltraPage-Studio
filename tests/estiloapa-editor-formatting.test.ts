@@ -31,8 +31,9 @@ test("preserves rich text and hyperlinks inside APA 7 level 4 and 5 headings", a
   for (const script of [editor, formatter]) {
     assert.match(script, /while \(paragraph\.firstChild\) label\.append\(paragraph\.firstChild\)/);
     assert.match(script, /label\.setAttribute\("aria-level", String\(level\)\)/);
-    assert.match(script, /paragraph\.append\(document\.createTextNode\(" "\), \.\.\.\[\.\.\.following\.childNodes\]\)/);
   }
+  assert.match(formatter, /paragraph\.append\(document\.createTextNode\(" "\), \.\.\.\[\.\.\.following\.childNodes\]\)/);
+  assert.doesNotMatch(editor, /following\.remove\(\)|mergeFollowing/);
   assert.match(editor, /if \(label\) label\.replaceWith\(\.\.\.\[\.\.\.label\.childNodes\]\)/);
 });
 
@@ -52,4 +53,30 @@ test("workspace outline only moves the cursor inside the editable document", asy
   assert.match(workspace, /documentArea\.contains\(heading\)/);
   assert.match(workspace, /range\.selectNodeContents\(heading\)/);
   assert.match(css, /#apaWorkspaceOutline/);
+});
+
+test("changing an APA style clears stale module and thesis classes", async () => {
+  const editor = await source("public/native-tools/estiloapa/apa-editor-v30.js");
+  const resetSection = editor.slice(editor.indexOf("function clearApaEditorClasses("), editor.indexOf("function normalizeEditableBlockTag("));
+  for (const oldClass of [
+    "thesis-table-label", "thesis-table-title", "thesis-figure-label",
+    "thesis-figure-title", "module-table-label", "module-table-title",
+    "module-figure-label", "module-figure-title", "thesis-note",
+    "apa-title", "thesis-chapter-heading", "thesis-chapter-title"
+  ]) {
+    assert.ok(resetSection.includes(`"${oldClass}"`), `Stale APA class not cleared: ${oldClass}`);
+  }
+  assert.match(resetSection, /classes\.forEach\(\(name\) => block\.classList\.remove\(name\)\)/);
+});
+
+test("manually converting a heading to APA level 4 or 5 does not join the next paragraph", async () => {
+  const editor = await source("public/native-tools/estiloapa/apa-editor-v30.js");
+  const exporter = await source("public/native-tools/estiloapa/apa-editor-export-v30.js");
+  const headingSection = editor.slice(editor.indexOf("function normalizeEditorRunInHeading("), editor.indexOf("window.normalizeEditorRunInHeading ="));
+  assert.match(headingSection, /function normalizeEditorRunInHeading\(block, level\)/);
+  assert.doesNotMatch(headingSection, /nextElementSibling|following\.remove\(\)|mergeFollowing/);
+  assert.match(editor, /lastBlock = normalizeEditorRunInHeading\(block, level\)/);
+  for (const level of [4, 5]) {
+    assert.ok(exporter.includes(`normalizeEditorRunInHeading(block, ${level})`));
+  }
 });
