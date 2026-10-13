@@ -1,3 +1,5 @@
+import { validatedEditorLink } from "./editor-link-validation.js";
+
 const APA_EDITOR_VERSION = "3.0";
 
 const preview = () => document.querySelector("#preview");
@@ -66,44 +68,66 @@ function dispatchEditorChange(message = "") {
 }
 
 function execInline(command, value = null) {
-  restoreEditorSelection();
-  document.execCommand(command, false, value);
-  dispatchEditorChange();
+  if (!restoreEditorSelection() && !selectionInsidePreview()) return;
+  const applied = document.execCommand(command, false, value);
+  if (applied) dispatchEditorChange();
 }
 
-function clearApaEditorClasses(block) {
+function clearApaEditorClasses(block, { keepRunIn = false } = {}) {
   const classes = [
-    "apa-editor-title", "apa-heading-level-1", "apa-heading-level-2", "apa-heading-level-3",
-    "apa-heading-level-4", "apa-heading-level-5", "apa-reference", "apa-note",
-    "apa-table-label", "apa-table-title", "apa-figure-label", "apa-figure-title", "no-indent"
+    "apa-editor-title", "apa-heading", "apa-heading-level-1", "apa-heading-level-2",
+    "apa-heading-level-3", "apa-heading-level-4", "apa-heading-level-5",
+    "level-1", "level-2", "level-3", "level-4", "level-5",
+    "apa-references-heading", "references-heading", "thesis-major-heading",
+    "thesis-section-heading", "apa-reference", "thesis-reference",
+    "apa-note", "apa-table-label", "apa-table-title", "apa-figure-label",
+    "apa-figure-title", "no-indent"
   ];
   classes.forEach((name) => block.classList.remove(name));
+  if (!keepRunIn) {
+    const label = block.querySelector(":scope > .apa-run-in-heading");
+    if (label) label.replaceWith(...[...label.childNodes]);
+    delete block.dataset.apaRunIn;
+  }
+  delete block.dataset.apaHeadingLevel;
+}
+
+function normalizeEditableBlockTag(block) {
+  if (!/^H[1-6]$/.test(block.tagName)) return block;
+  const paragraph = document.createElement("p");
+  for (const { name, value } of [...block.attributes]) paragraph.setAttribute(name, value);
+  while (block.firstChild) paragraph.append(block.firstChild);
+  block.replaceWith(paragraph);
+  return paragraph;
 }
 
 function normalizeEditorRunInHeading(block, level) {
   if (![4, 5].includes(level)) return block;
-  let paragraph = block;
-  if (block.tagName !== "P") {
-    paragraph = document.createElement("p");
-    paragraph.className = block.className;
-    for (const { name, value } of [...block.attributes]) {
-      if (name !== "class") paragraph.setAttribute(name, value);
-    }
+  const paragraph = block.tagName === "P" ? block : document.createElement("p");
+  if (paragraph !== block) {
+    for (const { name, value } of [...block.attributes]) paragraph.setAttribute(name, value);
+    while (block.firstChild) paragraph.append(block.firstChild);
   }
-  if (!paragraph.querySelector(":scope > .apa-run-in-heading")) {
-    const label = document.createElement("span");
+  paragraph.classList.add(`apa-heading-level-${level}`, `level-${level}`);
+  paragraph.dataset.apaHeadingLevel = String(level);
+  paragraph.classList.remove("no-indent");
+  let label = paragraph.querySelector(":scope > .apa-run-in-heading");
+  if (!label) {
+    label = document.createElement("span");
     label.className = "apa-run-in-heading";
-    label.setAttribute("role", "heading");
-    label.setAttribute("aria-level", String(level));
-    const value = block.textContent.trim();
-    label.textContent = /[.!?]$/.test(value) ? value : `${value}.`;
-    paragraph.replaceChildren(label);
+    // Move nodes rather than re-create plain text; preserve links, italics, and emphasis.
+    while (paragraph.firstChild) label.append(paragraph.firstChild);
+    paragraph.append(label);
     const following = block.nextElementSibling;
     if (following?.tagName === "P" && !following.matches(".apa-reference,.apa-note,.apa-heading,[data-apa-heading-level]")) {
+      // Following paragraph becomes the body text on the same line, as APA levels 4–5 require.
       paragraph.append(document.createTextNode(" "), ...[...following.childNodes]);
       following.remove();
     }
   }
+  label.setAttribute("role", "heading");
+  label.setAttribute("aria-level", String(level));
+  if (label.textContent.trim() && !/[.!?]$/.test(label.textContent.trim())) label.append(document.createTextNode("."));
   paragraph.dataset.apaRunIn = "true";
   if (paragraph !== block) block.replaceWith(paragraph);
   return paragraph;
@@ -113,18 +137,25 @@ window.normalizeEditorRunInHeading = normalizeEditorRunInHeading;
 function applyEditorBlockStyle(styleName) {
   const blocks = selectedBlocks();
   if (!blocks.length) return;
-  for (const block of blocks) {
-    clearApaEditorClasses(block);
+  for (const original of blocks) {
+    const block = normalizeEditableBlockTag(original);
+    const keepRunIn = ["h4", "h5"].includes(styleName) && Boolean(block.querySelector(":scope > .apa-run-in-heading"));
+    clearApaEditorClasses(block, { keepRunIn });
     block.dataset.apaEditorStyle = styleName;
+    block.dataset.apaEditorLine = "2";
+    block.dataset.apaEditorIndent = "none";
+    block.dataset.apaEditorAlign = "left";
     block.style.fontWeight = "";
     block.style.fontStyle = "";
     block.style.textAlign = "left";
     block.style.textIndent = "";
     block.style.paddingLeft = "";
+    block.style.lineHeight = "2";
 
     if (styleName === "normal") {
       block.dataset.apaEditorAlign = "left";
       block.dataset.apaEditorIndent = "first";
+      block.style.textIndent = ".5in";
     } else if (styleName === "title") {
       block.classList.add("apa-editor-title", "no-indent");
       block.dataset.apaEditorAlign = "center";
@@ -141,6 +172,7 @@ function applyEditorBlockStyle(styleName) {
       block.style.fontWeight = level >= 4 ? "400" : "700";
       block.style.fontStyle = level === 3 ? "italic" : "normal";
       if (level >= 4) {
+        block.style.textIndent = ".5in";
         block.classList.remove("no-indent");
         normalizeEditorRunInHeading(block, level);
       }
@@ -298,11 +330,16 @@ function insertFigureCaption() {
 }
 
 function insertLink() {
-  restoreEditorSelection();
-  const url = window.prompt("Link URL (https://...):", "https://");
-  if (!url) return;
-  document.execCommand("createLink", false, url);
-  dispatchEditorChange();
+  const url = window.prompt("Link URL (https:// or mailto:):", "https://");
+  if (url === null || !url.trim()) return;
+  const safeUrl = validatedEditorLink(url);
+  if (!safeUrl) {
+    const status = document.querySelector("#status");
+    if (status) { status.textContent = "Enter a valid HTTP(S) or email link."; status.className = "status error"; }
+    return;
+  }
+  if (!restoreEditorSelection() && !selectionInsidePreview()) return;
+  if (document.execCommand("createLink", false, safeUrl)) dispatchEditorChange("Link inserted.");
 }
 
 function insertPageBreak() {
@@ -330,8 +367,12 @@ function insertReferencesHeading() {
 
 function applyApaParagraphPreset() {
   const blocks = selectedBlocks();
-  for (const block of blocks) {
+  for (const original of blocks) {
+    const block = normalizeEditableBlockTag(original);
+    clearApaEditorClasses(block);
     block.dataset.apaEditorStyle = "normal";
+    block.style.fontWeight = "";
+    block.style.fontStyle = "";
     block.dataset.apaEditorAlign = "left";
     block.dataset.apaEditorIndent = "first";
     block.dataset.apaEditorLine = "2";
@@ -345,8 +386,11 @@ function applyApaParagraphPreset() {
 
 function applyApaReferencePreset() {
   const blocks = selectedBlocks();
-  for (const block of blocks) {
+  for (const original of blocks) {
+    const block = normalizeEditableBlockTag(original);
     clearApaEditorClasses(block);
+    block.style.fontWeight = "";
+    block.style.fontStyle = "";
     block.classList.add("apa-reference", "no-indent");
     block.dataset.apaEditorStyle = "reference";
     block.dataset.apaEditorAlign = "left";
