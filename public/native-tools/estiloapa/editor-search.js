@@ -58,7 +58,7 @@ export function setupDocumentFind(root, controls) {
 
   function jump(direction) {
     if (!locations.length) return;
-    current = (current + direction + locations.length) % locations.length;
+    current = current < 0 ? (direction > 0 ? 0 : locations.length - 1) : (current + direction + locations.length) % locations.length;
     const hit = locations[current];
     const first = segments.find((segment) => hit.start >= segment.start && hit.start < segment.end);
     const last = segments.find((segment) => hit.end > segment.start && hit.end <= segment.end);
