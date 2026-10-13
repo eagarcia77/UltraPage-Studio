@@ -20,9 +20,7 @@ function initializeDocumentWorkspace() {
   bar.setAttribute("role", "group");
   bar.setAttribute("aria-label", "Document workspace controls");
   bar.innerHTML = `
-    <div class="apa-workspace-summary">
-      <output id="apaWorkspaceStats" aria-live="off">0 words · 0 characters</output>
-    </div>
+    <output id="apaWorkspaceStats" aria-live="off">0 words · 0 characters</output>
     <div class="apa-workspace-find" role="search" aria-label="Find text in document">
       <label for="apaWorkspaceFind">Find</label>
       <input type="search" id="apaWorkspaceFind" placeholder="Search document" autocomplete="off">
@@ -36,7 +34,7 @@ function initializeDocumentWorkspace() {
         <option value="">Jump to heading…</option>
       </select>
       <label for="apaWorkspaceZoom">Zoom</label>
-      <select id="apaWorkspaceZoom" aria-controls="preview" aria-label="Document zoom">
+      <select id="apaWorkspaceZoom" aria-controls="preview">
         <option value="75">75%</option>
         <option value="90">90%</option>
         <option value="100" selected>100%</option>
