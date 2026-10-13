@@ -2,6 +2,15 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // Native editors live in public/ as standalone HTML documents. Without these
+  // rewrites, short directory URLs return the Next.js 404 page.
+  async rewrites() {
+    return [
+      { source: "/native-tools/estiloapa", destination: "/native-tools/estiloapa/index.html" },
+      { source: "/native-tools/txt-test-generator", destination: "/native-tools/txt-test-generator/index.html" },
+      { source: "/native-tools/qti-blackboard", destination: "/native-tools/qti-blackboard/index.html" },
+    ];
+  },
   async headers() {
     return [{
       source: "/:path*",
