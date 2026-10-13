@@ -186,7 +186,6 @@
   #apaRibbonTabs { padding-inline: 5px; scroll-snap-type: x proximity; }
   #apaRibbonTabs .apa-ribbon-tab { scroll-snap-align: start; padding-inline: 12px; }
   #apaEditorToolbar .apa-ribbon-group-caption { font-size: 9px; }
-  #apaEditorShell .apa-ribbon-context-hint { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
   #apaEditorToolbar .apa-ribbon-tool-group button { transition: none; }
