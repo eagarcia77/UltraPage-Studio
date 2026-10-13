@@ -31,8 +31,9 @@ test("preserves rich text and hyperlinks inside APA 7 level 4 and 5 headings", a
   for (const script of [editor, formatter]) {
     assert.match(script, /while \(paragraph\.firstChild\) label\.append\(paragraph\.firstChild\)/);
     assert.match(script, /label\.setAttribute\("aria-level", String\(level\)\)/);
-    assert.match(script, /paragraph\.append\(document\.createTextNode\(" "\), \.\.\.\[\.\.\.following\.childNodes\]\)/);
   }
+  assert.match(formatter, /paragraph\.append\(document\.createTextNode\(" "\), \.\.\.\[\.\.\.following\.childNodes\]\)/);
+  assert.doesNotMatch(editor, /following\.remove\(\)|mergeFollowing/);
   assert.match(editor, /if \(label\) label\.replaceWith\(\.\.\.\[\.\.\.label\.childNodes\]\)/);
 });
 
