@@ -1,6 +1,4 @@
-// APA7 Academic Formatter v3.4.8
-// Stable editing guard for #preview. Automatic semantic/media/list normalizers
-// must not rewrite or move DOM nodes while the user is actively editing text.
+// Protect the editable document from background normalizers while the user types.
 
 const APA_EDIT_STABILITY_VERSION = "3.4.8";
 const aesNativeSetTimeout = window.setTimeout.bind(window);
@@ -85,10 +83,6 @@ window.setTimeout = function(callback, delay = 0, ...args) {
     callback(...args);
   }, delay);
 };
-window.clearTimeout = function(timerId) {
-  aesNativeClearTimeout(timerId);
-};
-
 function aesMarkEditing() {
   aesNativeClearTimeout(apaEditIdleTimer);
   aesSetEditing(true);
@@ -138,29 +132,7 @@ function apaWithForcedNormalization(callback) {
   return result;
 }
 
-function aesInstallStyles() {
-  if (document.querySelector("#apa-edit-stability-v348-style")) return;
-  const style = document.createElement("style");
-  style.id = "apa-edit-stability-v348-style";
-  style.textContent = `
-    #preview.apa-user-editing { caret-color:auto; }
-    #preview.apa-user-editing:focus { outline:2px solid rgba(0,123,95,.18); outline-offset:3px; }
-  `;
-  document.head.append(style);
-}
-
-function aesUpdateUi() {
-  const help = document.querySelector("#previewHelp");
-  if (help) {
-    help.classList.add("sr-only");
-    help.textContent = "Edit the preview directly, then run the audit before export.";
-  }
-}
-
 function aesInitialize() {
-  aesInstallStyles();
-  aesUpdateUi();
-  aesNativeSetTimeout(aesUpdateUi, 1600);
   const root = aesPreview();
   if (!root) return;
 
@@ -192,20 +164,7 @@ function aesInitialize() {
     aesFinishEditing({ dispatch: false });
   }, true);
 
-  root.addEventListener("apa-editor-idle", () => {
-    aesFlushPendingNormalizations();
-    const status = document.querySelector("#status");
-    if (status?.dataset?.apaEditStatus === "true") {
-      status.textContent = "Text changes preserved. The preview has left protected editing mode.";
-      status.className = "status success";
-      delete status.dataset.apaEditStatus;
-    }
-  });
-
-  root.addEventListener("input", () => {
-    const status = document.querySelector("#status");
-    if (status) status.dataset.apaEditStatus = "true";
-  });
+  root.addEventListener("apa-editor-idle", aesFlushPendingNormalizations);
 }
 
 window.apaShouldDeferNormalization = apaShouldDeferNormalization;
