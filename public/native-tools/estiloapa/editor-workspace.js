@@ -23,6 +23,10 @@ function initializeDocumentWorkspace() {
       <output id="apaWorkspaceStats" aria-live="off">0 words · 0 characters</output>
     </div>
     <div class="apa-workspace-actions">
+      <label for="apaWorkspaceOutline">Outline</label>
+      <select id="apaWorkspaceOutline" aria-label="Jump to document heading">
+        <option value="">Jump to heading…</option>
+      </select>
       <label for="apaWorkspaceZoom">Zoom</label>
       <select id="apaWorkspaceZoom" aria-controls="preview" aria-label="Document zoom">
         <option value="75">75%</option>
@@ -39,6 +43,8 @@ function initializeDocumentWorkspace() {
   else scrollArea.before(bar);
 
   const stats = bar.querySelector("#apaWorkspaceStats");
+  const outline = bar.querySelector("#apaWorkspaceOutline");
+  let headingTargets = [];
   const zoom = bar.querySelector("#apaWorkspaceZoom");
   const focus = bar.querySelector("#apaWorkspaceFocus");
   let scheduled = false;
@@ -48,12 +54,38 @@ function initializeDocumentWorkspace() {
     const isPlaceholder = documentArea.querySelector(":scope > .placeholder") && documentArea.children.length === 1;
     const count = summarizeDocumentText(isPlaceholder ? "" : documentArea.innerText || documentArea.textContent);
     stats.textContent = `${count.words.toLocaleString()} words · ${count.characters.toLocaleString()} characters`;
+    const headingSelector = "h1,h2,h3,h4,h5,[data-apa-heading-level],.apa-references-heading";
+    headingTargets = [...documentArea.querySelectorAll(headingSelector)].filter((node) => node.textContent.trim());
+    outline.replaceChildren(new Option("Jump to heading…", ""));
+    headingTargets.forEach((node, index) => {
+      const level = Number(node.dataset.apaHeadingLevel || (/^H[1-5]$/.test(node.tagName) ? node.tagName.slice(1) : "1"));
+      const label = node.querySelector(":scope > .apa-run-in-heading")?.textContent || node.textContent;
+      const trimmed = label.replace(/\\s+/g, " ").trim().slice(0, 92);
+      outline.append(new Option(`L${Math.min(5, Math.max(1, level || 1))} · ${trimmed}`, String(index)));
+    });
+    outline.disabled = !headingTargets.length;
   };
   const queueStats = () => {
     if (scheduled) return;
     scheduled = true;
     requestAnimationFrame(refreshStats);
   };
+
+  outline.addEventListener("change", () => {
+    if (outline.value === "") return;
+    const heading = headingTargets[Number(outline.value)];
+    if (!heading || !documentArea.contains(heading)) return;
+    heading.scrollIntoView({ block: "center", behavior: "smooth" });
+    // Move the caret without inserting tracking markers into the exported content.
+    const selection = window.getSelection();
+    const range = document.createRange();
+    range.selectNodeContents(heading);
+    range.collapse(true);
+    documentArea.focus({ preventScroll: true });
+    selection.removeAllRanges();
+    selection.addRange(range);
+    outline.value = "";
+  });
 
   zoom.addEventListener("change", () => {
     if (!ALLOWED_ZOOMS.has(zoom.value)) return;
@@ -72,7 +104,7 @@ function initializeDocumentWorkspace() {
     }
   });
   documentArea.addEventListener("input", queueStats);
-  new MutationObserver(queueStats).observe(documentArea, { subtree: true, characterData: true, childList: true });
+  new MutationObserver(queueStats).observe(documentArea, { subtree: true, characterData: true, childList: true, attributes: true, attributeFilter: ["class", "data-apa-heading-level"] });
   refreshStats();
 }
 
