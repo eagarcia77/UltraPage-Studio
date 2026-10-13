@@ -1,4 +1,4 @@
-const VERSION = "curralume-v49";
+const VERSION = "curralume-v50";
 const SHELL_CACHE = `${VERSION}-shell`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
 const APP_SHELL = [
