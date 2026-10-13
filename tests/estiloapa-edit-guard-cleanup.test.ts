@@ -39,7 +39,7 @@ test("editing guard retains deferred normalization but avoids distracting passiv
 test("editing guard preserves the browser's original clearTimeout function", async () => {
   const guard = await read("public/native-tools/estiloapa/edit-stability-v348.js");
   const clearTimeout = () => {};
-  const setTimeout = () => 42;
+  const setTimeout = (..._args: unknown[]) => 42;
   const listeners = new Map<string, Function>();
   const win = { setTimeout, clearTimeout };
   runInNewContext(guard, {
