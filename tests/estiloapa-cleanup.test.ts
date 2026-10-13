@@ -46,5 +46,12 @@ test("legacy unused utilities and stale presentation copy are absent", async () 
   assert.doesNotMatch(workspaceCss, /#apaEditorToolbar \{/);
   assert.doesNotMatch(page, /id="lmsExportHelp"/);
   assert.doesNotMatch(ribbon, /return \{ label, block \}/);
-  assert.match(sw, /curralume-v56/);
+  const headingJs = await source("public/native-tools/estiloapa/editor-workspace.js");
+  const ribbonStyles = await source("public/native-tools/estiloapa/editor-ribbon.css");
+  const thesisStyles = await source("public/native-tools/estiloapa/thesis-alignment.js");
+  assert.doesNotMatch(headingJs, /<strong>Document workspace<\\/strong>/);
+  assert.doesNotMatch(ribbon, /apaRibbonCommandPicker|quickCommands/);
+  assert.doesNotMatch(ribbonStyles, /apa-ribbon-head|apa-ribbon-quick-actions|apaRibbonCommandPicker/);
+  assert.doesNotMatch(thesisStyles, /THESIS_ALIGNMENT_VERSION/);
+  assert.match(sw, /curralume-v57/);
 });
