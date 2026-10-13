@@ -70,7 +70,6 @@ function enhanceRibbon() {
     pane.className = "apa-ribbon-pane";
     pane.setAttribute("role", "tabpanel");
     pane.setAttribute("aria-labelledby", button.id);
-    pane.setAttribute("aria-label", tab.description);
     pane.hidden = true;
     panes.set(tab.id, pane);
   }
