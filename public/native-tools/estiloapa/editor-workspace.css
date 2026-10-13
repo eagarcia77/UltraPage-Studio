@@ -1,4 +1,10 @@
 /* Workspace presentation only. APA 7 formatting and exported document markup are unchanged. */
+/* Keep the editing guard presentation in CSS, not runtime-injected DOM styles. */
+#preview.apa-user-editing { caret-color: auto; }
+#preview.apa-user-editing:focus {
+  outline: 2px solid rgba(0, 123, 95, .18);
+  outline-offset: 3px;
+}
 #apaWorkspaceBar {
   display: flex;
   flex-wrap: wrap;
