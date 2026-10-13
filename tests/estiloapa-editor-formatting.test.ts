@@ -39,7 +39,9 @@ test("preserves rich text and hyperlinks inside APA 7 level 4 and 5 headings", a
 test("insert-link restores the selected range after the URL prompt", async () => {
   const editor = await source("public/native-tools/estiloapa/apa-editor-v30.js");
   assert.match(editor, /const safeUrl = validatedEditorLink\(url\)/);
-  assert.match(editor, /if \(!restoreEditorSelection\(\) && !selectionInsidePreview\(\)\) return;/);
+  assert.match(editor, /const selected = selectionInsidePreview\(\) \? window.getSelection\(\)\?\.getRangeAt\(0\)\.cloneRange\(\)/);
+  assert.match(editor, /selection\.addRange\(selected\)/);
+  assert.match(editor, /document\.execCommand\("insertHTML", false,/);
   assert.match(editor, /document\.execCommand\("createLink", false, safeUrl\)/);
 });
 
