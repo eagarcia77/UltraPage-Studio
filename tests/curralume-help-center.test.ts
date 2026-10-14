@@ -7,14 +7,14 @@ const source = (path: string) => readFile(new URL("../" + path, import.meta.url)
 
 test("Curralume Help covers the editor, three native tools, mobile and recovery in both languages", async () => {
   const help = await source("app/help/page.tsx");
-  const expected = ["studio", "apa", "txt", "qti", "mobile", "recovery", "exports"];
+  const expected = ["studio", "webdav", "apa", "txt", "qti", "mobile", "recovery", "exports"];
   for (const id of expected) {
     assert.match(help, new RegExp('id: "' + id + '"'));
   }
   for (const phrase of [
     "Centro de ayuda", "Help Center", "Guías paso a paso",
     "Step-by-step guides", "AutoSave", "Preflight",
-    "Target LMS", "Question bank content", "Load and process",
+    "Target LMS", "Question bank content", "Load and process", "Content Collection", "Connect to Blackboard",
     "Curralume Studio", "Eduardo Augusto García Rodríguez",
   ]) {
     assert.ok(help.includes(phrase), "Help copy missing: " + phrase);
@@ -24,6 +24,11 @@ test("Curralume Help covers the editor, three native tools, mobile and recovery 
   assert.match(help, /aria-pressed=\{category === item\.id\}/);
   assert.match(help, /aria-live="polite"/);
   assert.match(help, /help-skip/);
+  assert.match(help, /lang=\{spanish \? "es-PR" : "en-US"\}/);
+  assert.match(help, /normalizeHelpQuery\(value\)\.includes\(normalizeHelpQuery\(query\)\)/);
+  assert.match(help, /topic\.es\.tip/);
+  assert.match(help, /topic\.href === "\/tools"/);
+  assert.match(help, /\[\\u0300-\\u036f\]/);
   assert.match(help, /filtered\.length === 0/);
 });
 
@@ -68,7 +73,7 @@ test("responsive Help styles and owner attribution are scoped to Help Center", a
 test("the Help route is pre-cached and covered by production HTTP smoke tests", async () => {
   const worker = await source("public/sw.js");
   const smoke = await source("scripts/smoke-native-routes.mjs");
-  assert.match(worker, /curralume-v78/);
+  assert.match(worker, /curralume-v79/);
   assert.match(worker, /"\/help"/);
   assert.match(smoke, /origin \+ "\/help"/);
   assert.match(smoke, /help-search-input/);
