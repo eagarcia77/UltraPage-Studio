@@ -110,7 +110,7 @@ function aesSelectedBodyParagraph(root, event, selection) {
   if (paragraph.closest("td,th,li,[contenteditable='false']")) return null;
   const preceding = paragraph.previousElementSibling;
   if (!preceding?.matches("p") || preceding.matches(".placeholder,.apa-page-break")) return null;
-  const normalize = (value) => String(value || "").replace(/\\s+/g, " ").trim();
+  const normalize = (value) => String(value || "").replace(/\s+/g, " ").trim();
   const text = normalize(paragraph.textContent);
   if (!text || normalize(selection.toString()) !== text) return null;
   return { paragraph, preceding };
