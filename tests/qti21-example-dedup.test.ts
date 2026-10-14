@@ -78,5 +78,5 @@ test("single example source keeps owner attribution, five types, and export code
   assert.match(h.html, /function toCanvasItems\(/);
   assert.equal(h.html.includes("value = " + String.fromCharCode(96) + "MC 1."), false);
   const sw = await readFile(new URL("../public/sw.js", import.meta.url), "utf8");
-  assert.match(sw, /curralume-v73/);
+  assert.match(sw, /curralume-v74/);
 });
