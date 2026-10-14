@@ -1,3 +1,4 @@
+/* Curralume Studio · © 2026 Eduardo Augusto García Rodríguez · Original contributions and integrations; third-party licenses preserved. */
 export type TwinStatus = "stable" | "review" | "critical";
 export type TwinLmsProfile = "universal" | "blackboard" | "canvas" | "moodle" | "brightspace";
 export type TwinDevice = "desktop" | "tablet" | "mobile";

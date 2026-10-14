@@ -1,3 +1,4 @@
+/* Curralume Studio · © 2026 Eduardo Augusto García Rodríguez · Original contributions and integrations; third-party licenses preserved. */
 export const CONTINUITY_DATABASE = "ultrapage-temporal-continuity-v1";
 export const CONTINUITY_STORE = "checkpoints";
 export const CONTINUITY_CAPSULE_FORMAT = "ultrapage-recovery-capsule";
