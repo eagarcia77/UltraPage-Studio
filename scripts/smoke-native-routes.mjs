@@ -76,6 +76,17 @@ try {
   assert.match(qtiCss, /minmax\(0, 1fr\)/);
   console.log("✓ QTI 2.1 local mobile CSS: HTTP 200");
 
+  const help = await fetch(origin + "/help", { signal: AbortSignal.timeout(8000) });
+  assert.equal(help.status, 200, "The Curralume Help route did not render");
+  assert.match(help.headers.get("content-type") || "", /text\/html/);
+  const helpHtml = await help.text();
+  assert.match(helpHtml, /Centro de ayuda/);
+  assert.match(helpHtml, /EstiloAPA/);
+  assert.match(helpHtml, /QTI 2\.1 Blackboard/);
+  assert.match(helpHtml, /TXT Test Generator/);
+  assert.match(helpHtml, /id="help-search"/);
+  console.log("✓ Curralume Help Center: HTTP 200, four tool guides and search");
+
   console.log("✓ Short native URLs resolve to standalone editors in production build");
 } finally {
   if (child.exitCode === null) {
