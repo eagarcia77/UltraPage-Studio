@@ -1,4 +1,4 @@
-/** Curralume Studio — © 2026 Eduardo Augusto García Rodríguez. All rights reserved. */
+/** CREVELIO — © 2026 Eduardo Augusto García Rodríguez. All rights reserved. */
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 export function GET() {
   return NextResponse.json({
     status: "ok",
-    product: "Curralume Studio",
+    product: "CREVELIO",
     operator: "ZENQAVIO Technologies",
     creator: "Eduardo Augusto García Rodríguez",
     releaseStage: process.env.ULTRAPAGE_RELEASE_STAGE || "pre-commercial",

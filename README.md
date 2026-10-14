@@ -1,12 +1,12 @@
-# Curralume Studio
+# CREVELIO
 
-![Curralume Studio logo](public/brand/curralume-mark.svg)
+![CREVELIO logo](public/brand/crevelio-mark.svg)
 
 ## Abrir el programa
 
-### [▶ Abrir Curralume Studio](https://ultrapage-studio.onrender.com)
+### [▶ Abrir CREVELIO](https://ultrapage-studio.onrender.com)
 
-> GitHub muestra el código fuente del proyecto. Para utilizar el editor, seleccione el enlace **Abrir Curralume Studio**.
+> GitHub muestra el código fuente del proyecto. Para utilizar el editor, seleccione el enlace **Abrir CREVELIO**.
 
 Editor visual para crear contenido accesible y portátil entre Blackboard Ultra, Canvas, Moodle, D2L Brightspace y otros LMS basados en HTML estándar.
 
@@ -15,13 +15,13 @@ Editor visual para crear contenido accesible y portátil entre Blackboard Ultra,
 ## Organización y autoría
 
 - **Compañía responsable de las aplicaciones y su operación:** ZENQAVIO Technologies.
-- **Aplicación:** Curralume Studio, desarrollada bajo ZENQAVIO Technologies.
+- **Aplicación:** CREVELIO, desarrollada bajo ZENQAVIO Technologies.
 - **Creador y titular de los derechos del código original:** Eduardo Augusto García Rodríguez.
 - **Copyright:** © 2026 Eduardo Augusto García Rodríguez. Todos los derechos reservados.
 
 La relación operativa con ZENQAVIO Technologies no implica, por sí sola, una cesión de derechos de autor ni confirma un registro corporativo o de marca.
 
-“Curralume Studio” fue seleccionado el 9 de octubre de 2026 después de una búsqueda pública preliminar de nombres idénticos y similares. Continúa pendiente una búsqueda jurídica formal en los registros aplicables; por tanto, esta documentación no afirma registro ni disponibilidad exclusiva. El proyecto es independiente y no está afiliado ni respaldado por terceros. Los identificadores técnicos `ultrapage-*` se conservan temporalmente para mantener compatibilidad con proyectos, respaldos, cachés y datos locales existentes.
+“CREVELIO” fue seleccionado el 14 de octubre de 2026 como nombre comercial propuesto. La verificación jurídica de marcas y la disponibilidad de dominios siguen pendientes; su adopción no implica registro, exclusividad ni ausencia de conflictos. Continúa pendiente una búsqueda jurídica formal en los registros aplicables; por tanto, esta documentación no afirma registro ni disponibilidad exclusiva. El proyecto es independiente y no está afiliado ni respaldado por terceros. Los identificadores técnicos `ultrapage-*` se conservan temporalmente para mantener compatibilidad con proyectos, respaldos, cachés y datos locales existentes.
 
 La decisión, el alcance de la búsqueda y la especificación visual se documentan en la [auditoría de marca](docs/BRAND_AUDIT_2026-10-09.md).
 
@@ -32,7 +32,7 @@ La decisión, el alcance de la búsqueda y la especificación visual se document
 - Publication Readiness Command Center con estado `READY`, `REVIEW` o `BLOCKED`, ocho pilares de evidencia y un Readiness Passport JSON que identifica la versión auditada sin presentarse como firma digital.
 - Course Digital Twin: simulación predictiva local de cinco condiciones combinadas de LMS, dispositivo, conectividad y accesibilidad; estima estabilidad, tiempo de carga, señales supervivientes, riesgos y acciones de recuperación sin usar datos de estudiantes.
 - Temporal Continuity Nexus conserva hasta 50 checkpoints transaccionales en IndexedDB, verifica contenido y recuperación con SHA-256, advierte sobre líneas temporales divergentes entre pestañas y permite exportar o importar una Recovery Capsule privada sin sobrescribir automáticamente el trabajo.
-- Curralume Multiverse Engine añade edición causal local-first con variantes independientes, revisiones selladas mediante SHA-256, comparación semántica, coordinación entre pestañas con Web Locks, fusión automática solo para avances lineales demostrables y decisión humana obligatoria cuando dos líneas divergen.
+- CREVELIO Multiverse Engine añade edición causal local-first con variantes independientes, revisiones selladas mediante SHA-256, comparación semántica, coordinación entre pestañas con Web Locks, fusión automática solo para avances lineales demostrables y decisión humana obligatoria cuando dos líneas divergen.
 - Learning Constellation Map: gemelo semántico local que representa objetivos, secciones, actividades, evaluaciones y recursos como una galaxia navegable; detecta rutas incompletas y exporta un grafo JSON inspirado en CASE sin presentarlo como paquete certificado.
 - Deep-Space Learning Trajectories simula rutas deterministas para principiantes, estudiantes con tiempo limitado y aprendizaje avanzado, con estética de ciencia ficción y sin afirmar tecnología extraterrestre real ni perfilar estudiantes.
 - Inclusive Learner Journey Simulator con cinco perspectivas (teclado, lector de pantalla, baja visión/reflow, carga cognitiva y móvil), vista transformada, secuencias de foco/lectura y reporte descargable; complementa, pero no sustituye, pruebas con tecnologías de asistencia y estudiantes.

@@ -1,4 +1,4 @@
-/** Curralume Studio — © 2026 Eduardo Augusto García Rodríguez. All rights reserved. */
+/** CREVELIO — © 2026 Eduardo Augusto García Rodríguez. All rights reserved. */
 import { isStrongWebDavETag, type RemoteWebDavVersion } from "./overwrite-guard.ts";
 
 const MAX_METADATA_BYTES = 64 * 1024;
