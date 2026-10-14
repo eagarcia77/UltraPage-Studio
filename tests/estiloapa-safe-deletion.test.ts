@@ -32,6 +32,7 @@ async function deletionHarness() {
     }
   };
   const status = { textContent: "", className: "" };
+  let lastCaretCollapse: boolean | null = null;
   const doc = {
     readyState: "loading",
     activeElement: null,
@@ -43,7 +44,7 @@ async function deletionHarness() {
     addEventListener(name: string, listener: Handler) {
       documentListeners.set(name, [...(documentListeners.get(name) || []), listener]);
     },
-    createRange() { return { selectNodeContents(_el: any) {}, collapse(_end: boolean) {} }; }
+    createRange() { return { selectNodeContents(_el: any) {}, collapse(toStart: boolean) { lastCaretCollapse = toStart; } }; }
   };
   let selectedLength = 0;
   const selectionNode = { inEditor: true };
@@ -87,7 +88,7 @@ async function deletionHarness() {
   const before = (event: any) => handlers.get("beforeinput")?.forEach((fn) => fn(event));
   const after = (event: any) => handlers.get("input")?.forEach((fn) => fn(event));
   return {
-    root, status, before, after, deletion, select(n: number) { selectedLength = n; },
+    root, status, before, after, deletion, caretCollapsedToStart() { return lastCaretCollapse; }, select(n: number) { selectedLength = n; },
     notifyMutation() { mutationCallback?.([]); },
     clickClear() {
       for (const handler of documentListeners.get("click") || []) {
@@ -110,14 +111,21 @@ test("normal deletion of a line does not block editing or restore old text", asy
   assert.equal(h.status.textContent, "");
 });
 
-test("selecting nearly the whole document cannot delete it accidentally", async () => {
+test("a user may delete nearly all or all of a short document without being blocked", async () => {
   const h = await deletionHarness();
   h.select(590);
   const e = h.deletion();
+  const oldMarkup = h.root.innerHTML;
   h.before(e);
-  assert.equal(e.prevented, true);
-  assert.match(h.status.textContent, /Large document deletion blocked/);
-  assert.equal(h.root.textContent.length, 600);
+  assert.equal(e.prevented, false);
+  h.root.textContent = "";
+  h.root.innerHTML = "";
+  h.after(e);
+  h.notifyMutation();
+  assert.equal(h.root.innerHTML, "");
+  assert.notEqual(h.root.innerHTML, oldMarkup);
+  assert.equal(h.status.textContent, "");
+  assert.equal(h.caretCollapsedToStart(), null);
 });
 
 test("when a delete unexpectedly clears a whole document, its prior markup is restored", async () => {
@@ -130,7 +138,8 @@ test("when a delete unexpectedly clears a whole document, its prior markup is re
   h.root.innerHTML = "";
   h.after(e);
   assert.equal(h.root.innerHTML, originalMarkup);
-  assert.match(h.status.textContent, /Large document deletion blocked/);
+  assert.equal(h.caretCollapsedToStart(), true, "Recovery must not send the caret to the end of the document");
+  assert.match(h.status.textContent, /unexpected document-wide deletion was recovered/);
 });
 
 test("a delayed document-wide DOM rewrite after deleting a line restores the original paper", async () => {
@@ -148,7 +157,7 @@ test("a delayed document-wide DOM rewrite after deleting a line restores the ori
   h.root.innerHTML = "";
   h.notifyMutation();
   assert.equal(h.root.innerHTML, originalMarkup);
-  assert.match(h.status.textContent, /Large document deletion blocked/);
+  assert.match(h.status.textContent, /unexpected document-wide deletion was recovered/);
 });
 
 test("asynchronous harmless formatting never reverts a legitimate line edit", async () => {
@@ -188,6 +197,49 @@ test("unrelated editing input does not roll back a document", async () => {
   assert.equal(h.status.textContent, "");
 });
 
+test("a restored selection path deletes only the originally selected text and retains its caret", async () => {
+  const code = await source("public/native-tools/estiloapa/edit-stability-v348.js");
+  const root = { childNodes: [] as any[], contains(_node: any) { return true; } };
+  const oldParagraph = { parentNode: root, childNodes: [] as any[] };
+  const originalText = { parentNode: oldParagraph, nodeType: 3, nodeValue: "Primera línea. Segunda línea. Tercera línea." };
+  oldParagraph.childNodes = [originalText];
+  root.childNodes = [oldParagraph];
+  let restoredCaret = -1;
+  const windowMock: any = { setTimeout: () => 1, clearTimeout: () => {} };
+  const doc = {
+    readyState: "loading",
+    addEventListener() {},
+    createRange() {
+      let node: any, start = 0, end = 0;
+      return {
+        setStart(value: any, offset: number) { node = value; start = offset; },
+        setEnd(_value: any, offset: number) { end = offset; },
+        deleteContents() { node.nodeValue = node.nodeValue.slice(0, start) + node.nodeValue.slice(end); },
+        collapse(toStart: boolean) { if (toStart) restoredCaret = start; }
+      };
+    }
+  };
+  runInNewContext(code + "\nwindow.captureRangeForTest = aesCaptureDeleteRange; window.restoreRangeForTest = aesRestoreDeleteRange;", {
+    window: windowMock, document: doc, Node: { ELEMENT_NODE: 1, TEXT_NODE: 3 }, console
+  });
+  const selection = { rangeCount: 1, getRangeAt() {
+    return { startContainer: originalText, endContainer: originalText, startOffset: 15, endOffset: 30 };
+  }};
+  const saved = windowMock.captureRangeForTest(root, {}, selection);
+  assert.ok(saved?.selected);
+  // Simulate rehydrating the HTML following an unexpected full-document wipe.
+  const newParagraph = { parentNode: root, childNodes: [] as any[] };
+  const newText = { parentNode: newParagraph, nodeType: 3, nodeValue: originalText.nodeValue };
+  newParagraph.childNodes = [newText];
+  root.childNodes = [newParagraph];
+  const restored = windowMock.restoreRangeForTest(root, saved);
+  assert.ok(restored);
+  restored.deleteContents();
+  restored.collapse(true);
+  assert.equal(newText.nodeValue, originalText.nodeValue.slice(0, 15) + originalText.nodeValue.slice(30));
+  assert.equal(restoredCaret, 15);
+});
+
 test("dangerous normalizers are deferred during editing, not executed on delete", async () => {
   const guard = await source("public/native-tools/estiloapa/edit-stability-v348.js");
   for (const method of ["applyModuleProfile", "applyThesisProfile", "markThesisStructure", "normalizeApaTables", "runApaTableNormalization", "normalizeMedia", "normalizeNumberedLists"]) {
@@ -197,6 +249,10 @@ test("dangerous normalizers are deferred during editing, not executed on delete"
   assert.match(guard, /root\.addEventListener\("input", aesAfterDeletion, true\)/);
   const sw = await source("public/sw.js");
   assert.match(sw, /curralume-v63/);
+  assert.match(guard, /range\\.deleteContents\\(\\)/);
+  assert.match(guard, /range\\.collapse\\(true\\)/);
+  assert.doesNotMatch(guard, /range\\.collapse\\(false\\)/);
+  assert.doesNotMatch(guard, /event\\.preventDefault\\(\\)/);
   assert.match(sw, /url\.pathname\.startsWith\("\/native-tools\/estiloapa\/"\)/);
   const html = await source("public/native-tools/estiloapa/index.html");
   assert.match(html, /src="edit-stability-v348\.js\?v=62"/);
