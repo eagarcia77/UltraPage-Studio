@@ -1,4 +1,4 @@
-const VERSION = "curralume-v66";
+const VERSION = "curralume-v67";
 const SHELL_CACHE = `${VERSION}-shell`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
 const APP_SHELL = [
@@ -51,11 +51,7 @@ const APP_SHELL = [
   "/native-tools/txt-test-generator/index.html",
   "/native-tools/txt-test-generator/txt-layout.css",
   "/native-tools/txt-test-generator/canvas-qti.js",
-  "/native-tools/txt-test-generator/img/LOGO-INTER-SG-HORIZONTAL_sticker.png",
-  "/native-tools/txt-test-generator/img/ucan-logo.png",
-  "/native-tools/txt-test-generator/Guía_Generador_Exámenes_Blackboard_Ultra_Simplificada.pdf",
-  "/native-tools/qti-blackboard/index.html",
-  "/native-tools/qti-blackboard/img/LOGO-INTER-SG-HORIZONTAL_sticker.png"
+  "/native-tools/qti-blackboard/index.html"
 ];
 
 self.addEventListener("install", (event) => {

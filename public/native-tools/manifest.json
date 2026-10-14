@@ -24,12 +24,26 @@
       "route": "/tools#apa",
       "assetCount": 22,
       "theme": "ultrapage-theme.css",
-      "nativeAssets": ["../ultrapage-native-ribbon.css", "../ultrapage-native-ribbon.js", "../ultrapage-native-recovery.js", "lms-export.js"],
+      "nativeAssets": [
+        "../ultrapage-native-ribbon.css",
+        "../ultrapage-native-ribbon.js",
+        "../ultrapage-native-recovery.js",
+        "lms-export.js"
+      ],
       "audit": {
         "status": "reviewed",
         "reviewedAt": "2026-10-03",
         "language": "English interface; Spanish and English document content",
-        "formats": ["DOCX", "Tagged PDF", "HTML", "Blackboard Ultra HTML", "Moodle HTML", "Canvas HTML", "Universal LMS HTML", "APA 7 audit"],
+        "formats": [
+          "DOCX",
+          "Tagged PDF",
+          "HTML",
+          "Blackboard Ultra HTML",
+          "Moodle HTML",
+          "Canvas HTML",
+          "Universal LMS HTML",
+          "APA 7 audit"
+        ],
         "checks": [
           "Labeled file upload and editable preview",
           "Live status and audit score announcements",
@@ -57,14 +71,25 @@
       },
       "destination": "public/native-tools/txt-test-generator/index.html",
       "route": "/tools#txt",
-      "assetCount": 5,
+      "assetCount": 3,
       "theme": "../ultrapage-native-theme.css",
-      "nativeAssets": ["../ultrapage-native-ribbon.css", "../ultrapage-native-ribbon.js", "../ultrapage-native-recovery.js", "../ultrapage-assessment-bridge.js", "canvas-qti.js"],
+      "nativeAssets": [
+        "../ultrapage-native-ribbon.css",
+        "../ultrapage-native-ribbon.js",
+        "../ultrapage-native-recovery.js",
+        "../ultrapage-assessment-bridge.js",
+        "canvas-qti.js"
+      ],
       "audit": {
         "status": "reviewed",
         "reviewedAt": "2026-10-03",
         "language": "English",
-        "formats": ["Blackboard Ultra TXT", "Blackboard batch ZIP", "Moodle GIFT", "Canvas QTI 1.2 ZIP"],
+        "formats": [
+          "Blackboard Ultra TXT",
+          "Blackboard batch ZIP",
+          "Moodle GIFT",
+          "Canvas QTI 1.2 ZIP"
+        ],
         "checks": [
           "TXT and Markdown file opening plus question validation before conversion",
           "Grouped Ribbon commands, accessible status, and keyboard navigation",
@@ -94,14 +119,24 @@
       },
       "destination": "public/native-tools/qti-blackboard/index.html",
       "route": "/tools#qti",
-      "assetCount": 2,
+      "assetCount": 1,
       "theme": "../ultrapage-native-theme.css",
-      "nativeAssets": ["../ultrapage-native-ribbon.css", "../ultrapage-native-ribbon.js", "../ultrapage-native-recovery.js", "../ultrapage-assessment-bridge.js", "../txt-test-generator/canvas-qti.js"],
+      "nativeAssets": [
+        "../ultrapage-native-ribbon.css",
+        "../ultrapage-native-ribbon.js",
+        "../ultrapage-native-recovery.js",
+        "../ultrapage-assessment-bridge.js",
+        "../txt-test-generator/canvas-qti.js"
+      ],
       "audit": {
         "status": "reviewed",
         "reviewedAt": "2026-10-03",
         "language": "English",
-        "formats": ["Blackboard QTI 2.1 ZIP", "Moodle GIFT", "Canvas QTI 1.2 ZIP"],
+        "formats": [
+          "Blackboard QTI 2.1 ZIP",
+          "Moodle GIFT",
+          "Canvas QTI 1.2 ZIP"
+        ],
         "checks": [
           "TXT and Markdown file opening with exact preflight findings",
           "Grouped Ribbon commands, accessible live messages, and keyboard navigation",
@@ -131,11 +166,7 @@
     "updatedFiles": [
       "public/native-tools/estiloapa/index.html",
       "public/native-tools/txt-test-generator/index.html",
-      "public/native-tools/txt-test-generator/img/LOGO-INTER-SG-HORIZONTAL_sticker.png",
-      "public/native-tools/txt-test-generator/img/ucan-logo.png",
-      "public/native-tools/txt-test-generator/Guía_Generador_Exámenes_Blackboard_Ultra_Simplificada.pdf",
-      "public/native-tools/qti-blackboard/index.html",
-      "public/native-tools/qti-blackboard/img/LOGO-INTER-SG-HORIZONTAL_sticker.png"
+      "public/native-tools/qti-blackboard/index.html"
     ],
     "sourceBlobs": [
       {
@@ -252,26 +283,6 @@
         "id": "qti-blackboard",
         "path": "QTI21_BlackboardV3.html",
         "sha": "359c3534601a1fff9aeeac6050a3865249be1cf5"
-      },
-      {
-        "id": "txt-test-generator",
-        "path": "img/LOGO-INTER-SG-HORIZONTAL_sticker.png",
-        "sha": "3de8a451c63287bc86bf4f4627fa0b7b9ae577dc"
-      },
-      {
-        "id": "txt-test-generator",
-        "path": "img/ucan-logo.png",
-        "sha": "345947d4c67641f8c4ef2b4800d4105a7f715480"
-      },
-      {
-        "id": "txt-test-generator",
-        "path": "Guía_Generador_Exámenes_Blackboard_Ultra_Simplificada.pdf",
-        "sha": "26abbe007f44b9bfb14d18e6fa909a252ca7f62b"
-      },
-      {
-        "id": "qti-blackboard",
-        "path": "img/LOGO-INTER-SG-HORIZONTAL_sticker.png",
-        "sha": "3de8a451c63287bc86bf4f4627fa0b7b9ae577dc"
       }
     ]
   }
