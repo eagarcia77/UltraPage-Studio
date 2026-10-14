@@ -1,0 +1,79 @@
+.help-page{min-height:100vh;background:#f5f7fa;color:#193047;font-family:Inter,Segoe UI,Arial,sans-serif;overflow-wrap:anywhere}
+.help-page *{box-sizing:border-box}
+.help-page a{color:inherit}
+.help-topbar{height:70px;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px clamp(18px,4vw,54px);border-bottom:1px solid #dae2e9;background:#fff}
+.help-brand{display:inline-flex;align-items:center;gap:11px;text-decoration:none;font-size:16px;color:#134b50!important}
+.help-brand img{display:block;object-fit:contain;flex:none}
+.help-top-actions{display:flex;gap:8px;align-items:center}
+.help-nav-action{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:42px;padding:9px 13px;border:1px solid #dce5eb;border-radius:10px;background:#fff;text-decoration:none;font-weight:700;font-size:13px}
+.help-nav-action:hover{border-color:#087a70;background:#ecf8f5}
+.help-page a:focus-visible,.help-page button:focus-visible,.help-page input:focus-visible,.help-page summary:focus-visible{outline:3px solid #7950bc;outline-offset:3px}
+.help-shell{width:min(1180px,100%);margin:0 auto;padding:clamp(16px,3vw,36px)}
+.help-hero{display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:20px;padding:clamp(22px,4vw,42px);border-radius:22px;color:#fff;background:linear-gradient(125deg,#076c66,#124b69 60%,#35216c)}
+.help-eyebrow{display:inline-flex;gap:9px;align-items:center;font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;opacity:.95}
+.help-hero h1{font-size:clamp(28px,5vw,44px);line-height:1.15;letter-spacing:-.02em;font-weight:800;margin:15px 0 13px;color:#fff}
+.help-hero p{font-size:clamp(15px,2vw,18px);line-height:1.6;max-width:630px;margin:0;color:#eefcf9}
+.help-language{display:flex;gap:4px;border:1px solid rgba(255,255,255,.3);padding:4px;border-radius:12px;background:rgba(255,255,255,.1)}
+.help-language button{border:0;background:transparent;color:#fff;border-radius:9px;padding:9px 13px;font-size:13px;min-height:42px;font-weight:750;cursor:pointer}
+.help-language button.active{background:#fff;color:#075950}
+.help-search{margin:24px 0 28px;padding:16px 20px;border:1px solid #d7e1e8;background:#fff;border-radius:14px}
+.help-search label{display:flex;align-items:center;gap:9px;font-size:13px;font-weight:800;margin-bottom:8px;color:#294355}
+.help-search input{display:block;width:100%;height:47px;padding:10px 14px;border:1px solid #bacbd6;border-radius:9px;background:#fff;color:#243545;font:inherit;font-size:16px}
+.help-layout{display:grid;grid-template-columns:minmax(210px,240px) minmax(0,1fr);gap:24px;align-items:start}
+.help-toc{position:sticky;top:16px;display:flex;flex-direction:column;gap:5px;padding:18px;background:#fff;border:1px solid #dae2e9;border-radius:14px}
+.help-toc strong{font-size:13px;margin:0 0 7px}
+.help-toc a{display:block;text-decoration:none;padding:9px 10px;font-size:13px;font-weight:650;border-radius:8px;color:#3b5565}
+.help-toc a:hover{background:#edf7f5;color:#086b62}
+.help-main-content{min-width:0}
+.help-section-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:0 0 12px}
+.help-section-heading h2,.help-faq h2{font-size:clamp(20px,3vw,24px);font-weight:800;margin:0;color:#172f4a}
+.help-section-heading span{font-size:12px;color:#647688;white-space:nowrap}
+.help-card{background:#fff;border:1px solid #dce4ea;border-radius:16px;padding:clamp(18px,3vw,25px);margin-bottom:16px;scroll-margin-top:24px}
+.help-card-title{display:flex;gap:13px;align-items:flex-start}
+.help-card-title>svg{flex:none;color:#087a70;width:23px;height:23px;margin-top:3px}
+.help-card-title h3{margin:0 0 7px;font-size:clamp(18px,2.5vw,21px);font-weight:800;color:#163b53;line-height:1.3}
+.help-card-title p{margin:0;color:#526576;line-height:1.6;font-size:14px}
+.help-card ol{margin:18px 0;padding:0 0 0 25px;line-height:1.68}
+.help-card li{padding-left:6px;margin:0 0 9px;font-size:14px}
+.help-card li::marker{color:#087a70;font-weight:800}
+.help-safety{display:flex;gap:10px;align-items:flex-start;border-left:3px solid #087a70;background:#f2faf8;padding:12px 14px;border-radius:0 9px 9px 0;font-size:13px;line-height:1.6;color:#315b58;margin:16px 0}
+.help-safety svg{flex:none;margin-top:2px}
+.help-open-tool{display:inline-flex;align-items:center;justify-content:center;gap:9px;text-decoration:none;background:#087a70;color:#fff!important;border-radius:9px;font-weight:750;font-size:13px;min-height:43px;padding:10px 15px}
+.help-open-tool:hover{background:#075b54}
+.help-faq{scroll-margin-top:24px;margin:28px 0 12px}
+.help-faq h2{margin-bottom:12px}
+.help-faq details{background:#fff;border:1px solid #dce4ea;border-radius:11px;padding:0 15px;margin-bottom:8px}
+.help-faq summary{list-style:none;cursor:pointer;display:flex;gap:10px;align-items:center;padding:14px 0;font-size:14px;font-weight:740;line-height:1.5}
+.help-faq summary::-webkit-details-marker{display:none}
+.help-faq summary svg{flex:none;color:#087a70}
+.help-faq details[open] summary{border-bottom:1px solid #edf0f4}
+.help-faq details p{margin:0;padding:13px 0 17px 28px;color:#455c6b;font-size:14px;line-height:1.7}
+.help-empty{padding:20px;border:1px solid #dce4ea;border-radius:10px;background:#fff;color:#536a78}
+.help-footer{padding:30px 10px 8px;text-align:center;font-size:12px;color:#526576}
+@media(max-width:760px){
+  .help-topbar{height:auto;min-height:64px;padding:10px 14px}
+  .help-brand{font-size:13px}.help-brand img{height:32px;width:32px}
+  .help-nav-action{padding:8px 10px;font-size:12px}
+  .help-nav-action svg{width:15px}
+  .help-shell{padding:12px}
+  .help-hero{border-radius:14px;padding:24px 19px}
+  .help-hero h1{margin:9px 0}
+  .help-language{width:100%;justify-content:flex-start}
+  .help-search{margin:14px 0;padding:13px}
+  .help-layout{display:block}
+  .help-toc{position:static;display:flex;flex-direction:row;gap:6px;overflow-x:auto;margin-bottom:20px;padding:9px;-webkit-overflow-scrolling:touch}
+  .help-toc strong{display:none}
+  .help-toc a{white-space:nowrap;flex:none;min-height:40px;padding:11px;border:1px solid #edf0f4}
+  .help-card{padding:17px;border-radius:12px}
+  .help-card-title{gap:9px}
+  .help-card-title>svg{width:21px}
+  .help-faq details{padding:0 12px}
+  .help-faq details p{padding-left:0}
+}
+@media(max-width:390px){
+  .help-top-actions{gap:4px}
+  .help-brand strong{max-width:91px;line-height:1.1}
+  .help-nav-action{padding:7px 8px}
+  .help-nav-action svg{display:none}
+}
+@media(prefers-reduced-motion:reduce){.help-page *{scroll-behavior:auto!important;transition:none!important}}
