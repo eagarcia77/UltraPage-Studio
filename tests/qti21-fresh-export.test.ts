@@ -88,5 +88,5 @@ test("QTI fresh export removes cached package state without changing ZIP/XML fun
   assert.match(html, /function buildMoodleGift\(/);
   assert.match(html, /function toCanvasItems\(/);
   const sw = await readFile(new URL("../public/sw.js", import.meta.url), "utf8");
-  assert.match(sw, /curralume-v78/);
+  assert.match(sw, /curralume-v79/);
 });
