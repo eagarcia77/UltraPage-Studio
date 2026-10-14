@@ -46,7 +46,7 @@ test("QTI responsive styles contain every major grid, sample, input, and ribbon 
 test("offline cache includes the new QTI mobile stylesheet and unchanged LMS code references", async () => {
   const sw = await readFile(new URL("../public/sw.js", import.meta.url), "utf8");
   const html = await readFile(htmlPath, "utf8");
-  assert.match(sw, /curralume-v71/);
+  assert.match(sw, /curralume-v72/);
   assert.ok(sw.includes("/native-tools/qti-blackboard/qti-layout.css"));
   assert.ok(sw.includes("/native-tools/qti-blackboard/index.html"));
   assert.match(html, /function buildPackage\(/);
