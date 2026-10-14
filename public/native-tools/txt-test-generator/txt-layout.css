@@ -1,0 +1,168 @@
+/* TXT Test Generator layout: essential, locally served replacements for Bootstrap
+   utilities used by this page. Keep independent from the external CDN. */
+body[data-native-draft-tool="txt-test-generator"] .row {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 1rem;
+}
+body[data-native-draft-tool="txt-test-generator"] .row.g-4 { gap: 1.5rem; }
+body[data-native-draft-tool="txt-test-generator"] .row > * { min-width: 0; }
+body[data-native-draft-tool="txt-test-generator"] .row > .col-12,
+body[data-native-draft-tool="txt-test-generator"] .row > .col-md-4,
+body[data-native-draft-tool="txt-test-generator"] .row > .col-md-6,
+body[data-native-draft-tool="txt-test-generator"] .row > .col-lg-3,
+body[data-native-draft-tool="txt-test-generator"] .row > .col-lg-5,
+body[data-native-draft-tool="txt-test-generator"] .row > .col-lg-7 {
+  grid-column: span 12;
+}
+@media (min-width: 768px) {
+  body[data-native-draft-tool="txt-test-generator"] .row > .col-md-4 { grid-column: span 4; }
+  body[data-native-draft-tool="txt-test-generator"] .row > .col-md-6 { grid-column: span 6; }
+}
+@media (min-width: 992px) {
+  body[data-native-draft-tool="txt-test-generator"] .row > .col-lg-3 { grid-column: span 3; }
+  body[data-native-draft-tool="txt-test-generator"] .row > .col-lg-5 { grid-column: span 5; }
+  body[data-native-draft-tool="txt-test-generator"] .row > .col-lg-7 { grid-column: span 7; }
+}
+body[data-native-draft-tool="txt-test-generator"] .card { display: flex; flex-direction: column; min-width: 0; }
+body[data-native-draft-tool="txt-test-generator"] .card-body { flex: 1 1 auto; min-width: 0; }
+body[data-native-draft-tool="txt-test-generator"] .h-100 { height: 100%; }
+body[data-native-draft-tool="txt-test-generator"] .overflow-hidden { overflow: hidden; }
+body[data-native-draft-tool="txt-test-generator"] .d-flex { display: flex; }
+body[data-native-draft-tool="txt-test-generator"] .justify-content-between { justify-content: space-between; }
+body[data-native-draft-tool="txt-test-generator"] .align-items-center { align-items: center; }
+body[data-native-draft-tool="txt-test-generator"] .flex-wrap { flex-wrap: wrap; }
+body[data-native-draft-tool="txt-test-generator"] .gap-2 { gap: .5rem; }
+body[data-native-draft-tool="txt-test-generator"] .text-center { text-align: center; }
+body[data-native-draft-tool="txt-test-generator"] .fw-semibold { font-weight: 650; }
+body[data-native-draft-tool="txt-test-generator"] .small { font-size: .875rem; }
+body[data-native-draft-tool="txt-test-generator"] .text-muted { color: #667085; }
+body[data-native-draft-tool="txt-test-generator"] .text-danger { color: #b42318; }
+body[data-native-draft-tool="txt-test-generator"] .text-success { color: #157347; }
+body[data-native-draft-tool="txt-test-generator"] .text-primary { color: #087a70; }
+body[data-native-draft-tool="txt-test-generator"] .form-label { display: inline-block; margin-bottom: .4rem; }
+body[data-native-draft-tool="txt-test-generator"] .form-control,
+body[data-native-draft-tool="txt-test-generator"] .form-select,
+body[data-native-draft-tool="txt-test-generator"] #quizContent {
+  display: block;
+  width: 100% !important;
+  max-width: 100%;
+  min-width: 0;
+  padding: .625rem .75rem;
+  box-sizing: border-box;
+}
+body[data-native-draft-tool="txt-test-generator"] .form-control::placeholder { color: #7d8796; opacity: 1; }
+body[data-native-draft-tool="txt-test-generator"] .form-text { margin-top: .4rem; font-size: .875rem; line-height: 1.5; color: #526273; }
+body[data-native-draft-tool="txt-test-generator"] .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: .55rem .75rem;
+  line-height: 1.25;
+  text-align: center;
+  vertical-align: middle;
+  text-decoration: none;
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+body[data-native-draft-tool="txt-test-generator"] .btn-light {
+  color: #233c4f;
+  background: #fff;
+  border-color: #d4dde4;
+}
+body[data-native-draft-tool="txt-test-generator"] .btn-outline-secondary {
+  color: #31475d;
+  background: #fff;
+  border-color: #9eacb7;
+}
+body[data-native-draft-tool="txt-test-generator"] .btn-sm { min-height: 40px; padding: .4rem .65rem; font-size: .875rem; }
+body[data-native-draft-tool="txt-test-generator"] .mb-0 { margin-bottom: 0; }
+body[data-native-draft-tool="txt-test-generator"] .mb-3 { margin-bottom: 1rem; }
+body[data-native-draft-tool="txt-test-generator"] .mt-2 { margin-top: .5rem; }
+body[data-native-draft-tool="txt-test-generator"] .mt-3 { margin-top: 1rem; }
+body[data-native-draft-tool="txt-test-generator"] .py-4 { padding-top: 1.5rem; padding-bottom: 1.5rem; }
+body[data-native-draft-tool="txt-test-generator"] .px-4 { padding-inline: 1.5rem; }
+body[data-native-draft-tool="txt-test-generator"] .pb-4 { padding-bottom: 1.5rem; }
+body[data-native-draft-tool="txt-test-generator"] .table-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+body[data-native-draft-tool="txt-test-generator"] .align-middle td,
+body[data-native-draft-tool="txt-test-generator"] .align-middle th { vertical-align: middle; }
+body[data-native-draft-tool="txt-test-generator"] .table { width: 100%; }
+body[data-native-draft-tool="txt-test-generator"] .visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+/* The shared editor default of up to 500px minimum height is too tall for
+   iPhone-sized screens. Text stays scrollable; users can resize on desktop. */
+body[data-native-draft-tool="txt-test-generator"] #quizContent {
+  min-height: 18rem !important;
+  height: 24rem;
+  resize: vertical;
+  font-size: 1rem;
+}
+body[data-native-draft-tool="txt-test-generator"] #resultBox,
+body[data-native-draft-tool="txt-test-generator"] #previewBox,
+body[data-native-draft-tool="txt-test-generator"] #helpModal .preview {
+  min-height: 7rem !important;
+  max-height: 28rem;
+  overflow: auto;
+  overflow-wrap: anywhere;
+  height: auto;
+}
+
+@media (max-width: 760px) {
+  body[data-native-draft-tool="txt-test-generator"] .row { gap: .85rem; }
+  body[data-native-draft-tool="txt-test-generator"] .row.g-4 { gap: 1rem; }
+  body[data-native-draft-tool="txt-test-generator"] .card-body { padding: 14px !important; }
+  body[data-native-draft-tool="txt-test-generator"] #quizContent {
+    min-height: 12rem !important;
+    height: 28svh;
+    max-height: 22rem;
+    font-size: 16px;
+    padding: .75rem;
+  }
+  body[data-native-draft-tool="txt-test-generator"] .native-action-ribbon {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr);
+    gap: .55rem !important;
+    overflow-x: hidden;
+    padding: .5rem !important;
+  }
+  body[data-native-draft-tool="txt-test-generator"] .native-ribbon-group {
+    width: 100%;
+    min-width: 0;
+    padding: .35rem;
+    border-right: 0;
+    border-bottom: 1px solid #d9d2e4;
+  }
+  body[data-native-draft-tool="txt-test-generator"] .native-ribbon-group:last-child { border-bottom: 0; }
+  body[data-native-draft-tool="txt-test-generator"] .native-ribbon-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .4rem;
+  }
+  body[data-native-draft-tool="txt-test-generator"] .native-ribbon-actions > button {
+    min-width: 0;
+    width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    font-size: .875rem;
+    padding: .5rem .4rem;
+  }
+  body[data-native-draft-tool="txt-test-generator"] .native-command-search-group .native-ribbon-actions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  body[data-native-draft-tool="txt-test-generator"] .native-ribbon-label { margin-top: .25rem; }
+  body[data-native-draft-tool="txt-test-generator"] .native-lms-dialog { max-width: calc(100vw - 20px); }
+  body[data-native-draft-tool="txt-test-generator"] .native-lms-dialog .px-4 { padding-inline: 12px; }
+  body[data-native-draft-tool="txt-test-generator"] #lmsComparisonTable {
+    min-width: 480px;
+  }
+}
