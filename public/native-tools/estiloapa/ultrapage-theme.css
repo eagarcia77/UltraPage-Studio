@@ -433,3 +433,23 @@ footer {
   .header-inner { flex-wrap: wrap; }
   .curralume-native-help { white-space: normal; }
 }
+
+/* Creator attribution footer — only shown in the application, never printed inside a user's document. */
+.curralume-copyright {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  width: min(100% - 24px, 1240px);
+  margin: 18px auto 26px;
+  padding: 12px 16px;
+  text-align: center;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #485763;
+}
+.curralume-copyright span { color: #6a7886; }
+@media (max-width: 820px) {
+  .curralume-copyright { padding: 12px; font-size: 11px; }
+}
