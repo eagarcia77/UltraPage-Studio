@@ -397,7 +397,6 @@ ESSAY 5. Explique dos implicaciones éticas del uso de la IA en la educación.</
     const SUPPORTED_TYPES = ['MC', 'MA', 'TF', 'FIB', 'ESSAY'];
     const BLOCKED_TYPES = ['MATCH', 'SA'];
     const MAX_CHARS = 50000;
-    let currentPackage = null;
 
     function escapeXML(value) {
       return String(value)
@@ -1021,7 +1020,6 @@ ${resources}
     function generatePackage() {
       const output = document.getElementById('outputPreview');
       output.value = '';
-      currentPackage = null;
       const report = runValidationReport(false);
       if (report.errors.length) {
         setMessage('error', `The ZIP was not generated because the content has ${report.errors.length} error(s).`);
@@ -1032,11 +1030,10 @@ ${resources}
         const items = getItems();
         const files = buildPackage(items);
         const integrity = validatePackage(files, items);
-        currentPackage = { files, items, integrity };
         output.value = buildPreview(files, items);
         updateStats(items);
         setMessage('success', `Blackboard-safe QTI 2.1 package prepared with ${items.length} question(s). Integrity check passed for ${integrity.resources} resources and ${integrity.files} files; optional response processing was omitted.`);
-        return currentPackage;
+        return { files, items, integrity };
       } catch (error) {
         updateStats([]);
         setMessage('error', error.message);
@@ -1056,7 +1053,8 @@ ${resources}
     }
 
     function downloadZipPackage() {
-      const pkg = currentPackage || generatePackage();
+      // Always export the current bank; no stale cached QTI package is retained.
+      const pkg = generatePackage();
       if (!pkg) return;
       const zipBlob = createZipBlob(pkg.files);
       const filename = sanitizeFileName(document.getElementById('packageName').value, 'zip');
@@ -1083,7 +1081,8 @@ ${resources}
 
     async function copyPreview() {
       const output = document.getElementById('outputPreview');
-      if (!output.value.trim() && !generatePackage()) return;
+      // A displayed preview may be stale after editing; regenerate before copying.
+      if (!generatePackage()) return;
       const copied = await copyTextSafely(output.value);
       setMessage(copied ? 'success' : 'error',
         copied ? 'Package preview copied to the clipboard.' : 'Could not copy the package preview. Check clipboard permissions.');
@@ -1109,7 +1108,6 @@ ${resources}
       div.className = 'validation-item warn';
       div.innerHTML = '<strong>Not checked yet</strong>Paste or enter a question bank, then select “Run preflight.”';
       container.appendChild(div);
-      currentPackage = null;
       updateStats([]);
     }
 
@@ -1251,9 +1249,13 @@ ${resources}
     document.getElementById('btnCopyReport').addEventListener('click', copyValidationReport);
     document.getElementById('btnDownloadReport').addEventListener('click', downloadValidationReport);
     document.getElementById('targetLms').addEventListener('change', updateTargetUi);
-    document.getElementById('defaultPoints').addEventListener('change', () => { currentPackage = null; runValidationReport(false); });
+    document.getElementById('defaultPoints').addEventListener('change', () => {
+      document.getElementById('outputPreview').value = '';
+      runValidationReport(false);
+    });
     document.getElementById('inputText').addEventListener('input', () => {
-      currentPackage = null;
+      document.getElementById('outputPreview').value = '';
+      updateStats([]);
       clearTimeout(validationTimer);
       validationTimer = setTimeout(() => {
         if (document.getElementById('inputText').value.trim()) runValidationReport(false);

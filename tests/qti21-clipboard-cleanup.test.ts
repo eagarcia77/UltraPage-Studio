@@ -69,7 +69,17 @@ async function harness(mode: "modern" | "fallback" | "denied" = "modern") {
       clipboardText = text;
     } } };
   const win: any = {};
-  runInNewContext(core + "\nwindow.__qtiClipboardTest = { copyTextSafely, copyValidationReport, copyImportChecklist, copyPreview, buildValidationReport };",
+  // Clipboard tests isolate copy behavior; package generation is exercised
+  // with the real parser in qti21-fresh-export.test.ts.
+  const stubGeneration = `\n    generatePackage = function() {
+      if (!document.getElementById('inputText').value.trim()) {
+        setMessage('error', 'The ZIP was not generated because the question bank is empty.');
+        return null;
+      }
+      document.getElementById('outputPreview').value = 'QTI 2.1 PACKAGE GENERATED';
+      return { files: {}, items: [] };
+    };\n`;
+  runInNewContext(core + stubGeneration + "\nwindow.__qtiClipboardTest = { copyTextSafely, copyValidationReport, copyImportChecklist, copyPreview, buildValidationReport };",
     { document, navigator, window: win, console, Blob, TextEncoder, Uint8Array, Uint32Array, DataView, Date });
   return {
     $, html, api: win.__qtiClipboardTest, elements,
@@ -89,7 +99,7 @@ test("QTI 2.1 clipboard logic uses one path rather than duplicated fallback code
   assert.doesNotMatch(html, /\.chip\.yellow\s*\{/);
   assert.match(html, /© 2026 Eduardo Augusto García Rodríguez\. All rights reserved\./);
   assert.equal(load(html)("#btnCopyPreview, #btnCopyReport, #btnCopyImportChecklist").length, 3);
-  assert.match(await readFile(new URL("../public/sw.js", import.meta.url), "utf8"), /curralume-v72/);
+  assert.match(await readFile(new URL("../public/sw.js", import.meta.url), "utf8"), /curralume-v73/);
 });
 
 test("modern clipboard copies the preflight report, checklist, and QTI preview", async () => {
