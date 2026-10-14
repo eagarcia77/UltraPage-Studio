@@ -65,7 +65,8 @@ test("TXT Generator keeps one concise accepted-format summary and its detailed e
   assert.match(h.$(".panel").text(), /Blackboard Ultra TXT/);
   assert.match(h.$(".panel").text(), /Moodle GIFT/);
   assert.match(h.$(".panel").text(), /Canvas QTI/);
-  assert.equal(h.$('a[href$="Guía_Generador_Exámenes_Blackboard_Ultra_Simplificada.pdf"]').length, 1);
+  assert.equal(h.$('a[href$=".pdf"]').length, 0, "Institutional PDF guide is not distributed");
+  assert.match(h.$("footer").text(), /© 2026 Eduardo Augusto García Rodríguez\. All rights reserved\./);
   for (const id of ["openFileBtn","clearBtn","sampleBtn","verifyBtn","convertBtn","compareLmsBtn","downloadBtn","copyBtn","downloadReportBtn","lmsComparisonDialog","quizContent"]) {
     assert.equal(h.$("#" + id).length, 1, "Required TXT Generator control missing: " + id);
   }
@@ -120,7 +121,7 @@ test("TXT Generator uses local, responsive mobile styles and retains essential i
   assert.match(css, /\.row\s*>\s*\.col-12/);
   assert.match(css, /@media\s*\(min-width:\s*992px\)/);
   const sw = await readFile(new URL("../public/sw.js", import.meta.url), "utf8");
-  assert.match(sw, /curralume-v66/);
+  assert.match(sw, /curralume-v67/);
   assert.ok(sw.includes("/native-tools/txt-test-generator/txt-layout.css"));
 });
 
