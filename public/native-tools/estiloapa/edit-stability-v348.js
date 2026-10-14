@@ -87,6 +87,61 @@ window.setTimeout = function(callback, delay = 0, ...args) {
 // Native line/paragraph deletions remain the browser's responsibility.
 let aesDeletionSnapshot = null;
 let aesDeletionWatchTimer = null;
+let aesParagraphDeleteCandidate = null;
+
+// Detect an entire *single* body paragraph selected for deletion. Browsers
+// commonly leave an empty <p><br></p> after deleting all its words; the next
+// forward Delete then pulls the following paragraph into that empty block.
+function aesSelectedBodyParagraph(root, event, selection) {
+  if (!root || !selection?.rangeCount) return null;
+  let range;
+  try {
+    const targets = typeof event.getTargetRanges === "function" ? event.getTargetRanges() : [];
+    range = targets?.[0] || (typeof selection.getRangeAt === "function" ? selection.getRangeAt(0) : null);
+  } catch {
+    return null;
+  }
+  if (!range || range.startContainer === range.endContainer && range.startOffset === range.endOffset) return null;
+  const element = range.startContainer?.nodeType === Node.ELEMENT_NODE
+    ? range.startContainer : range.startContainer?.parentElement;
+  const paragraph = element?.closest?.("p");
+  if (!paragraph || !root.contains(paragraph) || paragraph.matches(".placeholder,.apa-page-break")) return null;
+  if (!paragraph.contains(range.endContainer)) return null;
+  if (paragraph.closest("td,th,li,[contenteditable='false']")) return null;
+  const preceding = paragraph.previousElementSibling;
+  if (!preceding?.matches("p") || preceding.matches(".placeholder,.apa-page-break")) return null;
+  const normalize = (value) => String(value || "").replace(/\s+/g, " ").trim();
+  const text = normalize(paragraph.textContent);
+  if (!text || normalize(selection.toString()) !== text) return null;
+  return { paragraph, preceding };
+}
+
+function aesFinishDeletedParagraph() {
+  const candidate = aesParagraphDeleteCandidate;
+  aesParagraphDeleteCandidate = null;
+  if (!candidate) return;
+  const { paragraph, preceding } = candidate;
+  const root = aesPreview();
+  // Do not merge distinct blocks, change lists/tables/headings, or act when
+  // the browser already removed the paragraph as part of its native deletion.
+  if (!root?.contains(paragraph) || !root.contains(preceding)
+      || paragraph.previousElementSibling !== preceding
+      || paragraph.textContent?.trim()
+      || paragraph.querySelector("img,svg,table,figure,hr,iframe,video,audio")) return;
+  const selection = window.getSelection();
+  if (!selection) return;
+  try {
+    const range = document.createRange();
+    range.selectNodeContents(preceding);
+    range.collapse(false); // End of the previous paragraph, NOT the document.
+    paragraph.remove(); // The following paragraph retains its own DOM and text.
+    selection.removeAllRanges();
+    selection.addRange(range);
+    window.apaSaveEditorSelection?.();
+  } catch (error) {
+    console.error("EstiloAPA: could not position the caret after deleting an empty paragraph", error);
+  }
+}
 
 function aesCancelDeletionWatch() {
   aesNativeClearTimeout(aesDeletionWatchTimer);
@@ -195,17 +250,19 @@ function aesCheckForDocumentWipe() {
 }
 
 function aesBeforeDeletion(event) {
+  aesParagraphDeleteCandidate = null;
   if (!String(event.inputType || "").startsWith("delete")) {
     aesCancelDeletionWatch();
     return;
   }
   const root = aesPreview();
+  const selection = window.getSelection();
+  aesParagraphDeleteCandidate = aesSelectedBodyParagraph(root, event, selection);
   const length = root?.textContent?.trim().length || 0;
   if (!root || length < 80) {
     aesCancelDeletionWatch();
     return;
   }
-  const selection = window.getSelection();
   const selectedLength = selection?.anchorNode && selection?.focusNode
     && root.contains(selection.anchorNode) && root.contains(selection.focusNode)
     ? selection.toString().length : 0;
@@ -227,7 +284,12 @@ function aesBeforeDeletion(event) {
 }
 
 function aesAfterDeletion() {
-  aesCheckForDocumentWipe();
+  // Emergency recovery takes precedence over paragraph cleanup.
+  if (aesCheckForDocumentWipe()) {
+    aesParagraphDeleteCandidate = null;
+    return;
+  }
+  aesFinishDeletedParagraph();
 }
 
 function aesMarkEditing() {
@@ -314,7 +376,10 @@ function aesInitialize() {
   // Keyboard activation of toolbar buttons should also cancel the watch:
   // only an actual user delete operation is eligible for automatic recovery.
   document.addEventListener("click", (event) => {
-    if (event.target?.closest?.("#formatBtn,#demoBtn,#clearBtn")) aesCancelDeletionWatch();
+    if (event.target?.closest?.("#formatBtn,#demoBtn,#clearBtn")) {
+      aesParagraphDeleteCandidate = null;
+      aesCancelDeletionWatch();
+    }
   }, true);
 
   document.addEventListener("pointerdown", (event) => {
@@ -322,6 +387,7 @@ function aesInitialize() {
       "#formatBtn,#demoBtn,#clearBtn,#reauditBtn,#downloadDocxBtn,#downloadHtmlBtn,#downloadPdfBtn,#downloadAuditBtn,#formatReferenceList,#auditReferencesNow"
     );
     if (!action) return;
+    aesParagraphDeleteCandidate = null;
     aesCancelDeletionWatch();
     aesFinishEditing({ dispatch: false });
   }, true);
