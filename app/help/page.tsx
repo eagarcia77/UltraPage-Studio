@@ -199,7 +199,7 @@ export default function HelpPage() {
           <p>{spanish ? "Privacidad y seguridad: las versiones de AutoSave pueden depender del almacenamiento local del navegador. Las conexiones a servicios externos, como WebDAV, requieren configuración explícita. Revise siempre el resultado de las exportaciones y las auditorías automáticas." :
             "Privacy and safety: AutoSave versions may depend on local browser storage. External services such as WebDAV require explicit configuration. Always inspect exported files and automated audit results."}</p>
         </section>
-        <footer className="help-footer">© 2026 Eduardo Augusto García Rodríguez. {spanish ? "Todos los derechos reservados." : "All rights reserved."}</footer>
+        <footer className="help-footer">© 2026 Eduardo Augusto García Rodríguez. {spanish ? "Todos los derechos reservados. Operado por ZENQAVIO Technologies." : "All rights reserved. Operated by ZENQAVIO Technologies."}</footer>
       </div>
     </main>
   );

@@ -432,3 +432,6 @@ footer {
   .header-inner { flex-wrap: wrap; }
   .curralume-native-help { white-space: normal; }
 }
+
+/* Responsible company credit without changing the native formatter heading. */
+.curralume-company-credit { font-size: 11px; font-weight: 650; color: #d8f1ed; letter-spacing: .01em; white-space: normal; }

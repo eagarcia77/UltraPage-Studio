@@ -12,10 +12,14 @@ Editor visual para crear contenido accesible y portátil entre Blackboard Ultra,
 
 > **Estado del producto:** vista previa precomercial. Las ventas y las afirmaciones de certificación permanecen desactivadas hasta completar la [puerta de estabilidad y preparación comercial](docs/COMMERCIALIZATION_READINESS.md).
 
-## Propiedad y autoría
+## Organización y autoría
 
-- **Dueño y creador:** Eduardo Augusto García Rodríguez
+- **Compañía responsable de las aplicaciones y su operación:** ZENQAVIO Technologies.
+- **Aplicación:** Curralume Studio, desarrollada bajo ZENQAVIO Technologies.
+- **Creador y titular de los derechos del código original:** Eduardo Augusto García Rodríguez.
 - **Copyright:** © 2026 Eduardo Augusto García Rodríguez. Todos los derechos reservados.
+
+La relación operativa con ZENQAVIO Technologies no implica, por sí sola, una cesión de derechos de autor ni confirma un registro corporativo o de marca.
 
 “Curralume Studio” fue seleccionado el 9 de octubre de 2026 después de una búsqueda pública preliminar de nombres idénticos y similares. Continúa pendiente una búsqueda jurídica formal en los registros aplicables; por tanto, esta documentación no afirma registro ni disponibilidad exclusiva. El proyecto es independiente y no está afiliado ni respaldado por terceros. Los identificadores técnicos `ultrapage-*` se conservan temporalmente para mantener compatibilidad con proyectos, respaldos, cachés y datos locales existentes.
 

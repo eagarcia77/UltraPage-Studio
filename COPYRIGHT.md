@@ -3,7 +3,10 @@
 © 2026 Eduardo Augusto García Rodríguez. All rights reserved.
 
 **Product:** Curralume Studio  
+**Responsible company and application operator:** ZENQAVIO Technologies  
 **Creator and copyright holder:** Eduardo Augusto García Rodríguez
+
+ZENQAVIO Technologies is identified as the company responsible for operating and organizing the application's portfolio. This statement does not, by itself, transfer copyright or assert that a company registration or trademark filing is complete.
 
 All original Curralume Studio application code, educational authoring workflows, first-party templates, interface copy, designs and documentation created for this project are attributed to Eduardo Augusto García Rodríguez, subject to any documented third-party contributions or licenses.
 

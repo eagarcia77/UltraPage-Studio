@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   description: "Create accessible, responsive content for Blackboard Ultra, Canvas, Moodle, Brightspace, and standards-based LMS platforms.",
   authors: [{ name: "Eduardo Augusto García Rodríguez" }],
   creator: "Eduardo Augusto García Rodríguez",
-  publisher: "Eduardo Augusto García Rodríguez",
+  publisher: "ZENQAVIO Technologies",
   manifest: "/manifest.webmanifest",
   icons: {
     icon: "/favicon.svg",
@@ -33,6 +33,8 @@ export const metadata: Metadata = {
   other: {
     "mobile-web-app-capable": "yes",
     owner: "Eduardo Augusto García Rodríguez",
+    operator: "ZENQAVIO Technologies",
+    "responsible-company": "ZENQAVIO Technologies",
     copyright: "© 2026 Eduardo Augusto García Rodríguez. All rights reserved.",
   },
 };

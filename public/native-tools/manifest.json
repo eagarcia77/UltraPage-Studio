@@ -1,6 +1,8 @@
 {
   "schemaVersion": 1,
   "product": "Curralume Studio",
+  "operator": "ZENQAVIO Technologies",
+  "creator": "Eduardo Augusto García Rodríguez",
   "policy": {
     "mode": "read-only-source-copy",
     "sourceRepositoriesAreModified": false,
