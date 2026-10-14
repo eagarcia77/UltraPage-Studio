@@ -83,8 +83,8 @@ window.setTimeout = function(callback, delay = 0, ...args) {
     callback(...args);
   }, delay);
 };
-// Keep a short-lived, per-deletion recovery point: third-party DOM observers
-// may rewrite the editable document AFTER the browser has fired its input event.
+// A short-lived safety checkpoint handles unexpectedly destructive DOM rewrites.
+// Native line/paragraph deletions remain the browser's responsibility.
 let aesDeletionSnapshot = null;
 let aesDeletionWatchTimer = null;
 
@@ -94,10 +94,65 @@ function aesCancelDeletionWatch() {
   aesDeletionSnapshot = null;
 }
 
+// Preserve the editor caret across an emergency DOM restoration. A Range cannot
+// be reused after assigning innerHTML; its text nodes are no longer in the DOM.
+function aesNodePath(root, node) {
+  const path = [];
+  while (node && node !== root) {
+    const parent = node.parentNode;
+    if (!parent) return null;
+    const index = Array.prototype.indexOf.call(parent.childNodes, node);
+    if (index < 0) return null;
+    path.unshift(index);
+    node = parent;
+  }
+  return node === root ? path : null;
+}
+
+function aesCaptureDeleteRange(root, event, selection) {
+  let nativeRange = null;
+  try {
+    const targets = typeof event.getTargetRanges === "function" ? event.getTargetRanges() : [];
+    nativeRange = targets?.[0] || (selection?.rangeCount && typeof selection.getRangeAt === "function"
+      ? selection.getRangeAt(0) : null);
+  } catch {
+    return null;
+  }
+  if (!nativeRange || !root.contains(nativeRange.startContainer) || !root.contains(nativeRange.endContainer)) return null;
+  const start = aesNodePath(root, nativeRange.startContainer);
+  const end = aesNodePath(root, nativeRange.endContainer);
+  if (!start || !end) return null;
+  return {
+    start, end,
+    startOffset: nativeRange.startOffset,
+    endOffset: nativeRange.endOffset,
+    selected: nativeRange.startContainer !== nativeRange.endContainer
+      || nativeRange.startOffset !== nativeRange.endOffset
+  };
+}
+
+function aesRestoreDeleteRange(root, saved) {
+  if (!saved) return null;
+  const locate = (path) => path.reduce((node, index) => node?.childNodes?.[index], root);
+  const start = locate(saved.start);
+  const end = locate(saved.end);
+  if (!start || !end) return null;
+  const limit = (node) => node.nodeType === Node.TEXT_NODE
+    ? node.nodeValue.length : node.childNodes.length;
+  try {
+    const range = document.createRange();
+    range.setStart(start, Math.min(saved.startOffset, limit(start)));
+    range.setEnd(end, Math.min(saved.endOffset, limit(end)));
+    return range;
+  } catch {
+    return null;
+  }
+}
+
 function aesWarnAboutDeletion() {
   const status = document.querySelector("#status");
   if (status) {
-    status.textContent = "Large document deletion blocked to protect your text. Select a smaller passage, or use Clear to empty the document.";
+    status.textContent = "An unexpected document-wide deletion was recovered. Review the affected line before continuing.";
     status.className = "status error";
   }
 }
@@ -108,16 +163,28 @@ function aesCheckForDocumentWipe() {
   const root = aesPreview();
   if (!root) return false;
   const remaining = root.textContent?.trim().length || 0;
-  // A single deletion of one line cannot legitimately remove almost an entire
-  // substantial academic document. Ordinary line and paragraph edits are kept.
   if (remaining > 0 && remaining >= previous.length * 0.05) return false;
+  // Selecting and deleting nearly the entire document is intentional editing,
+  // particularly when a short document consists of just one long line.
+  if (previous.selectedLength >= previous.length * 0.8) {
+    aesCancelDeletionWatch();
+    return false;
+  }
   aesCancelDeletionWatch();
   root.innerHTML = previous.html;
   const selection = window.getSelection();
   if (selection) {
-    const range = document.createRange();
-    range.selectNodeContents(root);
-    range.collapse(false);
+    let range = aesRestoreDeleteRange(root, previous.range);
+    if (!range) {
+      range = document.createRange();
+      range.selectNodeContents(root);
+      range.collapse(true);
+    } else if (previous.range?.selected) {
+      // Apply the originally requested deletion after recovering the document,
+      // rather than silently undoing it and moving the caret to the last page.
+      range.deleteContents();
+    }
+    range.collapse(true);
     selection.removeAllRanges();
     selection.addRange(range);
   }
@@ -142,16 +209,20 @@ function aesBeforeDeletion(event) {
   const selectedLength = selection?.anchorNode && selection?.focusNode
     && root.contains(selection.anchorNode) && root.contains(selection.focusNode)
     ? selection.toString().length : 0;
-  if (selectedLength >= Math.max(70, length * 0.8) && event.cancelable) {
-    event.preventDefault();
+  // Do not preventDefault(): browsers must be able to delete a complete line,
+  // including the last line of a document, with normal Backspace/Delete.
+  if (selectedLength >= length * 0.8) {
     aesCancelDeletionWatch();
-    aesWarnAboutDeletion();
     return;
   }
-  aesDeletionSnapshot = { html: root.innerHTML, length };
+  aesDeletionSnapshot = {
+    html: root.innerHTML,
+    length,
+    selectedLength,
+    range: aesCaptureDeleteRange(root, event, selection)
+  };
   aesNativeClearTimeout(aesDeletionWatchTimer);
-  // Keep the snapshot across the input event and asynchronous normalizers.
-  // Clearing it immediately on input previously left a data-loss window.
+  // Keep the checkpoint across asynchronous normalizers, not just input.
   aesDeletionWatchTimer = aesNativeSetTimeout(aesCancelDeletionWatch, 3000);
 }
 
