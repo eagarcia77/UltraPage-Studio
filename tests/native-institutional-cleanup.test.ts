@@ -7,16 +7,12 @@ const root = new URL("../", import.meta.url);
 const read = (path: string) => readFile(new URL(path, root), "utf8");
 const owner = "© 2026 Eduardo Augusto García Rodríguez. All rights reserved.";
 const retiredFiles = [
-  "public/native-tools/txt-test-generator/img/LOGO-" + "INTER-SG-HORIZONTAL_sticker.png",
-  "public/native-tools/txt-test-generator/img/" + "u" + "can-logo.png",
-  "public/native-tools/txt-test-generator/Guía_Generador_Exámenes_Blackboard_" + "Ultra_Simplificada.pdf",
-  "public/native-tools/qti-blackboard/img/LOGO-" + "INTER-SG-HORIZONTAL_sticker.png"
+  "public/native-tools/txt-test-generator/img/LOGO-INTER-SG-HORIZONTAL_sticker.png",
+  "public/native-tools/txt-test-generator/img/ucan-logo.png",
+  "public/native-tools/txt-test-generator/Guía_Generador_Exámenes_Blackboard_Ultra_Simplificada.pdf",
+  "public/native-tools/qti-blackboard/img/LOGO-INTER-SG-HORIZONTAL_sticker.png"
 ];
-const forbidden = new RegExp([
-  "\\bU" + "CAN\\b", "(?:universidad|university)\\s+interameri" + "cana",
-  "interamerican\\s+university", "PPOHA", "P031M230038", "CETL",
-  "postbacc", "LOGO-INTER", "u" + "can-logo", "San Germán"
-].join("|"), "i");
+const forbidden = /(?:\bUCAN\b|(?:universidad|university)\s+interamericana|interamerican\s+university|PPOHA|P031M230038|CETL|postbacc|LOGO-INTER|ucan-logo|Guía_Generador_Exámenes_Blackboard_Ultra_Simplificada|San Germán)/i;
 
 test("TXT Generator displays only its author's rights notice, without institutional credits or PDF", async () => {
   const html = await read("public/native-tools/txt-test-generator/index.html");
@@ -31,7 +27,7 @@ test("TXT Generator displays only its author's rights notice, without institutio
   assert.equal($("#openExamplesBtn").length, 1);
 });
 
-test("QTI 2.1 removes legacy institutional branding from defaults and exported package identifiers", async () => {
+test("QTI 2.1 removes UCAN branding from displayed, default and exported package identifiers", async () => {
   const html = await read("public/native-tools/qti-blackboard/index.html");
   const $ = load(html);
   assert.ok($("footer").text().includes(owner));

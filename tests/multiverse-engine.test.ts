@@ -1,3 +1,4 @@
+/* Curralume Studio · © 2026 Eduardo Augusto García Rodríguez · Original contributions and integrations; third-party licenses preserved. */
 import assert from "node:assert/strict";
 import test from "node:test";
 import { applyFastForward, commitRevision, compareRevisions, createBranch, createUniverse, headRevision, isForeignUniverseBroadcast, planMerge, resolveDivergence, switchBranch, verifyRevision, verifyUniverse } from "../lib/multiverse-engine.ts";

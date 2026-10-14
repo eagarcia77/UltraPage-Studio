@@ -1,3 +1,4 @@
+/* Curralume Studio · © 2026 Eduardo Augusto García Rodríguez · Original contributions and integrations; third-party licenses preserved. */
 import assert from "node:assert/strict";
 import test from "node:test";
 import { CONTINUITY_CAPSULE_FORMAT, createContinuityCheckpoint, createRecoveryCapsule, documentKey, newestRecoveryCheckpoint, sha256, stableStringify, verifyContinuityCheckpoint, verifyRecoveryCapsule, type ContinuityDocument, type RecoveryCapsule } from "../lib/temporal-continuity.ts";
