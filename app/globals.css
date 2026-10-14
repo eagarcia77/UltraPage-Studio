@@ -2233,3 +2233,55 @@
   .studio-help-link { min-width: 42px; padding: 8px; }
   .native-tools-help { padding: 6px 9px; font-size: 12px; }
 }
+
+
+/* Content Collection: safe, usable controls in iPhone Safari and narrow viewports. */
+.collection-dialog {
+  width: min(680px, calc(100vw - 24px)) !important;
+  max-width: calc(100vw - 24px) !important;
+  min-width: 0;
+  overflow-x: hidden;
+  overflow-wrap: anywhere;
+  -webkit-overflow-scrolling: touch;
+}
+.collection-dialog .connection-card,
+.collection-dialog .document-actions,
+.collection-dialog .remote-save,
+.collection-dialog .credential-grid,
+.collection-dialog .file-list,
+.collection-dialog .file-main-action,
+.collection-dialog .file-name {
+  min-width: 0;
+}
+.collection-dialog .file-name strong,
+.collection-dialog .file-name small,
+.collection-dialog .connection-heading small,
+.collection-dialog .connection-error {
+  overflow-wrap: anywhere;
+}
+@media (max-width: 700px) {
+  .collection-dialog {
+    max-height: calc(100dvh - 24px);
+    padding: 18px 14px;
+    scrollbar-gutter: auto;
+  }
+  .collection-dialog .credential-grid,
+  .collection-dialog .document-actions,
+  .collection-dialog .remote-save {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .collection-dialog .file-list { max-height: min(36dvh, 280px); }
+  .collection-dialog .webdav-file-row { grid-template-columns: minmax(0, 1fr) 44px; }
+  .collection-dialog input,
+  .collection-dialog select { font-size: 16px; max-width: 100%; }
+  .collection-dialog .file-main-action,
+  .collection-dialog .file-download-action,
+  .collection-dialog .webdav-actions button,
+  .collection-dialog .document-actions button {
+    min-height: 44px;
+  }
+  .collection-dialog .collection-status small {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}
