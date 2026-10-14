@@ -65,7 +65,6 @@
       margin: 0 auto;
       padding: 24px;
       display: grid;
-      grid-template-columns: 1fr 1fr;
       gap: 18px;
     }
 
@@ -165,7 +164,7 @@
 
     pre { padding: 14px; overflow: auto; white-space: pre-wrap; }
 
-    .chips { display:flex; flex-wrap:wrap; gap:8px; margin: 10px 0 0; }
+    .chips { gap:8px; margin: 10px 0 0; }
     .chip { background:#eef2ff; color:#3730a3; border:1px solid #c7d2fe; border-radius:999px; padding:6px 10px; font-weight:800; font-size:.85rem; }
     .chip.green { background:#ecfdf5; color:#065f46; border-color:#a7f3d0; }
     .chip.red { background:#fee2e2; color:#991b1b; border-color:#fecaca; }
@@ -179,7 +178,7 @@
 
     label { font-weight: 800; color: var(--green-dark); }
 
-    .field-grid { display:grid; grid-template-columns:2fr 1fr 1fr; gap:10px; }
+    .field-grid { display:grid; gap:10px; }
     .compatibility-table { width:100%; border-collapse:collapse; margin-top:12px; background:#fff; }
     .compatibility-table caption { text-align:left; font-weight:800; margin-bottom:8px; color:var(--green-dark); }
     .compatibility-table th,.compatibility-table td { border:1px solid var(--border); padding:10px; text-align:left; vertical-align:top; }
@@ -247,7 +246,7 @@
       font-size: .9rem;
     }
 
-    @media (max-width: 950px) { main { grid-template-columns: 1fr; } .field-grid { grid-template-columns:1fr; } .compatibility-table { display:block; overflow-x:auto; } }
+    @media (max-width: 950px) { .compatibility-table { display:block; overflow-x:auto; } }
   </style>
   <link rel="stylesheet" href="../ultrapage-native-theme.css" data-ultrapage-native-theme>
   <link rel="stylesheet" href="../ultrapage-native-ribbon.css" data-ultrapage-native-ribbon-style>
