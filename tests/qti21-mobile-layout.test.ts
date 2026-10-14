@@ -43,6 +43,21 @@ test("QTI responsive styles contain every major grid, sample, input, and ribbon 
   assert.doesNotMatch(css, /body\[data-native-draft-tool="estiloapa"\]|body\[data-native-draft-tool="txt-test-generator"\]/);
 });
 
+test("QTI base stylesheet does not duplicate mobile grid tracks or chip flex rules", async () => {
+  const html = await readFile(htmlPath, "utf8");
+  const inline = html.match(/<style>([\s\S]*?)<\/style>/)?.[1] || "";
+  const local = await readFile(cssPath, "utf8");
+  assert.match(inline, /main\s*\{[\s\S]*?display:\s*grid/);
+  assert.doesNotMatch(inline, /grid-template-columns/);
+  assert.match(inline, /\.field-grid\s*\{\s*display:\s*grid;\s*gap:\s*10px;/);
+  assert.match(inline, /\.chips\s*\{\s*gap:\s*8px;/);
+  assert.doesNotMatch(inline, /\.chips\s*\{[^}]*display:\s*flex/);
+  assert.match(local, /body\[data-native-draft-tool="qti-blackboard"\] main\s*\{[\s\S]*?grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(local, /body\[data-native-draft-tool="qti-blackboard"\] \.chips\s*\{\s*display:\s*flex;\s*flex-wrap:\s*wrap/);
+  assert.match(local, /@media\s*\(max-width:\s*950px\)/);
+  assert.match(inline, /\.compatibility-table\s*\{\s*display:\s*block;\s*overflow-x:\s*auto/);
+});
+
 test("offline cache includes the new QTI mobile stylesheet and unchanged LMS code references", async () => {
   const sw = await readFile(new URL("../public/sw.js", import.meta.url), "utf8");
   const html = await readFile(htmlPath, "utf8");
