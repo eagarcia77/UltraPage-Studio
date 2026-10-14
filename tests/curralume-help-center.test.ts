@@ -73,7 +73,7 @@ test("responsive Help styles and owner attribution are scoped to Help Center", a
 test("the Help route is pre-cached and covered by production HTTP smoke tests", async () => {
   const worker = await source("public/sw.js");
   const smoke = await source("scripts/smoke-native-routes.mjs");
-  assert.match(worker, /crevelio-v84/);
+  assert.match(worker, /crevelio-v85/);
   assert.match(worker, /"\/help"/);
   assert.match(smoke, /origin \+ "\/help"/);
   assert.match(smoke, /help-search-input/);

@@ -29,7 +29,7 @@ test("updated PWA branding reuses app identity while keeping old icon assets ava
   assert.equal(manifest.short_name, "CREVELIO");
   assert.equal(manifest.id, "/");
   assert.equal(manifest.start_url, "/");
-  assert.match(sw, /const VERSION = "crevelio-v84"/);
+  assert.match(sw, /const VERSION = "crevelio-v85"/);
   for (const filename of ["crevelio-mark.svg", "crevelio-icon-192.png", "crevelio-icon-512.png"]) {
     await access(new URL("../public/brand/" + filename, import.meta.url));
     assert.ok(sw.includes("/brand/" + filename), "new brand asset missing from offline shell: " + filename);
