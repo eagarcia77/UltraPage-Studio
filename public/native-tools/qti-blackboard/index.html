@@ -60,14 +60,6 @@
     header h1 { margin: 0; font-size: clamp(1.7rem, 4vw, 2.7rem); letter-spacing: -.04em; }
     header p { margin: 10px 0 0; color: #e8fff7; max-width: 900px; }
 
-    .header-logo {
-      max-height: 80px;
-      width: auto;
-      margin-bottom: 14px;
-      position: relative;
-      z-index: 2;
-    }
-
     main {
       max-width: 1400px;
       margin: 0 auto;
@@ -176,7 +168,6 @@
     .chips { display:flex; flex-wrap:wrap; gap:8px; margin: 10px 0 0; }
     .chip { background:#eef2ff; color:#3730a3; border:1px solid #c7d2fe; border-radius:999px; padding:6px 10px; font-weight:800; font-size:.85rem; }
     .chip.green { background:#ecfdf5; color:#065f46; border-color:#a7f3d0; }
-    .chip.yellow { background:#fffbeb; color:#92400e; border-color:#fde68a; }
     .chip.red { background:#fee2e2; color:#991b1b; border-color:#fecaca; }
 
     .field-row {
@@ -944,38 +935,55 @@ ${resources}
       return report;
     }
 
-    function copyValidationReport() {
-      const report = buildValidationReport();
-      renderValidationReport(report);
-      const text = reportToText(report);
-      navigator.clipboard.writeText(text).then(() => {
-        setMessage('success', 'Preflight report copied to the clipboard.');
-      }).catch(() => {
-        const temp = document.createElement('textarea');
-        temp.value = text;
-        document.body.appendChild(temp);
-        temp.select();
-        document.execCommand('copy');
-        document.body.removeChild(temp);
-        setMessage('success', 'Preflight report copied to the clipboard.');
-      });
+    // Keep a single clipboard path for QTI reports, checklist and preview.
+    // A clipboard permission failure must not be presented as a successful copy.
+    async function copyTextSafely(text) {
+      if (!String(text || '').trim()) return false;
+      if (navigator.clipboard?.writeText) {
+        try {
+          await navigator.clipboard.writeText(text);
+          return true;
+        } catch {
+          // Some Safari and embedded-browser contexts still need a fallback.
+        }
+      }
+      const textarea = document.createElement('textarea');
+      const previousFocus = document.activeElement;
+      textarea.value = text;
+      textarea.setAttribute('readonly', '');
+      textarea.style.position = 'fixed';
+      textarea.style.top = '0';
+      textarea.style.opacity = '0';
+      let copied = false;
+      try {
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        copied = Boolean(document.execCommand('copy'));
+      } catch {
+        copied = false;
+      } finally {
+        textarea.remove();
+        previousFocus?.focus?.();
+      }
+      return copied;
     }
 
-    function copyImportChecklist() {
+    async function copyValidationReport() {
+      const report = buildValidationReport();
+      renderValidationReport(report);
+      const copied = await copyTextSafely(reportToText(report));
+      setMessage(copied ? 'success' : 'error',
+        copied ? 'Preflight report copied to the clipboard.' : 'Could not copy the preflight report. Check clipboard permissions or download it instead.');
+    }
+
+    async function copyImportChecklist() {
       const target = document.getElementById('targetLms').selectedOptions[0].textContent;
       const steps = Array.from(document.querySelectorAll('#postImportChecklist li')).map((item, index) => `${index + 1}. ${item.textContent.trim()}`);
       const text = `POST-IMPORT VERIFICATION — ${target}\n\n${steps.join('\n')}`;
-      const fallback = () => {
-        const temp = document.createElement('textarea');
-        temp.value = text;
-        document.body.appendChild(temp);
-        temp.select();
-        document.execCommand('copy');
-        document.body.removeChild(temp);
-        setMessage('success', 'Post-import verification checklist copied to the clipboard.');
-      };
-      if (!navigator.clipboard) { fallback(); return; }
-      navigator.clipboard.writeText(text).then(() => setMessage('success', 'Post-import verification checklist copied to the clipboard.')).catch(fallback);
+      const copied = await copyTextSafely(text);
+      setMessage(copied ? 'success' : 'error',
+        copied ? 'Post-import verification checklist copied to the clipboard.' : 'Could not copy the checklist. Check clipboard permissions.');
     }
 
     function downloadValidationReport() {
@@ -1071,12 +1079,12 @@ ${resources}
       window.setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
 
-    function copyPreview() {
-      if (!document.getElementById('outputPreview').value.trim()) generatePackage();
+    async function copyPreview() {
       const output = document.getElementById('outputPreview');
-      output.select();
-      document.execCommand('copy');
-      setMessage('success', 'Package preview copied to the clipboard.');
+      if (!output.value.trim() && !generatePackage()) return;
+      const copied = await copyTextSafely(output.value);
+      setMessage(copied ? 'success' : 'error',
+        copied ? 'Package preview copied to the clipboard.' : 'Could not copy the package preview. Check clipboard permissions.');
     }
 
     function loadExample() {
