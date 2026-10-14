@@ -2,7 +2,7 @@
 
 ## Decision
 
-Rename the working product from **UltraPage Studio** to **Curralume Studio**.
+Rename the working product from **Curralume Studio** to **Curralume Studio**.
 
 “Curralume” is a coined name that combines the ideas of curriculum and illumination. It is intended to be pronounced *cur-ra-loom*. The descriptor “Studio” identifies the product as an authoring workspace.
 
