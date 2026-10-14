@@ -1,4 +1,4 @@
-/* Curralume Studio — © 2026 Eduardo Augusto García Rodríguez. All rights reserved. */
+/* CREVELIO — © 2026 Eduardo Augusto García Rodríguez. All rights reserved. */
 const RIBBON_TABS = [
   { id: "home", label: "Home", description: "Text and styles" },
   { id: "layout", label: "APA Layout", description: "Spacing and indents" },

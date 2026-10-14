@@ -1,4 +1,4 @@
-/* Curralume Studio — © 2026 Eduardo Augusto García Rodríguez. All rights reserved. */
+/* CREVELIO — © 2026 Eduardo Augusto García Rodríguez. All rights reserved. */
 const APP_VERSION = "3.4.9";
 const PDFJS_URL = "/vendor/pdf.mjs";
 const PDFJS_WORKER_URL = "/vendor/pdf.worker.mjs";
@@ -900,7 +900,7 @@ async function downloadAccessiblePdf() {
         format: "pdf",
         html: clone.innerHTML,
         title,
-        author: "Curralume Studio",
+        author: "CREVELIO",
         language: "es-PR",
         description: "Academic document with APA 7 formatting and accessible structure.",
         styleProfile: "apa7",

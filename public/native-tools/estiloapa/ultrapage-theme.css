@@ -1,5 +1,5 @@
 /*
- * Curralume Studio theme for the native EstiloAPA copy.
+ * CREVELIO theme for the native EstiloAPA copy.
  * The upstream EstiloAPA repository is never modified by this file.
  */
 :root {
@@ -41,7 +41,7 @@ body {
 }
 
 body::before {
-  content: "Curralume Studio · EstiloAPA";
+  content: "CREVELIO · EstiloAPA";
   position: sticky;
   top: 0;
   z-index: 10000;
@@ -49,7 +49,7 @@ body::before {
   min-height: 48px;
   padding: 14px clamp(16px, 4vw, 32px) 14px clamp(58px, 7vw, 74px);
   color: #fff;
-  background-image: url("/brand/curralume-mark.svg"), linear-gradient(105deg, var(--up-purple-deep), var(--up-purple-dark) 55%, var(--up-purple));
+  background-image: url("/brand/crevelio-mark.svg"), linear-gradient(105deg, var(--up-purple-deep), var(--up-purple-dark) 55%, var(--up-purple));
   background-position: clamp(16px, 4vw, 32px) center, center;
   background-repeat: no-repeat;
   background-size: 30px 30px, cover;
