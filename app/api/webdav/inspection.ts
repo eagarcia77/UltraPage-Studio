@@ -1,4 +1,4 @@
-import { isStrongWebDavETag, type RemoteWebDavVersion } from "./overwrite-guard";
+import { isStrongWebDavETag, type RemoteWebDavVersion } from "./overwrite-guard.ts";
 
 const MAX_METADATA_BYTES = 64 * 1024;
 const TIMEOUT_MS = 20_000;
