@@ -58,7 +58,7 @@ function workerHarness(source: string) {
 
 test("all native editor assets prefer current server files to outdated offline shell cache", async () => {
   const sw = await read("public/sw.js");
-  assert.match(sw, /const VERSION = "curralume-v77"/);
+  assert.match(sw, /const VERSION = "curralume-v78"/);
   assert.match(sw, /if \(url\.pathname\.startsWith\("\/native-tools\/"\)\) \{\s*[\s\S]*?event\.respondWith\(networkFirst\(request\)\)/);
   const h = workerHarness(sw);
   for (const path of [
