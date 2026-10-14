@@ -256,7 +256,7 @@ test("dangerous normalizers are deferred during editing, not executed on delete"
     guard.indexOf("\nfunction aesBeforeDeletion("));
   assert.doesNotMatch(disasterRecovery, /range\.collapse\(false\)/);
   assert.doesNotMatch(guard, /event\.preventDefault\(\)/);
-  assert.match(sw, /url\.pathname\.startsWith\("\/native-tools\/estiloapa\/"\)/);
+  assert.match(sw, /url\.pathname\.startsWith\("\/native-tools\/"\)/);
   const html = await source("public/native-tools/estiloapa/index.html");
   assert.match(html, /src="edit-stability-v348\.js\?v=64"/);
   assert.match(sw, /edit-stability-v348\.js\?v=64/);
