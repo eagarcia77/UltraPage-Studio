@@ -66,6 +66,16 @@ try {
   assert.match(txtLayout.headers.get("content-type") || "", /text\/css/);
   assert.match(await txtLayout.text(), /#quizContent/);
   console.log("✓ TXT Generator local mobile CSS: HTTP 200");
+  const qtiLayout = await fetch(origin + "/native-tools/qti-blackboard/qti-layout.css", {
+    signal: AbortSignal.timeout(8000)
+  });
+  assert.equal(qtiLayout.status, 200, "QTI 2.1 mobile layout is not served");
+  assert.match(qtiLayout.headers.get("content-type") || "", /text\\/css/);
+  const qtiCss = await qtiLayout.text();
+  assert.match(qtiCss, /qti-example-details/);
+  assert.match(qtiCss, /minmax\\(0, 1fr\\)/);
+  console.log("✓ QTI 2.1 local mobile CSS: HTTP 200");
+
   console.log("✓ Short native URLs resolve to standalone editors in production build");
 } finally {
   if (child.exitCode === null) {
