@@ -48,7 +48,7 @@ test("offline cache and native manifest exclude unrelated institutional assets",
   const sw = await read("public/sw.js");
   const manifestSource = await read("public/native-tools/manifest.json");
   const manifest = JSON.parse(manifestSource);
-  assert.match(sw, /crevelio-v84/);
+  assert.match(sw, /crevelio-v85/);
   assert.doesNotMatch(sw, forbidden);
   assert.doesNotMatch(manifestSource, forbidden);
   assert.equal(manifest.tools.length, 3);
