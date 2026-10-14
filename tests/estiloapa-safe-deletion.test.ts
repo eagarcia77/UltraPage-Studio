@@ -248,7 +248,7 @@ test("dangerous normalizers are deferred during editing, not executed on delete"
   assert.match(guard, /root\.addEventListener\("beforeinput", aesBeforeDeletion, true\)/);
   assert.match(guard, /root\.addEventListener\("input", aesAfterDeletion, true\)/);
   const sw = await source("public/sw.js");
-  assert.match(sw, /curralume-v71/);
+  assert.match(sw, /curralume-v72/);
   assert.match(guard, /range\.deleteContents\(\)/);
   assert.match(guard, /range\.collapse\(true\)/);
   assert.match(guard, /range\.selectNodeContents\(preceding\);\s*range\.collapse\(false\)/);
