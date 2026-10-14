@@ -39,12 +39,10 @@ type NativeManifest = {
     groups?: string[];
     publishedToRemote?: boolean;
   };
-  lastSync?: { checkedFiles?: number; updatedFiles?: string[] };
   tools?: ManifestTool[];
 };
 type ToolProbe = { id: ToolId; label: string; status: ProbeStatus; message: string };
 
-const ribbonGroups = ["File", "Document", "Authoring", "Review", "Report", "Preview", "Export"];
 const tools: Array<{ id: ToolId; name: string; description: string; compatibility: string; source: string; icon: typeof BookOpen; original: string }> = [
   {
     id: "apa",
@@ -248,19 +246,23 @@ export default function NativeToolsPage() {
       <span className="native-health-sync"><Clock3 size={14}/> Last synchronized: {syncedLabel}</span>
     </div>
 
-    <section className="native-tools-note" aria-labelledby="native-audit-title">
-      <strong id="native-audit-title">Full native tools audit</strong>
-      <span>{passed}/{tools.length} native routes passed the browser probe. {failed > 0 ? `${failed} route(s) require review.` : "No blocked route detected."}</span>
-      <span>Shared Ribbon groups: {ribbonGroups.join(" · ")}</span>
-      <span>Keyboard audit target: arrows, Home, and End. Server-side audit command: <code>npm run audit:native-tools</code>.</span>
-      <button type="button" className="native-tool-reload" onClick={runNativeAudit}><RefreshCw size={14}/> Run audit again</button>
-      <div className="native-audit-grid">
-        {toolProbes.map((probe) => <span key={probe.id} className={`native-health-pill ${probe.status === "pass" ? "ready" : probe.status === "fail" ? "offline" : "compatible"}`} title={probe.message}>
-          {probe.status === "pass" ? <CheckCircle2 size={14}/> : probe.status === "fail" ? <AlertTriangle size={14}/> : <Clock3 size={14}/>}
-          {probe.label}: {statusLabel[probe.status]}
-        </span>)}
+    <details className="native-tools-diagnostics">
+      <summary>
+        <span>{passed}/{tools.length} tool routes verified</span>
+        {failed > 0 && <span className="native-diagnostics-warning"><AlertTriangle size={14}/> {failed} route(s) need review</span>}
+        <span className="native-diagnostics-disclosure">Details</span>
+      </summary>
+      <div className="native-tools-diagnostics-body">
+        <p>These checks confirm that each tool URL responds and has basic accessibility markers. They do not replace functional testing or a screen-reader audit.</p>
+        <button type="button" className="native-tool-reload" onClick={runNativeAudit}><RefreshCw size={14}/> Check routes again</button>
+        <div className="native-audit-grid">
+          {toolProbes.map((probe) => <span key={probe.id} className={`native-health-pill ${probe.status === "pass" ? "ready" : probe.status === "fail" ? "offline" : "compatible"}`} title={probe.message}>
+            {probe.status === "pass" ? <CheckCircle2 size={14}/> : probe.status === "fail" ? <AlertTriangle size={14}/> : <Clock3 size={14}/>}
+            {probe.label}: {statusLabel[probe.status]}
+          </span>)}
+        </div>
       </div>
-    </section>
+    </details>
 
     <div className="native-tools-workspace">
       <aside className="native-tools-menu" aria-label="Native tools" role="tablist" aria-orientation="vertical">
@@ -275,12 +277,7 @@ export default function NativeToolsPage() {
             {probe?.status === "pass" && <CheckCircle2 className="native-tool-ready-icon" size={16} aria-label="Audit passed"/>}
           </button>;
         })}
-        <div className="native-tools-note">
-          <strong>Native, traceable copies</strong>
-          <span>These tools run from Curralume Studio. Source repositories remain unchanged.</span>
-          <span>Assessment import formats are LMS-specific. Use the Universal LMS profile in the Studio editor for portable page content.</span>
-          {manifest?.lastSync?.checkedFiles && <small>{manifest.lastSync.checkedFiles} source files verified during the latest synchronization.</small>}
-        </div>
+
       </aside>
 
       <section id="native-tool-panel" className="native-tool-stage" role="tabpanel" aria-labelledby={`native-tool-tab-${selected}`} data-frame-state={frameState} tabIndex={0}>

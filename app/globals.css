@@ -2142,3 +2142,61 @@
     display: none;
   }
 }
+
+/* Native tool route checks are supporting diagnostics, not the editor's main UI.
+   Keep them accessible on demand and visible if a route needs review. */
+.native-tools-diagnostics {
+  margin: 12px 20px 0;
+  border: 1px solid #dbe4eb;
+  border-radius: 10px;
+  background: #fff;
+  color: #314254;
+  min-width: 0;
+}
+.native-tools-diagnostics > summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  list-style: none;
+}
+.native-tools-diagnostics > summary::-webkit-details-marker { display: none; }
+.native-tools-diagnostics > summary::before {
+  content: "▸";
+  color: #087a70;
+}
+.native-tools-diagnostics[open] > summary::before { content: "▾"; }
+.native-tools-diagnostics > summary:focus-visible { outline: 3px solid #087a70; outline-offset: 2px; }
+.native-diagnostics-warning {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #ae3328;
+}
+.native-diagnostics-disclosure {
+  margin-left: auto;
+  color: #526478;
+  font-size: 11px;
+}
+.native-tools-diagnostics-body {
+  display: grid;
+  gap: 10px;
+  padding: 12px 14px 14px;
+  border-top: 1px solid #e5eaf0;
+}
+.native-tools-diagnostics-body p {
+  margin: 0;
+  color: #58687a;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.native-tools-diagnostics-body .native-audit-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+.native-tools-diagnostics-body .native-tool-reload { justify-self: start; }
+@media (max-width: 760px) {
+  .native-tools-diagnostics { margin: 8px 10px 0; }
+  .native-tools-diagnostics > summary { padding: 9px 11px; font-size: 11px; }
+}

@@ -50,7 +50,7 @@ test("offline cache and native manifest contain no retired institutional media r
   const sw = await read("public/sw.js");
   const manifestSource = await read("public/native-tools/manifest.json");
   const manifest = JSON.parse(manifestSource);
-  assert.match(sw, /curralume-v76/);
+  assert.match(sw, /curralume-v77/);
   assert.doesNotMatch(sw, forbidden);
   assert.doesNotMatch(manifestSource, forbidden);
   assert.equal(manifest.tools.length, 3);
