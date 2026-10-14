@@ -1,9 +1,10 @@
-const VERSION = "curralume-v77";
+const VERSION = "curralume-v78";
 const SHELL_CACHE = `${VERSION}-shell`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
 const APP_SHELL = [
   "/",
   "/tools",
+  "/help",
   "/manifest.webmanifest",
   "/favicon.svg",
   "/brand/curralume-mark.svg",

@@ -486,3 +486,31 @@ footer {
     break-inside: avoid;
   }
 }
+
+
+/* Contextual Help stays available in each native full-screen tool. */
+.curralume-native-help {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .4rem;
+  padding: .45rem .8rem;
+  min-height: 40px;
+  max-width: 100%;
+  border: 1px solid rgba(255,255,255,.55);
+  border-radius: 9px;
+  color: #fff !important;
+  background: rgba(0,0,0,.16);
+  font-weight: 750;
+  font-size: .85rem;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.curralume-native-help:hover { background: rgba(255,255,255,.18); text-decoration: underline; }
+.curralume-native-help:focus-visible { outline: 3px solid #ffe18c; outline-offset: 3px; }
+@media (max-width: 820px) {
+  .header-inner { flex-wrap: wrap; }
+  .curralume-native-help { white-space: normal; }
+}
