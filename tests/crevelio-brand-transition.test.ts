@@ -45,7 +45,7 @@ test("CREVELIO and ZENQAVIO documentation preserve creator copyright and commerc
     assert.ok(source.includes(owner));
   }
   const decision = await read("docs/CREVELIO_BRAND_2026-10-14.md");
-  assert.match(decision, /not a formal trademark clearance/i);
+  assert.match(decision, /\\*\\*not\\*\\* a formal trademark clearance/i);
   assert.match(decision, /legacy icon aliases/);
   const npm = JSON.parse(await read("package.json"));
   const lock = JSON.parse(await read("package-lock.json"));
