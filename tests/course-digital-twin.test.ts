@@ -1,3 +1,4 @@
+/* Curralume Studio · © 2026 Eduardo Augusto García Rodríguez · Original contributions and integrations; third-party licenses preserved. */
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createCourseDigitalTwin, type CourseTwinInput } from "../lib/course-digital-twin.ts";

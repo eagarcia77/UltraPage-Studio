@@ -1,3 +1,4 @@
+/* Curralume Studio · © 2026 Eduardo Augusto García Rodríguez · Original contributions and integrations; third-party licenses preserved. */
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
