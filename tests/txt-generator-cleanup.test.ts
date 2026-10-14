@@ -76,7 +76,8 @@ test("Examples use the existing native dialog without fetching Bootstrap JavaScr
   const html = await source();
   assert.equal($('script[src*="bootstrap.bundle"]').length, 0);
   assert.equal($('[data-bs-toggle], [data-bs-dismiss]').length, 0);
-  assert.equal($('link[href*="bootstrap.min.css"]').length, 1, "Bootstrap layout CSS remains in use");
+  assert.equal($('link[href*="bootstrap.min.css"]').length, 0, "The external Bootstrap CSS dependency must be removed");
+  assert.equal($('link[href="txt-layout.css"]').length, 1, "The mobile layout must load locally");
   const policy = $('meta[http-equiv="Content-Security-Policy"]').attr("content") || "";
   const jsPolicy = policy.match(/script-src[^;]*;/)?.[0] || "";
   assert.match(jsPolicy, /script-src 'self' 'unsafe-inline'/);
@@ -94,6 +95,33 @@ test("Examples use the existing native dialog without fetching Bootstrap JavaScr
   fire("openExamplesBtn", "click");
   fire("helpModal", "click", { target: modal });
   assert.equal(modal.open, false, "Clicking the backdrop should dismiss the dialog");
+});
+
+test("TXT Generator uses local, responsive mobile styles and retains essential input controls", async () => {
+  const html = await source();
+  const $ = load(html);
+  const css = await readFile(new URL("../public/native-tools/txt-test-generator/txt-layout.css", import.meta.url), "utf8");
+  assert.equal($('link[href^="https://"]').length, 0, "CDN CSS must not break iPhone layout or offline editing");
+  assert.equal($('script[src^="https://"]').length, 0);
+  assert.equal($('img[src^="img/"]').length, 0, "Native-hidden logos should not require downloads");
+  assert.equal($("nav.navbar").length, 0, "The native theme already renders the application header");
+  assert.equal($("h1").first().text().trim(), "Assessment Converter");
+  assert.equal($("#quizContent.form-control").length, 1);
+  assert.equal($("#targetFormat.form-select").length, 1);
+  assert.equal($("[data-native-ribbon]").length, 1);
+  assert.equal($('meta[http-equiv="Content-Security-Policy"]').attr("content")?.includes("style-src 'self' 'unsafe-inline';"), true);
+  assert.match(css, /#quizContent\s*\{\s*min-height:\s*18rem\s*!important/);
+  assert.match(css, /#quizContent\s*\{\s*min-height:\s*12rem\s*!important/);
+  assert.match(css, /#quizContent[\s\S]*?width:\s*100%\s*!important/);
+  assert.match(css, /@media\s*\(max-width:\s*760px\)/);
+  assert.match(css, /\.native-action-ribbon\s*\{\s*display:\s*grid\s*!important/);
+  assert.match(css, /\.native-ribbon-actions\s*\{\s*display:\s*grid/);
+  assert.match(css, /\.row\s*\{\s*display:\s*grid/);
+  assert.match(css, /\.row\s*>\s*\.col-12/);
+  assert.match(css, /@media\s*\(min-width:\s*992px\)/);
+  const sw = await readFile(new URL("../public/sw.js", import.meta.url), "utf8");
+  assert.match(sw, /curralume-v66/);
+  assert.ok(sw.includes("/native-tools/txt-test-generator/txt-layout.css"));
 });
 
 test("TXT Generator removes obsolete comments and unused CSS without affecting its design tokens", async () => {
