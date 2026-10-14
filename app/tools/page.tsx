@@ -9,6 +9,7 @@ import {
   Clock3,
   Download,
   ExternalLink,
+  HelpCircle,
   FileQuestion,
   PackageCheck,
   ListChecks,
@@ -43,7 +44,7 @@ type NativeManifest = {
 };
 type ToolProbe = { id: ToolId; label: string; status: ProbeStatus; message: string };
 
-const tools: Array<{ id: ToolId; name: string; description: string; compatibility: string; source: string; icon: typeof BookOpen; original: string }> = [
+const tools: Array<{ id: ToolId; name: string; description: string; compatibility: string; source: string; icon: typeof BookOpen }> = [
   {
     id: "apa",
     name: "EstiloAPA",
@@ -51,7 +52,6 @@ const tools: Array<{ id: ToolId; name: string; description: string; compatibilit
     compatibility: "Portable documents for every LMS",
     source: "/native-tools/estiloapa/index.html",
     icon: BookOpen,
-    original: "https://eagarcia77.github.io/estiloAPA/",
   },
   {
     id: "txt",
@@ -60,7 +60,6 @@ const tools: Array<{ id: ToolId; name: string; description: string; compatibilit
     compatibility: "Blackboard Ultra TXT + Moodle GIFT + Canvas QTI 1.2",
     source: "/native-tools/txt-test-generator/index.html",
     icon: FileQuestion,
-    original: "https://eagarcia77.github.io/CTEL-SG/index_generator.html",
   },
   {
     id: "qti",
@@ -69,7 +68,6 @@ const tools: Array<{ id: ToolId; name: string; description: string; compatibilit
     compatibility: "Blackboard Ultra QTI 2.1 profile",
     source: "/native-tools/qti-blackboard/index.html",
     icon: PackageCheck,
-    original: "https://eagarcia77.github.io/CTEL-SG/QTI21_BlackboardV3.html",
   },
 ];
 
@@ -230,7 +228,7 @@ export default function NativeToolsPage() {
     <header className="native-tools-header">
       <a href="/" className="native-tools-back"><ArrowLeft size={17}/> Back to Studio</a>
       <div className="native-tools-brand"><span className="brandmark" aria-hidden="true"><img src="/brand/curralume-mark.svg" alt="" /></span><span><strong>Curralume Studio</strong><small>Native Tools</small></span></div>
-      <a href={active.original} target="_blank" rel="noopener noreferrer" className="native-tools-original">Original standalone version <ExternalLink size={15}/></a>
+      <a href={`/help#${selected}`} className="native-tools-help"><HelpCircle size={16} aria-hidden="true"/> Help</a>
     </header>
 
     <div className="native-tools-health" aria-live="polite">
@@ -294,6 +292,7 @@ export default function NativeToolsPage() {
               {frameState === "error" && <AlertTriangle size={14}/>}
               {frameState === "ready" ? "Ready" : frameState === "loading" ? "Loading" : frameState === "slow" ? "Still loading" : "Load failed"}
             </span>
+            <a className="native-tool-reload" href={`/help#${selected}`}><HelpCircle size={14} aria-hidden="true"/> Instructions</a>
             <button type="button" className="native-tool-reload" onClick={reloadTool} title="Reload active tool"><RefreshCw size={14}/> Reload</button>
             <button type="button" className="native-tool-reload" onClick={downloadAudit} title="Download the selected tool audit"><Download size={14}/> Audit report</button>
             <a href={active.source} target="_blank" rel="noopener noreferrer">Open full screen <ExternalLink size={14}/></a>
