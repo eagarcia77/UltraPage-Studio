@@ -62,7 +62,7 @@ test("QTI base stylesheet does not duplicate mobile grid tracks or chip flex rul
 test("offline cache includes the new QTI mobile stylesheet and unchanged LMS code references", async () => {
   const sw = await readFile(new URL("../public/sw.js", import.meta.url), "utf8");
   const html = await readFile(htmlPath, "utf8");
-  assert.match(sw, /curralume-v78/);
+  assert.match(sw, /curralume-v79/);
   assert.ok(sw.includes("/native-tools/qti-blackboard/qti-layout.css"));
   assert.ok(sw.includes("/native-tools/qti-blackboard/index.html"));
   assert.match(html, /function buildPackage\(/);
