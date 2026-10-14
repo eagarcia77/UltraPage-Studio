@@ -3,6 +3,8 @@
   "version": "1.1.0",
   "type": "module",
   "author": "Eduardo Augusto García Rodríguez",
+  "description": "Curralume Studio, an accessible multi-LMS editor operated by ZENQAVIO Technologies.",
+  "organization": "ZENQAVIO Technologies",
   "private": true,
   "engines": {
     "node": ">=22.0.0"

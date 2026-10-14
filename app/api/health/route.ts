@@ -7,6 +7,8 @@ export function GET() {
   return NextResponse.json({
     status: "ok",
     product: "Curralume Studio",
+    operator: "ZENQAVIO Technologies",
+    creator: "Eduardo Augusto García Rodríguez",
     releaseStage: process.env.ULTRAPAGE_RELEASE_STAGE || "pre-commercial",
     version: process.env.ULTRAPAGE_VERSION || "development",
     checkedAt: new Date().toISOString(),
