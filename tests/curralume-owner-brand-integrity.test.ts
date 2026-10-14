@@ -39,13 +39,13 @@ test("product metadata and copyright identify the independent owner", async () =
   const read = (p: string) => readFile(path.join(root, p), "utf8");
   const [readme, copyright, layout, pkg, manifest, audit] = await Promise.all([
     read("README.md"), read("COPYRIGHT.md"), read("app/layout.tsx"), read("package.json"),
-    read("public/manifest.webmanifest"), read("docs/BRAND_AUDIT_2026-10-09.md"),
+    read("public/manifest.webmanifest"), read("docs/CREVELIO_BRAND_2026-10-14.md"),
   ]);
   for (const body of [readme, copyright, layout, pkg, audit]) {
     assert.ok(body.includes("Eduardo Augusto García Rodríguez"));
   }
-  assert.match(layout, /applicationName: "Curralume Studio"/);
-  assert.equal(JSON.parse(manifest).name, "Curralume Studio");
+  assert.match(layout, /applicationName: "CREVELIO"/);
+  assert.equal(JSON.parse(manifest).name, "CREVELIO");
   assert.equal(JSON.parse(pkg).author, "Eduardo Augusto García Rodríguez");
   assert.match(copyright, /All rights reserved/);
 });
