@@ -61,7 +61,7 @@ test("TXT Generator keeps one concise accepted-format summary and its detailed e
   assert.match(h.$("#helpModal").text(), /Which of the following is a prime number/);
   assert.equal(h.$('.section-title:contains("Accepted input")').length, 1);
   assert.equal(h.$(".panel").length, 1, "The duplicate inline example should not be displayed twice");
-  assert.equal(h.$(".panel").parent().attr("class"), "col-12");
+  assert.equal(h.$(".panel").parent().attr("class"), "card-body", "Redundant one-child layout wrappers should be gone");
   assert.match(h.$(".panel").text(), /Blackboard Ultra TXT/);
   assert.match(h.$(".panel").text(), /Moodle GIFT/);
   assert.match(h.$(".panel").text(), /Canvas QTI/);
@@ -121,7 +121,7 @@ test("TXT Generator uses local, responsive mobile styles and retains essential i
   assert.match(css, /\.row\s*>\s*\.col-12/);
   assert.match(css, /@media\s*\(min-width:\s*992px\)/);
   const sw = await readFile(new URL("../public/sw.js", import.meta.url), "utf8");
-  assert.match(sw, /curralume-v67/);
+  assert.match(sw, /curralume-v68/);
   assert.ok(sw.includes("/native-tools/txt-test-generator/txt-layout.css"));
 });
 

@@ -23,7 +23,7 @@
       color: var(--texto);
       font-family: Arial, Helvetica, sans-serif;
     }
-    .navbar, .footer, .section-title, .btn-primary {
+    .footer, .section-title, .btn-primary {
       background-color: var(--verde) !important;
     }
     .btn-primary, .btn-primary:focus, .btn-primary:active {
@@ -123,10 +123,7 @@
               <span>Accepted input</span><button class="btn btn-light btn-sm" type="button" id="openExamplesBtn" aria-haspopup="dialog" aria-controls="helpModal">View examples</button>
             </div>
             <div class="card-body">
-              <div class="row g-3">
-
-                <div class="col-12">
-                  <div class="panel"><strong>Blackboard Ultra TXT:</strong>
+              <div class="panel"><strong>Blackboard Ultra TXT:</strong>
                     <code class="inline-sample">MC</code>, <code class="inline-sample">MA</code>,
                     <code class="inline-sample">TF</code>, <code class="inline-sample">ESS</code>,
                     <code class="inline-sample">MAT</code>, <code class="inline-sample">FIB</code>,
@@ -140,8 +137,7 @@
                     <code class="inline-sample">TF</code>, <code class="inline-sample">ESS</code>,
                     <code class="inline-sample">FIB</code>, and <code class="inline-sample">SR</code>.
                     Unsupported types are blocked before download.</div>
-                </div>
-              </div>
+
             </div>
           </div>
         </div>
@@ -745,6 +741,18 @@ numeric 1. What is 2 + 2?
       return output;
     }
 
+    function downloadTextFile(content, filename) {
+      const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
     function downloadTxt() {
       const result = processContent();
       if (result.target === 'canvas') {
@@ -760,16 +768,9 @@ numeric 1. What is 2 + 2?
         showResult([`Blackboard batch ZIP downloaded with ${Math.ceil(result.lines.length / MAX_RECORDS)} ordered TXT file(s).`, ...result.warnings], true);
         return;
       }
-      const blob = new Blob([output], { type: 'text/plain;charset=utf-8' });
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
       const defaultName = targetFormatEl.value === 'moodle' ? 'moodle_gift_questions' : 'blackboard_ultra_questions';
       const suffix = targetFormatEl.value === 'moodle' ? '_moodle_gift' : '_blackboard_ultra';
-      link.download = `${sanitizeFileName(quizNameEl.value || defaultName)}${suffix}.txt`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+      downloadTextFile(output, `${sanitizeFileName(quizNameEl.value || defaultName)}${suffix}.txt`);
     }
 
     async function loadQuestionFile() {
@@ -812,14 +813,7 @@ numeric 1. What is 2 + 2?
         'WARNINGS',
         ...(warnings.length ? warnings.map((item) => `- ${item}`) : ['- None']),
       ];
-      const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = `${sanitizeFileName(quizNameEl.value || 'assessment')}_validation_report.txt`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+      downloadTextFile(lines.join('\n'), `${sanitizeFileName(quizNameEl.value || 'assessment')}_validation_report.txt`);
       showResult([`Validation report downloaded for ${blocks.length} question(s).`, ...errors, ...warnings], !errors.length);
     }
 
@@ -876,15 +870,12 @@ numeric 1. What is 2 + 2?
       resetResultPanels();
     }
 
-    let lastLmsComparison = null;
-
     function buildLmsComparison() {
       const results = ['blackboard', 'moodle', 'canvas'].map(target => {
         const result = processContent(target);
         return { ...result, detail: TARGET_DETAILS[target] };
       });
-      lastLmsComparison = { generatedAt: new Date(), results };
-      return lastLmsComparison;
+      return { generatedAt: new Date(), results };
     }
 
     function comparisonReportText(comparison) {
@@ -956,15 +947,8 @@ numeric 1. What is 2 + 2?
     }
 
     function downloadLmsComparison() {
-      const comparison = lastLmsComparison || buildLmsComparison();
-      const blob = new Blob([comparisonReportText(comparison)], { type: 'text/plain;charset=utf-8' });
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = `${sanitizeFileName(quizNameEl.value || 'assessment')}_cross_lms_report.txt`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+      const comparison = buildLmsComparison();
+      downloadTextFile(comparisonReportText(comparison), `${sanitizeFileName(quizNameEl.value || 'assessment')}_cross_lms_report.txt`);
     }
 
     // A native dialog removes the Bootstrap JavaScript runtime dependency.
