@@ -121,7 +121,7 @@ test("TXT Generator uses local, responsive mobile styles and retains essential i
   assert.match(css, /\.row\s*>\s*\.col-12/);
   assert.match(css, /@media\s*\(min-width:\s*992px\)/);
   const sw = await readFile(new URL("../public/sw.js", import.meta.url), "utf8");
-  assert.match(sw, /curralume-v67/);
+  assert.match(sw, /curralume-v68/);
   assert.ok(sw.includes("/native-tools/txt-test-generator/txt-layout.css"));
 });
 
