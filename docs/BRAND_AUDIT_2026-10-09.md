@@ -2,19 +2,13 @@
 
 ## Decision
 
-Rename the working product from **UltraPage Studio** to **Curralume Studio**.
+The application uses **Curralume Studio** as its only public-facing product name.
 
 “Curralume” is a coined name that combines the ideas of curriculum and illumination. It is intended to be pronounced *cur-ra-loom*. The descriptor “Studio” identifies the product as an authoring workspace.
 
-## Why the previous name changed
+## Independent brand identity
 
-The distinctive element “UltraPage” already has active public uses close to this product’s category:
-
-- Ultrapage by Laris Digital is an AI sales-page creation tool: <https://larisdigital.marketing/ultrapage/>
-- `evvyraine/ultrapage` is a browser start-page software project: <https://github.com/evvyraine/ultrapage>
-- UltraPage Inc. is also used by an electronics and phone-repair business in Texas.
-
-Those uses do not by themselves establish a legal conflict, but they create avoidable search, attribution, and distinctiveness risk. Adding “Studio” does not sufficiently separate two software products built around page creation.
+Curralume Studio is a standalone software product created by **Eduardo Augusto García Rodríguez**. Do not present it as affiliated with any university or former institutional project.
 
 ## Preliminary screening of the new name
 
@@ -50,6 +44,10 @@ The SVG includes a text alternative. Raster icons are generated at 192, 512, and
 
 ## Compatibility policy
 
-User-facing copy, metadata, health responses, export authorship, install labels, and native-tool headers use **Curralume Studio**. Existing technical identifiers such as `ultrapage-*`, the `.ultrapage.json` compatibility extension, environment-variable names, browser storage keys, and exported schema identifiers remain unchanged for now. Changing them immediately could invalidate local drafts, backups, cache entries, or integrations.
+User-facing copy, metadata, health responses, export authorship, install labels, and native-tool headers use **Curralume Studio**. Existing legacy storage keys, recovery formats, environment variables, and exported schema identifiers remain temporarily for backward compatibility. Changing them immediately could invalidate local drafts, backups, cache entries, or integrations.
 
-The hosted URL and repository slug may continue to contain `ultrapage-studio` during the transition. Rename them only with redirects and a rollback plan.
+Hosting URLs and repository slugs may temporarily retain technical identifiers during migration. Rename them only with redirects and a rollback plan.
+
+## Copyright owner
+
+© 2026 **Eduardo Augusto García Rodríguez**. All rights reserved for original Curralume Studio code, documentation, and artwork. Third-party licenses remain in effect.

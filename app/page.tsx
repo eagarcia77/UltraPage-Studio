@@ -1,3 +1,4 @@
+/* © 2026 Eduardo Augusto García Rodríguez. All rights reserved. Curralume Studio. */
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";

@@ -14,10 +14,10 @@ Editor visual para crear contenido accesible y portátil entre Blackboard Ultra,
 
 ## Propiedad y autoría
 
-- **Dueño y creador:** Eduardo Augusto García Rodríguez
+- **Autor, dueño y desarrollador:** Eduardo Augusto García Rodríguez
 - **Copyright:** © 2026 Eduardo Augusto García Rodríguez. Todos los derechos reservados.
 
-“Curralume Studio” fue seleccionado el 9 de octubre de 2026 después de una búsqueda pública preliminar de nombres idénticos y similares. Continúa pendiente una búsqueda jurídica formal en los registros aplicables; por tanto, esta documentación no afirma registro ni disponibilidad exclusiva. El proyecto es independiente y no está afiliado ni respaldado por terceros. Los identificadores técnicos `ultrapage-*` se conservan temporalmente para mantener compatibilidad con proyectos, respaldos, cachés y datos locales existentes.
+“Curralume Studio” fue seleccionado el 9 de octubre de 2026 después de una búsqueda pública preliminar de nombres idénticos y similares. Continúa pendiente una búsqueda jurídica formal en los registros aplicables; por tanto, esta documentación no afirma registro ni disponibilidad exclusiva. El proyecto es independiente y no está afiliado ni respaldado por terceros. Los identificadores técnicos heredados se conservan temporalmente para mantener compatibilidad con proyectos, respaldos, cachés y datos locales existentes.
 
 La decisión, el alcance de la búsqueda y la especificación visual se documentan en la [auditoría de marca](docs/BRAND_AUDIT_2026-10-09.md).
 
@@ -81,3 +81,7 @@ No incluya credenciales de Blackboard, contraseñas WebDAV ni secretos instituci
 ## Implementación
 
 La aplicación se ejecuta de forma independiente en Render y utiliza una función de servidor para proteger la conexión WebDAV. GitHub conserva el código fuente y Render publica el programa funcional.
+
+## Aviso legal y titularidad
+
+Curralume Studio es un proyecto independiente de **Eduardo Augusto García Rodríguez**. © 2026 Eduardo Augusto García Rodríguez. Todos los derechos reservados sobre el código, el diseño, la documentación y los recursos originales. Las bibliotecas de terceros conservan sus respectivas licencias. Véase [LICENSE](LICENSE).

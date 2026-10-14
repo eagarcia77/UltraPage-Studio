@@ -54,4 +54,4 @@ Because the native tools are HTML applications loaded inside an iframe, the auto
 
 ## Status
 
-Remote audit hardening has been published to the `UltraPage-Studio` repository. The next required step is deployment verification in Render or the active hosting environment.
+Remote audit hardening has been published to the Curralume Studio source repository. The next required step is deployment verification in Render or the active hosting environment.

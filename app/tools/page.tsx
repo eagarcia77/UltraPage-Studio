@@ -1,3 +1,4 @@
+/* © 2026 Eduardo Augusto García Rodríguez. All rights reserved. Curralume Studio. */
 "use client";
 
 import { KeyboardEvent, useEffect, useRef, useState } from "react";
