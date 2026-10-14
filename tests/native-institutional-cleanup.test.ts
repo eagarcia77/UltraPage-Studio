@@ -12,7 +12,7 @@ const retiredFiles = [
   "public/native-tools/txt-test-generator/Guía_Generador_Exámenes_Blackboard_Ultra_Simplificada.pdf",
   "public/native-tools/qti-blackboard/img/LOGO-INTER-SG-HORIZONTAL_sticker.png"
 ];
-const forbidden = /(?:\\bUCAN\\b|(?:universidad|university)\\s+interamericana|interamerican\\s+university|PPOHA|P031M230038|CETL|postbacc|LOGO-INTER|ucan-logo|Guía_Generador_Exámenes_Blackboard_Ultra_Simplificada|San Germán)/i;
+const forbidden = /(?:\bUCAN\b|(?:universidad|university)\s+interamericana|interamerican\s+university|PPOHA|P031M230038|CETL|postbacc|LOGO-INTER|ucan-logo|Guía_Generador_Exámenes_Blackboard_Ultra_Simplificada|San Germán)/i;
 
 test("TXT Generator displays only its author's rights notice, without institutional credits or PDF", async () => {
   const html = await read("public/native-tools/txt-test-generator/index.html");
