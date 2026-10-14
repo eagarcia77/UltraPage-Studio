@@ -38,7 +38,7 @@ const topics: Topic[] = [
         "Abra archivos HTML o TXT para editarlos directamente. Para Word, PDF, PowerPoint, Excel o imágenes, descargue primero el archivo y utilice Upload Edited File para subir la versión editada.",
         "Seleccione HTML, Word (.docx) o Accessible PDF, compruebe el nombre del documento y pulse Save to WebDAV para guardarlo en la carpeta actual."
       ],
-      tip: "Verifique la carpeta de destino y conserve una copia antes de reemplazar archivos existentes. Nunca comparta sus credenciales institucionales." },
+      tip: "Antes de reemplazar un archivo, Curralume solicita confirmación y comprueba su versión. Si Blackboard no permite verificarla, guarde con otro nombre. Conserve una copia y nunca comparta sus credenciales institucionales." },
     en: { title: "Blackboard Content Collection — WebDAV", summary: "Connect to Blackboard folders to open, download and save files.",
       steps: [
         "In the main editor, open Content Collection.",
@@ -47,7 +47,7 @@ const topics: Topic[] = [
         "Open HTML or TXT files for direct editing. For Word, PDF, PowerPoint, Excel or images, download the file and use Upload Edited File to upload your edited version.",
         "Choose HTML, Word (.docx) or Accessible PDF, check the document name, and select Save to WebDAV to save it in the current folder."
       ],
-      tip: "Verify the destination folder and keep a backup before replacing an existing file. Never share institutional credentials." },
+      tip: "Curralume requires confirmation and checks the remote version before replacement. If Blackboard cannot verify it, save under a new name. Keep a backup and never share institutional credentials." },
   },
   {
     id: "apa", category: "apa", icon: FileText, href: "/native-tools/estiloapa/index.html",

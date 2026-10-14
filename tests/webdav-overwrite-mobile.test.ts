@@ -50,7 +50,10 @@ test("both API and editor enforce remote inspections and write consent", async (
   const route = await readFile(new URL("../app/api/webdav/route.ts", import.meta.url), "utf8");
   const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
   assert.match(route, /action === "inspect"/);
-  assert.match(route, /method: "HEAD"/);
+  const inspection = await readFile(new URL("../app/api/webdav/inspection.ts", import.meta.url), "utf8");
+  assert.match(route, /from "\.\/inspection"/);
+  assert.match(inspection, /method: "HEAD"/);
+  assert.match(inspection, /method: "PROPFIND"/);
   assert.match(route, /conditionalWebDavHeaders\(snapshot, body\)/);
   assert.match(route, /\[409, 412, 423, 428\]/);
   assert.match(route, /headers: \{ Authorization: authorization, "Content-Type": contentType, \.\.\.writeConditions \}/);
