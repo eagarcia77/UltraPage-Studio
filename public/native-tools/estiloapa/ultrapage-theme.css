@@ -86,15 +86,6 @@ body::before {
   line-height: 1.08;
 }
 
-.site-header .subtitle {
-  max-width: 880px;
-  color: #eee7fb !important;
-}
-
-.site-header .eyebrow {
-  color: #d8c5ff !important;
-}
-
 .badge {
   color: #fff !important;
   background: rgba(255, 255, 255, .14) !important;
@@ -296,6 +287,61 @@ footer {
 
   .paper-wrap {
     padding: 10px !important;
+  }
+
+  /* Keep file picker and formatting fields inside the iPhone viewport.
+     A native file input or a long select option must not size the grid. */
+  .layout > .panel,
+  .controls fieldset,
+  .controls .drop-zone,
+  .controls .file-list,
+  .controls .file-item {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .controls .drop-zone {
+    width: 100%;
+    grid-template-columns: minmax(0, 1fr);
+    overflow-wrap: anywhere;
+  }
+
+  .controls .drop-zone > *,
+  .controls fieldset label {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .controls .drop-zone input[type="file"] {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    font-size: 14px;
+  }
+
+  .controls fieldset {
+    width: 100%;
+    padding: 12px !important;
+  }
+
+  .controls fieldset select {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    font-size: 16px;
+    text-overflow: ellipsis;
+  }
+
+  .controls .file-item {
+    flex-wrap: wrap;
+    overflow-wrap: anywhere;
+  }
+
+  .controls .file-item > * {
+    min-width: 0;
+    max-width: 100%;
   }
 
   .apa-paper {
