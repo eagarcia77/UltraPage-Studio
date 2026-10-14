@@ -46,7 +46,7 @@ test("Ribbon tabpanels are named by their controlling tab rather than competing 
 
 test("new semantic markup ships in the current offline cache", async () => {
   const sw = await source("public/sw.js");
-  assert.match(sw, /curralume-v68/);
+  assert.match(sw, /curralume-v69/);
   for (const path of ["index.html", "editor-workspace.js", "editor-workspace.css", "editor-ribbon.js", "editor-ribbon.css"]) {
     assert.ok(sw.includes(`/native-tools/estiloapa/${path}`), `Uncached essential asset: ${path}`);
   }
