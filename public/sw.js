@@ -1,4 +1,4 @@
-const VERSION = "curralume-v76";
+const VERSION = "curralume-v77";
 const SHELL_CACHE = `${VERSION}-shell`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
 const APP_SHELL = [
@@ -75,8 +75,12 @@ async function networkFirst(request) {
   try {
     const response = await fetch(request);
     if (response.ok) {
-      const cache = await caches.open(RUNTIME_CACHE);
-      cache.put(request, response.clone());
+      try {
+        const cache = await caches.open(RUNTIME_CACHE);
+        await cache.put(request, response.clone());
+      } catch {
+        // Cached storage is optional when the network is working.
+      }
     }
     return response;
   } catch {
@@ -117,13 +121,14 @@ self.addEventListener("fetch", (event) => {
 
   // Critical editor scripts must not serve a stale release from cache while
   // the network is available. networkFirst retains offline fallback.
-  if (url.pathname.startsWith("/native-tools/estiloapa/")) {
+  if (url.pathname.startsWith("/native-tools/")) {
+    // Always use the latest native HTML, JS and CSS while connected.
+    // Previously the cache-first branch replayed old TXT/QTI shell assets.
     event.respondWith(networkFirst(request));
     return;
   }
 
   if (
-    url.pathname.startsWith("/native-tools/") ||
     url.pathname.startsWith("/_next/static/") ||
     ["style", "script", "font", "image"].includes(request.destination)
   ) {
