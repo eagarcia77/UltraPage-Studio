@@ -1,5 +1,5 @@
-/* Curralume Studio — © 2026 Eduardo Augusto García Rodríguez. All rights reserved. */
-// Curralume Studio integration layer. The upstream CTEL-SG repository remains unchanged.
+/* CREVELIO — © 2026 Eduardo Augusto García Rodríguez. All rights reserved. */
+// CREVELIO integration layer. The upstream CTEL-SG repository remains unchanged.
 (function createCanvasQti(global) {
   "use strict";
 

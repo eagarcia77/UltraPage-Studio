@@ -1,6 +1,6 @@
 "use client";
 
-/** Curralume Studio — © 2026 Eduardo Augusto García Rodríguez. All rights reserved. */
+/** CREVELIO — © 2026 Eduardo Augusto García Rodríguez. All rights reserved. */
 
 
 import { KeyboardEvent, useEffect, useRef, useState } from "react";
@@ -199,7 +199,7 @@ export default function NativeToolsPage() {
   };
   const downloadAudit = () => {
     const lines = [
-      "CURRALUME STUDIO - NATIVE TOOL AUDIT",
+      "CREVELIO - NATIVE TOOL AUDIT",
       `Tool: ${active.name}`,
       `Integration status: ${activeAudit?.status === "reviewed" ? "Reviewed" : "Review required"}`,
       `Runtime status: ${frameState}`,
@@ -217,7 +217,7 @@ export default function NativeToolsPage() {
     const url = URL.createObjectURL(new Blob([lines.join("\n")], { type: "text/plain;charset=utf-8" }));
     const link = document.createElement("a");
     link.href = url;
-    link.download = `curralume-${selected}-audit.txt`;
+    link.download = `crevelio-${selected}-audit.txt`;
     link.click();
     URL.revokeObjectURL(url);
   };
@@ -230,7 +230,7 @@ export default function NativeToolsPage() {
   return <main className="native-tools-page">
     <header className="native-tools-header">
       <a href="/" className="native-tools-back"><ArrowLeft size={17}/> Back to Studio</a>
-      <div className="native-tools-brand"><span className="brandmark" aria-hidden="true"><img src="/brand/curralume-mark.svg" alt="" /></span><span><strong>Curralume Studio</strong><small>ZENQAVIO Technologies · Native Tools</small></span></div>
+      <div className="native-tools-brand"><span className="brandmark" aria-hidden="true"><img src="/brand/crevelio-mark.svg" alt="" /></span><span><strong>CREVELIO</strong><small>ZENQAVIO Technologies · Native Tools</small></span></div>
       <a href={`/help#${selected}`} className="native-tools-help"><HelpCircle size={16} aria-hidden="true"/> Help</a>
     </header>
 
@@ -313,14 +313,14 @@ export default function NativeToolsPage() {
           {(frameState === "loading" || frameState === "slow" || frameState === "error") && <div className={`native-tool-loading ${frameState}`}>
             {frameState === "error" ? <AlertTriangle size={28}/> : <RefreshCw className={frameState === "loading" ? "spin" : ""} size={28}/>}
             <strong>{frameState === "error" ? "The tool could not be loaded" : frameState === "slow" ? "This tool is taking longer than expected" : `Loading ${active.name}`}</strong>
-            <span>{online ? "Curralume is preparing the native workspace." : "Curralume is checking locally cached files. Export libraries that require the internet may be unavailable."}</span>
+            <span>{online ? "CREVELIO is preparing the native workspace." : "CREVELIO is checking locally cached files. Export libraries that require the internet may be unavailable."}</span>
             {(frameState === "slow" || frameState === "error") && <button type="button" onClick={reloadTool}><RefreshCw size={15}/> Try again</button>}
           </div>}
           <iframe
             ref={frameRef}
             key={`${active.id}-${frameKey}`}
             src={active.source}
-            title={`${active.name} native Curralume Studio tool`}
+            title={`${active.name} native CREVELIO tool`}
             className="native-tool-frame"
             allow="clipboard-write"
             sandbox="allow-scripts allow-same-origin allow-forms allow-downloads allow-modals allow-popups"

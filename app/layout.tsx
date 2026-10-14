@@ -1,12 +1,12 @@
-/** Curralume Studio — © 2026 Eduardo Augusto García Rodríguez. All rights reserved. */
+/** CREVELIO — © 2026 Eduardo Augusto García Rodríguez. All rights reserved. */
 import type { Metadata, Viewport } from "next";
 import PwaManager from "@/components/pwa-manager";
 import "./globals.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://ultrapage-studio.onrender.com"),
-  applicationName: "Curralume Studio",
-  title: "Curralume Studio | Accessible Multi-LMS Content Editor",
+  applicationName: "CREVELIO",
+  title: "CREVELIO | Accessible Multi-LMS Content Editor",
   description: "Create accessible, responsive content for Blackboard Ultra, Canvas, Moodle, Brightspace, and standards-based LMS platforms.",
   authors: [{ name: "Eduardo Augusto García Rodríguez" }],
   creator: "Eduardo Augusto García Rodríguez",
@@ -18,14 +18,14 @@ export const metadata: Metadata = {
     apple: "/brand/apple-touch-icon.png",
   },
   openGraph: {
-    title: "Curralume Studio",
+    title: "CREVELIO",
     description: "Accessible multi-LMS content authoring with native Blackboard assessment tools.",
-    images: [{ url: "/brand/curralume-icon-512.png", width: 512, height: 512, alt: "Curralume Studio logo" }],
+    images: [{ url: "/brand/crevelio-icon-512.png", width: 512, height: 512, alt: "CREVELIO logo" }],
   },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "CL Studio",
+    title: "CREVELIO",
   },
   formatDetection: {
     telephone: false,

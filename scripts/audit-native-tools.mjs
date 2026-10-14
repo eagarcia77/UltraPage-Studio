@@ -52,7 +52,7 @@ try {
   vm.runInContext(mammothBrowserSource, browserContext, { filename: "mammoth.browser.min.js" });
   if (typeof browserContext.mammoth?.convertToHtml !== "function") throw new Error("mammoth.convertToHtml was not exposed");
 
-  const probeText = "Curralume EstiloAPA browser audit";
+  const probeText = "CREVELIO EstiloAPA browser audit";
   const probeDocument = new Document({ sections: [{ children: [new Paragraph(probeText)] }] });
   const probeBuffer = await Packer.toBuffer(probeDocument);
   const probeArrayBuffer = probeBuffer.buffer.slice(probeBuffer.byteOffset, probeBuffer.byteOffset + probeBuffer.byteLength);

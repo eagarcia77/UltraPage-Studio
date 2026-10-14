@@ -6,7 +6,7 @@ import { load } from "cheerio";
 const root = new URL("../", import.meta.url);
 const read = (file: string) => readFile(new URL(file, root), "utf8");
 
-test("QTI header relies on shared Curralume theme rather than duplicated legacy decoration", async () => {
+test("QTI header relies on shared CREVELIO theme rather than duplicated legacy decoration", async () => {
   const html = await read("public/native-tools/qti-blackboard/index.html");
   const theme = await read("public/native-tools/ultrapage-native-theme.css");
   const $ = load(html);
@@ -40,5 +40,5 @@ test("editor, validation and LMS export features stay mounted after QTI style cl
   ]) assert.ok(html.includes("function " + functionName + "("), "Missing generator: " + functionName);
   assert.match($("footer").text(), /© 2026 Eduardo Augusto García Rodríguez/);
   const sw = await read("public/sw.js");
-  assert.match(sw, /curralume-v80/);
+  assert.match(sw, /crevelio-v84/);
 });

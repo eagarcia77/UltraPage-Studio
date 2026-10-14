@@ -17,7 +17,7 @@ jobs:
     timeout-minutes: 10
 
     steps:
-      - name: Check out Curralume Studio
+      - name: Check out CREVELIO
         uses: actions/checkout@v4
 
       - name: Set up Node.js

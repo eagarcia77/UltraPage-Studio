@@ -1,8 +1,8 @@
-# Curralume Studio Security Policy
+# CREVELIO Security Policy
 
 ## Release status
 
-Curralume Studio is currently pre-commercial software. No release should be represented as production-ready until the stability gate in `docs/COMMERCIALIZATION_READINESS.md` is approved.
+CREVELIO is currently pre-commercial software. No release should be represented as production-ready until the stability gate in `docs/COMMERCIALIZATION_READINESS.md` is approved.
 
 ## Reporting a vulnerability
 

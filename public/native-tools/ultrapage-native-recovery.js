@@ -1,5 +1,5 @@
-/* Curralume Studio — © 2026 Eduardo Augusto García Rodríguez. All rights reserved. */
-/* Curralume Studio local draft recovery for integrated native tools.
+/* CREVELIO — © 2026 Eduardo Augusto García Rodríguez. All rights reserved. */
+/* CREVELIO local draft recovery for integrated native tools.
  * Integration-only code: the original source repositories remain unchanged.
  */
 (function () {
@@ -209,7 +209,7 @@
     const workspace = {
       format: BACKUP_FORMAT,
       version: BACKUP_VERSION,
-      product: "Curralume Studio",
+      product: "CREVELIO",
       toolId,
       exportedAt: new Date().toISOString(),
       data
@@ -280,13 +280,13 @@
       window.setTimeout(() => saveSnapshot("Imported backup").catch(handleStorageError), 220);
       setStatus(`Workspace restored from ${file.name}`, "saved");
     } catch (error) {
-      console.error("Curralume workspace import error", error);
+      console.error("CREVELIO workspace import error", error);
       setStatus(error?.message || "The workspace backup could not be opened", "error");
     }
   }
 
   function handleStorageError(error) {
-    console.error("Curralume local recovery error", error);
+    console.error("CREVELIO local recovery error", error);
     setStatus("Local recovery unavailable in this browser", "error");
   }
 
@@ -319,7 +319,7 @@
     saveSnapshot("Before replace")
       .then(() => replayAction(target, eventType))
       .catch((error) => {
-        console.error("Curralume pre-replacement recovery error", error);
+        console.error("CREVELIO pre-replacement recovery error", error);
         setStatus("The recovery version could not be created", "error");
         if (window.confirm("The safety copy could not be created. Continue and replace the current work anyway?")) replayAction(target, eventType);
         else if (eventType === "change") target.value = "";
@@ -348,7 +348,7 @@
     fileInput.type = "file";
     fileInput.accept = ".json,application/json";
     fileInput.className = "native-workspace-file";
-    fileInput.setAttribute("aria-label", "Open a Curralume workspace backup");
+    fileInput.setAttribute("aria-label", "Open a CREVELIO workspace backup");
     group.appendChild(fileInput);
     const status = document.createElement("p");
     status.id = "nativeDraftStatus";
@@ -369,7 +369,7 @@
         <div><span class="native-ribbon-label">Local recovery</span><h2 id="nativeDraftDialogTitle">Version history</h2></div>
         <button type="button" id="nativeDraftDialogClose" aria-label="Close version history">×</button>
       </div>
-      <p>Up to five recent versions are stored privately in this browser. They are not uploaded to Curralume Studio.</p>
+      <p>Up to five recent versions are stored privately in this browser. They are not uploaded to CREVELIO.</p>
       <div id="nativeDraftList" class="native-draft-list"></div>
       <div class="native-draft-dialog-actions"><button type="button" id="nativeDeleteDrafts">Delete local versions</button></div>`;
     document.body.appendChild(dialog);

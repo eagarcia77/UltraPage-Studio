@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Curralume Studio — © 2026 Eduardo Augusto García Rodríguez. All rights reserved. -->
+<!-- CREVELIO — © 2026 Eduardo Augusto García Rodríguez. All rights reserved. -->
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -7,7 +7,7 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'; upgrade-insecure-requests;">
   <meta name="referrer" content="no-referrer">
   <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=(), payment=(), usb=()">
-  <title>QTI 2.1 Package Builder | Curralume Studio</title>
+  <title>QTI 2.1 Package Builder | CREVELIO</title>
   <style>
     :root {
       --green: #007B5F;
@@ -36,7 +36,7 @@
       line-height: 1.55;
     }
 
-    /* Keep local spacing; the shared Curralume theme owns header colors and decoration. */
+    /* Keep local spacing; the shared CREVELIO theme owns header colors and decoration. */
     header { padding: 34px 24px; }
     header h1 { margin: 0; }
     header p { margin: 10px 0 0; max-width: 900px; }
@@ -705,7 +705,7 @@ ${resources}
         const name = document.getElementById('packageName').value;
         if (target === 'moodle') {
           const filename = sanitizeFileName(`${name || 'question_bank'}_moodle`, 'gift.txt');
-          downloadFile(filename, `// $CATEGORY: Curralume/${escapeGift(name || 'Question Bank')}\n\n${buildMoodleGift(items)}\n`, 'text/plain;charset=utf-8');
+          downloadFile(filename, `// $CATEGORY: CREVELIO/${escapeGift(name || 'Question Bank')}\n\n${buildMoodleGift(items)}\n`, 'text/plain;charset=utf-8');
           setMessage('success', `${filename} downloaded. In Moodle, choose the GIFT import format.`);
           return;
         }

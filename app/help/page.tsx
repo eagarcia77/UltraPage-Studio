@@ -1,6 +1,6 @@
 "use client";
 
-/** Curralume Studio — © 2026 Eduardo Augusto García Rodríguez. All rights reserved. */
+/** CREVELIO — © 2026 Eduardo Augusto García Rodríguez. All rights reserved. */
 
 
 import { useMemo, useState } from "react";
@@ -24,11 +24,11 @@ type Topic = {
 const topics: Topic[] = [
   {
     id: "studio", category: "studio", icon: BookOpen, href: "/",
-    es: { title: "Editor principal de Curralume", summary: "Crear páginas accesibles para distintos LMS.",
-      steps: ["Abra Curralume Studio y escriba o pegue el contenido en Design.", "Use HTML para revisar el código y Final Preview para comprobar cómo se verá.", "Seleccione Target LMS y revise el contenido antes de copiarlo o exportarlo.", "Guarde una copia de su trabajo antes de reemplazar contenido o aplicar cambios grandes."],
+    es: { title: "Editor principal de CREVELIO", summary: "Crear páginas accesibles para distintos LMS.",
+      steps: ["Abra CREVELIO y escriba o pegue el contenido en Design.", "Use HTML para revisar el código y Final Preview para comprobar cómo se verá.", "Seleccione Target LMS y revise el contenido antes de copiarlo o exportarlo.", "Guarde una copia de su trabajo antes de reemplazar contenido o aplicar cambios grandes."],
       tip: "Las verificaciones automáticas ayudan a detectar problemas, pero no sustituyen las pruebas en el LMS real." },
-    en: { title: "Curralume main editor", summary: "Create accessible pages for different LMS platforms.",
-      steps: ["Open Curralume Studio and write or paste content in Design.", "Use HTML to inspect the source and Final Preview to check presentation.", "Choose Target LMS and review the content before copying or exporting it.", "Save a copy of your work before replacing content or applying major changes."],
+    en: { title: "CREVELIO main editor", summary: "Create accessible pages for different LMS platforms.",
+      steps: ["Open CREVELIO and write or paste content in Design.", "Use HTML to inspect the source and Final Preview to check presentation.", "Choose Target LMS and review the content before copying or exporting it.", "Save a copy of your work before replacing content or applying major changes."],
       tip: "Automated checks help identify issues; they do not replace testing inside the actual LMS." },
   },
   {
@@ -41,7 +41,7 @@ const topics: Topic[] = [
         "Abra archivos HTML o TXT para editarlos directamente. Para Word, PDF, PowerPoint, Excel o imágenes, descargue primero el archivo y utilice Upload Edited File para subir la versión editada.",
         "Seleccione HTML, Word (.docx) o Accessible PDF, compruebe el nombre del documento y pulse Save to WebDAV para guardarlo en la carpeta actual."
       ],
-      tip: "Antes de reemplazar un archivo, Curralume solicita confirmación y comprueba su versión. Si Blackboard no permite verificarla, guarde con otro nombre. Conserve una copia y nunca comparta sus credenciales institucionales." },
+      tip: "Antes de reemplazar un archivo, CREVELIO solicita confirmación y comprueba su versión. Si Blackboard no permite verificarla, guarde con otro nombre. Conserve una copia y nunca comparta sus credenciales institucionales." },
     en: { title: "Blackboard Content Collection — WebDAV", summary: "Connect to Blackboard folders to open, download and save files.",
       steps: [
         "In the main editor, open Content Collection.",
@@ -50,7 +50,7 @@ const topics: Topic[] = [
         "Open HTML or TXT files for direct editing. For Word, PDF, PowerPoint, Excel or images, download the file and use Upload Edited File to upload your edited version.",
         "Choose HTML, Word (.docx) or Accessible PDF, check the document name, and select Save to WebDAV to save it in the current folder."
       ],
-      tip: "Curralume requires confirmation and checks the remote version before replacement. If Blackboard cannot verify it, save under a new name. Keep a backup and never share institutional credentials." },
+      tip: "CREVELIO requires confirmation and checks the remote version before replacement. If Blackboard cannot verify it, save under a new name. Keep a backup and never share institutional credentials." },
   },
   {
     id: "apa", category: "apa", icon: FileText, href: "/native-tools/estiloapa/index.html",
@@ -137,17 +137,17 @@ export default function HelpPage() {
     <main className="curralume-help" lang={spanish ? "es-PR" : "en-US"}>
       <a className="help-skip" href="#help-topics">{spanish ? "Ir a las instrucciones" : "Skip to instructions"}</a>
       <header className="help-topbar">
-        <a href="/" className="help-back"><ArrowLeft size={18} aria-hidden="true" /> Curralume Studio</a>
+        <a href="/" className="help-back"><ArrowLeft size={18} aria-hidden="true" /> CREVELIO</a>
         <a className="help-tools-link" href="/tools">{spanish ? "Abrir herramientas" : "Open tools"} <ArrowUpRight size={16} aria-hidden="true" /></a>
       </header>
       <div className="help-body">
         <section className="help-hero" aria-labelledby="help-title">
           <div className="help-hero-icon"><LifeBuoy aria-hidden="true" size={28}/></div>
           <div>
-            <p className="help-eyebrow">CURRALUME STUDIO · HELP CENTER</p>
+            <p className="help-eyebrow">CREVELIO · HELP CENTER</p>
             <h1 id="help-title">{spanish ? "Centro de ayuda" : "Help Center"}</h1>
-            <p>{spanish ? "Aprenda a editar, evaluar y exportar documentos y exámenes. Instrucciones prácticas para las herramientas de Curralume Studio." :
-              "Learn to edit, review, and export documents and assessments with practical guides for Curralume Studio tools."}</p>
+            <p>{spanish ? "Aprenda a editar, evaluar y exportar documentos y exámenes. Instrucciones prácticas para las herramientas de CREVELIO." :
+              "Learn to edit, review, and export documents and assessments with practical guides for CREVELIO tools."}</p>
           </div>
           <div className="help-languages" role="group" aria-label={spanish ? "Idioma de la ayuda" : "Help language"}>
             <button type="button" lang="es-PR" aria-pressed={spanish} className={spanish ? "selected" : ""} onClick={() => setLanguage("es")}>Español</button>

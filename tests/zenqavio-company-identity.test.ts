@@ -8,7 +8,7 @@ const operator = "ZENQAVIO Technologies";
 const creator = "Eduardo Augusto García Rodríguez";
 
 test("project documentation distinguishes operator, creator and copyright holder", async () => {
-  const paths = ["README.md", "COPYRIGHT.md", "docs/BRAND_AUDIT_2026-10-09.md"];
+  const paths = ["README.md", "COPYRIGHT.md", "docs/CREVELIO_BRAND_2026-10-14.md"];
   for (const path of paths) {
     const source = await read(path);
     assert.ok(source.includes(operator), path + " should identify responsible company");
@@ -33,7 +33,7 @@ test("application metadata names company as publisher without replacing individu
   assert.ok(layout.includes('copyright: "© 2026 ' + creator));
   assert.equal(pkg.author, creator);
   assert.equal(pkg.organization, operator);
-  assert.equal(manifest.name, "Curralume Studio");
+  assert.equal(manifest.name, "CREVELIO");
   assert.ok(manifest.description.includes(operator));
   assert.equal(toolsManifest.operator, operator);
   assert.equal(toolsManifest.creator, creator);

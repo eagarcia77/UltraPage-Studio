@@ -5,7 +5,7 @@ import { load } from "cheerio";
 
 const source = (path: string) => readFile(new URL("../" + path, import.meta.url), "utf8");
 
-test("Curralume Help covers the editor, three native tools, mobile and recovery in both languages", async () => {
+test("CREVELIO Help covers the editor, three native tools, mobile and recovery in both languages", async () => {
   const help = await source("app/help/page.tsx");
   const expected = ["studio", "webdav", "apa", "txt", "qti", "mobile", "recovery", "exports"];
   for (const id of expected) {
@@ -15,7 +15,7 @@ test("Curralume Help covers the editor, three native tools, mobile and recovery 
     "Centro de ayuda", "Help Center", "Guías paso a paso",
     "Step-by-step guides", "AutoSave", "Preflight",
     "Target LMS", "Question bank content", "Load and process", "Content Collection", "Connect to Blackboard",
-    "Curralume Studio", "Eduardo Augusto García Rodríguez",
+    "CREVELIO", "Eduardo Augusto García Rodríguez",
   ]) {
     assert.ok(help.includes(phrase), "Help copy missing: " + phrase);
   }
@@ -67,13 +67,13 @@ test("responsive Help styles and owner attribution are scoped to Help Center", a
   assert.match(apa, /\.curralume-native-help/);
   assert.match(page, /© 2026 Eduardo Augusto García Rodríguez/);
   const metadata = await source("app/help/layout.tsx");
-  assert.match(metadata, /Help Center \| Curralume Studio/);
+  assert.match(metadata, /Help Center \| CREVELIO/);
 });
 
 test("the Help route is pre-cached and covered by production HTTP smoke tests", async () => {
   const worker = await source("public/sw.js");
   const smoke = await source("scripts/smoke-native-routes.mjs");
-  assert.match(worker, /curralume-v80/);
+  assert.match(worker, /crevelio-v84/);
   assert.match(worker, /"\/help"/);
   assert.match(smoke, /origin \+ "\/help"/);
   assert.match(smoke, /help-search-input/);
