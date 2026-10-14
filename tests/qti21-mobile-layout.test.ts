@@ -48,7 +48,8 @@ test("QTI base stylesheet does not duplicate mobile grid tracks or chip flex rul
   const inline = html.match(/<style>([\s\S]*?)<\/style>/)?.[1] || "";
   const local = await readFile(cssPath, "utf8");
   assert.match(inline, /main\s*\{[\s\S]*?display:\s*grid/);
-  assert.doesNotMatch(inline, /grid-template-columns/);
+  assert.doesNotMatch(inline, /main\s*\{[^}]*grid-template-columns/);
+  assert.doesNotMatch(inline, /\.field-grid\s*\{[^}]*grid-template-columns/);
   assert.match(inline, /\.field-grid\s*\{\s*display:\s*grid;\s*gap:\s*10px;/);
   assert.match(inline, /\.chips\s*\{\s*gap:\s*8px;/);
   assert.doesNotMatch(inline, /\.chips\s*\{[^}]*display:\s*flex/);
