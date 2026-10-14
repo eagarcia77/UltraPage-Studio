@@ -251,6 +251,7 @@
   </style>
   <link rel="stylesheet" href="../ultrapage-native-theme.css" data-ultrapage-native-theme>
   <link rel="stylesheet" href="../ultrapage-native-ribbon.css" data-ultrapage-native-ribbon-style>
+  <link rel="stylesheet" href="qti-layout.css">
   <script defer src="../ultrapage-native-ribbon.js" data-ultrapage-native-ribbon></script>
   <script defer src="../ultrapage-native-recovery.js" data-ultrapage-native-recovery></script>
   <script defer src="../ultrapage-assessment-bridge.js" data-ultrapage-assessment-bridge></script>
@@ -275,7 +276,9 @@
         <span class="chip red">SA: Not supported by Ultra QTI</span>
       </div>
       <p class="note"><strong>Recommended format:</strong> begin each question with its type. Use <code>*</code> to mark the correct answer or accepted responses. Leave one blank line between questions. This version supports the Blackboard-documented QTI types <code>MC</code>, <code>MA</code>, <code>TF</code>, <code>FIB</code>, and <code>ESSAY</code>.</p>
-      <pre><b><u>Copy these examples into Microsoft Word and adapt them to your assessment.</u></b>
+      <details class="qti-example-details">
+        <summary>View question format examples (MC, MA, TF, FIB, Essay)</summary>
+        <pre><b><u>Copy these examples into Microsoft Word and adapt them to your assessment.</u></b>
         
 MC 1. ¿Cuál es la mejor definición de inteligencia artificial en educación?
 A. Uso de computadoras sin interacción humana
@@ -298,6 +301,7 @@ FIB 4. La inteligencia artificial permite ______ el aprendizaje.
 *adaptar
 
 ESSAY 5. Explique dos implicaciones éticas del uso de la IA en la educación.</pre>
+      </details>
       <div class="security-note" role="note">
         <strong>Security note:</strong> this tool processes content locally in your browser. Do not enter passwords, sensitive personal information, or confidential student data. Always review the generated file in a sandbox course before using it with students.
       </div>
