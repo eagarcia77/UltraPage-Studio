@@ -68,10 +68,6 @@
       white-space: pre-wrap;
       line-height: 1.55;
     }
-    textarea.form-control {
-      min-height: 370px;
-      resize: vertical;
-    }
     .stat {
       background: #fff;
       border: 1px solid var(--borde);
@@ -685,8 +681,11 @@ numeric 1. What is 2 + 2?
       resultBoxEl.textContent = messages.join('\n');
     }
 
-    function verifyContent() {
-      const { blocks, errors, warnings } = processContent();
+    function verifyContent(prepared = null) {
+      // Direct toolbar clicks pass an Event, not a parsed question bank.
+      const result = prepared && Array.isArray(prepared.blocks) && Array.isArray(prepared.errors)
+        ? prepared : processContent();
+      const { blocks, errors, warnings } = result;
       questionCountEl.textContent = blocks.length;
       errorCountEl.textContent = errors.length;
       statusLabelEl.textContent = errors.length ? 'Errors' : 'Verified';
@@ -705,8 +704,10 @@ numeric 1. What is 2 + 2?
       return true;
     }
 
-    function convertContent() {
-      const { target, blocks, errors, warnings, lines } = processContent();
+    function convertContent(prepared = null) {
+      const result = prepared && Array.isArray(prepared.blocks) && Array.isArray(prepared.errors)
+        ? prepared : processContent();
+      const { target, blocks, errors, warnings, lines, parsed } = result;
       questionCountEl.textContent = blocks.length;
       errorCountEl.textContent = errors.length;
       statusLabelEl.textContent = errors.length ? 'Errors' : 'Converted';
@@ -731,7 +732,7 @@ numeric 1. What is 2 + 2?
           showResult(['Canvas QTI module is unavailable. Reload the page and try again.'], false);
           return null;
         }
-        output = window.UltraPageCanvasQti.buildPreview(processContent('canvas').parsed, quizNameEl.value || 'Canvas Assessment', Number(defaultPointsEl.value));
+        output = window.UltraPageCanvasQti.buildPreview(parsed, quizNameEl.value || 'Canvas Assessment', Number(defaultPointsEl.value));
       } else {
         output = lines.join(target === 'moodle' ? '\r\n\r\n' : '\r\n');
       }
@@ -756,12 +757,12 @@ numeric 1. What is 2 + 2?
     function downloadTxt() {
       const result = processContent();
       if (result.target === 'canvas') {
-        if (!verifyContent() || !window.UltraPageCanvasQti) return;
+        if (!verifyContent(result) || !window.UltraPageCanvasQti) return;
         window.UltraPageCanvasQti.downloadPackage(result.parsed, quizNameEl.value || 'Canvas Assessment', Number(defaultPointsEl.value));
         showResult([`Canvas QTI ZIP downloaded with ${result.blocks.length} question(s). Import it with Canvas Course Import or into a compatible item-bank workflow.`, ...result.warnings], true);
         return;
       }
-      const output = convertContent();
+      const output = convertContent(result);
       if (!output) return;
       if (result.target === 'blackboard' && result.lines.length > MAX_RECORDS) {
         window.UltraPageCanvasQti.downloadTextBatchZip(result.lines, quizNameEl.value || 'blackboard_ultra_questions', MAX_RECORDS);
