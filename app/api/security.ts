@@ -1,3 +1,4 @@
+/** Curralume Studio — © 2026 Eduardo Augusto García Rodríguez. All rights reserved. */
 import { NextRequest, NextResponse } from "next/server";
 
 type Counter = { count: number; resetAt: number };

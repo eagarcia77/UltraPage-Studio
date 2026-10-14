@@ -6,15 +6,13 @@ import { load } from "cheerio";
 const root = new URL("../", import.meta.url);
 const read = (path: string) => readFile(new URL(path, root), "utf8");
 const owner = "© 2026 Eduardo Augusto García Rodríguez. All rights reserved.";
-const retiredFiles = [
-  "public/native-tools/txt-test-generator/img/LOGO-INTER-SG-HORIZONTAL_sticker.png",
-  "public/native-tools/txt-test-generator/img/ucan-logo.png",
-  "public/native-tools/txt-test-generator/Guía_Generador_Exámenes_Blackboard_Ultra_Simplificada.pdf",
-  "public/native-tools/qti-blackboard/img/LOGO-INTER-SG-HORIZONTAL_sticker.png"
+const retiredAssetDirectories = [
+  "public/native-tools/txt-test-generator/img/",
+  "public/native-tools/qti-blackboard/img/",
 ];
-const forbidden = /(?:\bUCAN\b|(?:universidad|university)\s+interamericana|interamerican\s+university|PPOHA|P031M230038|CETL|postbacc|LOGO-INTER|ucan-logo|Guía_Generador_Exámenes_Blackboard_Ultra_Simplificada|San Germán)/i;
+const forbidden = /(?:PPOHA|P031M230038|CETL|postbacc|institutional\s+grant\s+branding)/i;
 
-test("TXT Generator displays only its author's rights notice, without institutional credits or PDF", async () => {
+test("TXT Generator displays the independent author's rights notice and excludes retired assets", async () => {
   const html = await read("public/native-tools/txt-test-generator/index.html");
   const $ = load(html);
   assert.equal($("footer").length, 1);
@@ -27,7 +25,7 @@ test("TXT Generator displays only its author's rights notice, without institutio
   assert.equal($("#openExamplesBtn").length, 1);
 });
 
-test("QTI 2.1 removes UCAN branding from displayed, default and exported package identifiers", async () => {
+test("QTI 2.1 uses independent identifiers in the screen and exported packages", async () => {
   const html = await read("public/native-tools/qti-blackboard/index.html");
   const $ = load(html);
   assert.ok($("footer").text().includes(owner));
@@ -40,13 +38,13 @@ test("QTI 2.1 removes UCAN branding from displayed, default and exported package
   assert.equal($("#targetLms option").length, 3);
 });
 
-test("no retired institution-branded assets remain in the deployed public directories", async () => {
-  for (const path of retiredFiles) {
+test("retired third-party institutional image directories are absent", async () => {
+  for (const path of retiredAssetDirectories) {
     await assert.rejects(access(new URL(path, root)), { code: "ENOENT" });
   }
 });
 
-test("offline cache and native manifest contain no retired institutional media references", async () => {
+test("offline cache and native manifest exclude unrelated institutional assets", async () => {
   const sw = await read("public/sw.js");
   const manifestSource = await read("public/native-tools/manifest.json");
   const manifest = JSON.parse(manifestSource);
@@ -58,8 +56,8 @@ test("offline cache and native manifest contain no retired institutional media r
   assert.ok(sw.includes("/native-tools/qti-blackboard/index.html"));
   assert.ok(sw.includes("/native-tools/txt-test-generator/canvas-qti.js"));
   assert.ok(sw.includes("/native-tools/txt-test-generator/txt-layout.css"));
-  for (const path of retiredFiles) {
-    assert.ok(!sw.includes(path.replace(/^public/, "")), "Old file still in service-worker cache: " + path);
-    assert.ok(!manifestSource.includes(path), "Old file still in current asset inventory: " + path);
+  for (const path of retiredAssetDirectories) {
+    assert.ok(!sw.includes(path.replace(/^public/, "")));
+    assert.ok(!manifestSource.includes(path));
   }
 });

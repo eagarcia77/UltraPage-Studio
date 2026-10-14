@@ -1,5 +1,8 @@
 "use client";
 
+/** Curralume Studio — © 2026 Eduardo Augusto García Rodríguez. All rights reserved. */
+
+
 import { KeyboardEvent, useEffect, useRef, useState } from "react";
 import {
   AlertTriangle,

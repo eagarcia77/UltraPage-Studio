@@ -1,3 +1,4 @@
+/** Curralume Studio — © 2026 Eduardo Augusto García Rodríguez. All rights reserved. */
 import { NextRequest, NextResponse } from "next/server";
 import { load, type CheerioAPI } from "cheerio";
 import PDFDocument from "pdfkit";

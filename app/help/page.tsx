@@ -1,5 +1,8 @@
 "use client";
 
+/** Curralume Studio — © 2026 Eduardo Augusto García Rodríguez. All rights reserved. */
+
+
 import { useMemo, useState } from "react";
 import {
   ArrowLeft, ArrowUpRight, BookOpen, CheckCircle2, FileQuestion, FileText,

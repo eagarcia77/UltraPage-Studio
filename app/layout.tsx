@@ -1,3 +1,4 @@
+/** Curralume Studio — © 2026 Eduardo Augusto García Rodríguez. All rights reserved. */
 import type { Metadata, Viewport } from "next";
 import PwaManager from "@/components/pwa-manager";
 import "./globals.css";

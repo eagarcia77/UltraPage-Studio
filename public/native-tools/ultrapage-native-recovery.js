@@ -1,3 +1,4 @@
+/* Curralume Studio — © 2026 Eduardo Augusto García Rodríguez. All rights reserved. */
 /* Curralume Studio local draft recovery for integrated native tools.
  * Integration-only code: the original source repositories remain unchanged.
  */
