@@ -111,5 +111,5 @@ test("ordinary text deletion runs paragraph cleanup after the catastrophic-wipe 
   assert.match(js, /root\.addEventListener\("beforeinput", aesBeforeDeletion, true\)/);
   assert.match(js, /root\.addEventListener\("input", aesAfterDeletion, true\)/);
   const sw = await readFile(new URL("../public/sw.js", import.meta.url), "utf8");
-  assert.match(sw, /curralume-v78/);
+  assert.match(sw, /curralume-v79/);
 });
