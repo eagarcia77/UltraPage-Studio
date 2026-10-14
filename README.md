@@ -1,6 +1,8 @@
 # CREVELIO
 
-![CREVELIO logo](public/brand/crevelio-mark.svg)
+![CREVELIO — by ZENQAVIO Technologies](public/brand/crevelio-lockup.svg)
+
+> **Identidad visual v85:** símbolo original C/V, logotipo vectorial y nuevos íconos PWA/iPhone generados automáticamente a partir de la fuente SVG. No se ha certificado aún la disponibilidad legal de la marca.
 
 ## Abrir el programa
 

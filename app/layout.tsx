@@ -20,7 +20,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "CREVELIO",
     description: "Accessible multi-LMS content authoring with native Blackboard assessment tools.",
-    images: [{ url: "/brand/crevelio-icon-512.png", width: 512, height: 512, alt: "CREVELIO logo" }],
+    images: [{ url: "/brand/crevelio-icon-512.png", width: 512, height: 512, alt: "CREVELIO C/V symbol, by ZENQAVIO Technologies" }],
   },
   appleWebApp: {
     capable: true,
