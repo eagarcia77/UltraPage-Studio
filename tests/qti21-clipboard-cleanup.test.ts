@@ -69,7 +69,17 @@ async function harness(mode: "modern" | "fallback" | "denied" = "modern") {
       clipboardText = text;
     } } };
   const win: any = {};
-  runInNewContext(core + "\nwindow.__qtiClipboardTest = { copyTextSafely, copyValidationReport, copyImportChecklist, copyPreview, buildValidationReport };",
+  // Clipboard tests isolate copy behavior; package generation is exercised
+  // with the real parser in qti21-fresh-export.test.ts.
+  const stubGeneration = `\n    generatePackage = function() {
+      if (!document.getElementById('inputText').value.trim()) {
+        setMessage('error', 'The ZIP was not generated because the question bank is empty.');
+        return null;
+      }
+      document.getElementById('outputPreview').value = 'QTI 2.1 PACKAGE GENERATED';
+      return { files: {}, items: [] };
+    };\n`;
+  runInNewContext(core + stubGeneration + "\nwindow.__qtiClipboardTest = { copyTextSafely, copyValidationReport, copyImportChecklist, copyPreview, buildValidationReport };",
     { document, navigator, window: win, console, Blob, TextEncoder, Uint8Array, Uint32Array, DataView, Date });
   return {
     $, html, api: win.__qtiClipboardTest, elements,
