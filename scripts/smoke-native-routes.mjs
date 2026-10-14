@@ -59,6 +59,13 @@ try {
     }
     console.log(`✓ Native route ${route}: HTTP 200`);
   }
+  const txtLayout = await fetch(origin + "/native-tools/txt-test-generator/txt-layout.css", {
+    signal: AbortSignal.timeout(8000)
+  });
+  assert.equal(txtLayout.status, 200, "TXT Generator's self-contained mobile layout is not served");
+  assert.match(txtLayout.headers.get("content-type") || "", /text\/css/);
+  assert.match(await txtLayout.text(), /#quizContent/);
+  console.log("✓ TXT Generator local mobile CSS: HTTP 200");
   console.log("✓ Short native URLs resolve to standalone editors in production build");
 } finally {
   if (child.exitCode === null) {

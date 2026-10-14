@@ -1,4 +1,4 @@
-const VERSION = "curralume-v65";
+const VERSION = "curralume-v66";
 const SHELL_CACHE = `${VERSION}-shell`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
 const APP_SHELL = [
@@ -49,6 +49,7 @@ const APP_SHELL = [
   "/vendor/pdf.mjs",
   "/vendor/pdf.worker.mjs",
   "/native-tools/txt-test-generator/index.html",
+  "/native-tools/txt-test-generator/txt-layout.css",
   "/native-tools/txt-test-generator/canvas-qti.js",
   "/native-tools/txt-test-generator/img/LOGO-INTER-SG-HORIZONTAL_sticker.png",
   "/native-tools/txt-test-generator/img/ucan-logo.png",
