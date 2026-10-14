@@ -33,7 +33,6 @@ body[data-native-draft-tool="txt-test-generator"] .justify-content-between { jus
 body[data-native-draft-tool="txt-test-generator"] .align-items-center { align-items: center; }
 body[data-native-draft-tool="txt-test-generator"] .flex-wrap { flex-wrap: wrap; }
 body[data-native-draft-tool="txt-test-generator"] .gap-2 { gap: .5rem; }
-body[data-native-draft-tool="txt-test-generator"] .text-center { text-align: center; }
 body[data-native-draft-tool="txt-test-generator"] .fw-semibold { font-weight: 650; }
 body[data-native-draft-tool="txt-test-generator"] .small { font-size: .875rem; }
 body[data-native-draft-tool="txt-test-generator"] .text-muted { color: #667085; }

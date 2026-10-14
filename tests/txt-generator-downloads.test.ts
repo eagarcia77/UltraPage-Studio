@@ -56,10 +56,35 @@ async function harness() {
     },
     revokeObjectURL(id: string) { urls.delete(id); }
   };
-  const win: any = { setTimeout(_fn: Function, _delay: number) { return 1; } };
-  const code = script + "\nwindow.__txtTest = { processContent, downloadTxt, downloadValidationReport, downloadLmsComparison, buildLmsComparison, compareLmsCompatibility };";
+  const canvasPackages: { name: string; points: number; count: number }[] = [];
+  const canvasPreviews: { name: string; points: number; count: number }[] = [];
+  const win: any = {
+    setTimeout(_fn: Function, _delay: number) { return 1; },
+    UltraPageCanvasQti: {
+      buildPreview(questions: any[], name: string, points: number) {
+        canvasPreviews.push({ name, points, count: questions.length });
+        return "QTI 1.2 preview";
+      },
+      downloadPackage(questions: any[], name: string, points: number) {
+        canvasPackages.push({ name, points, count: questions.length });
+      }
+    }
+  };
+  const code = script + `
+    let __parseCalls = 0;
+    const __originalProcessContent = processContent;
+    processContent = function(...args) {
+      __parseCalls += 1;
+      return __originalProcessContent(...args);
+    };
+    window.__txtTest = {
+      processContent, downloadTxt, downloadValidationReport,
+      downloadLmsComparison, buildLmsComparison, compareLmsCompatibility,
+      verifyContent, convertContent, parseCalls: () => __parseCalls
+    };
+  `;
   runInNewContext(code, { document, window: win, Blob, URL: urlMock, console });
-  return { values, downloads, api: win.__txtTest };
+  return { values, downloads, canvasPackages, canvasPreviews, api: win.__txtTest };
 }
 
 test("Blackboard TXT, Moodle GIFT, and validation report downloads use one safe helper", async () => {
@@ -82,6 +107,52 @@ test("Blackboard TXT, Moodle GIFT, and validation report downloads use one safe 
   assert.equal(h.downloads[2].filename, "Midterm_Assessment_validation_report.txt");
   assert.match(await h.downloads[2].blob.text(), /Questions detected: 1/);
   assert.match(await h.downloads[2].blob.text(), /Target: Moodle/);
+});
+
+test("Download parses once per target without changing output, including Canvas ZIP", async () => {
+  const h = await harness();
+  const get = (id: string) => h.values.get(id);
+  get("quizName").value = "Unit Test";
+  get("quizContent").value = "1. Which is prime?\na) 4\n*b) 5\nc) 6";
+  assert.equal(h.api.parseCalls(), 0);
+  h.api.downloadTxt();
+  assert.equal(h.api.parseCalls(), 1, "Blackboard download must not reparse before converting");
+  assert.match(await h.downloads[0].blob.text(), /^MC\t/);
+
+  get("targetFormat").value = "moodle";
+  h.api.downloadTxt();
+  assert.equal(h.api.parseCalls(), 2, "Moodle download must not reparse before converting");
+  assert.match(await h.downloads[1].blob.text(), /::Question 1::/);
+
+  get("targetFormat").value = "canvas";
+  h.api.downloadTxt();
+  assert.equal(h.api.parseCalls(), 3, "Canvas ZIP must not run verification and a second parse");
+  assert.equal(h.canvasPackages.length, 1);
+  assert.deepEqual(h.canvasPackages[0], { name: "Unit Test", points: 1, count: 1 });
+});
+
+test("Verify and Convert still accept direct toolbar click events, with one parse and unchanged previews", async () => {
+  const h = await harness();
+  const get = (id: string) => h.values.get(id);
+  get("quizContent").value = "1. Which is prime?\na) 4\n*b) 5\nc) 6";
+
+  assert.equal(h.api.verifyContent({ type: "click" }), true);
+  assert.equal(h.api.parseCalls(), 1);
+  const output = h.api.convertContent({ type: "click" });
+  assert.match(output, /^MC\t/);
+  assert.equal(h.api.parseCalls(), 2, "Direct Convert event must trigger exactly one parse");
+
+  get("targetFormat").value = "canvas";
+  get("quizName").value = "Quiz";
+  assert.equal(h.api.convertContent({ type: "click" }), "QTI 1.2 preview");
+  assert.equal(h.api.parseCalls(), 3, "Canvas preview must reuse its original parsed result");
+  assert.deepEqual(h.canvasPreviews[0], { name: "Quiz", points: 1, count: 1 });
+
+  const validated = h.api.processContent("canvas");
+  assert.equal(h.api.parseCalls(), 4);
+  assert.equal(h.api.verifyContent(validated), true);
+  assert.equal(h.api.convertContent(validated), "QTI 1.2 preview");
+  assert.equal(h.api.parseCalls(), 4, "Already parsed data must never trigger an extra parse");
 });
 
 test("cross-LMS downloaded report always reflects the current bank, not a cached earlier result", async () => {
