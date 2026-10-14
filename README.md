@@ -23,7 +23,7 @@ La relación operativa con ZENQAVIO Technologies no implica, por sí sola, una c
 
 “CREVELIO” fue seleccionado el 14 de octubre de 2026 como nombre comercial propuesto. La verificación jurídica de marcas y la disponibilidad de dominios siguen pendientes; su adopción no implica registro, exclusividad ni ausencia de conflictos. Continúa pendiente una búsqueda jurídica formal en los registros aplicables; por tanto, esta documentación no afirma registro ni disponibilidad exclusiva. El proyecto es independiente y no está afiliado ni respaldado por terceros. Los identificadores técnicos `ultrapage-*` se conservan temporalmente para mantener compatibilidad con proyectos, respaldos, cachés y datos locales existentes.
 
-La decisión, el alcance de la búsqueda y la especificación visual se documentan en la [auditoría de marca](docs/BRAND_AUDIT_2026-10-09.md).
+La decisión, el alcance de la búsqueda y la especificación visual se documentan en la [auditoría de marca](docs/CREVELIO_BRAND_2026-10-14.md).
 
 ## Funciones
 
