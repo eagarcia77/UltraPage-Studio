@@ -101,6 +101,38 @@ body::before {
   display: none !important;
 }
 
+/* Contextual help is available from each standalone native tool. */
+header .native-help-link,
+.site-header .native-help-link {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  width: max-content;
+  max-width: 100%;
+  min-height: 42px;
+  margin-top: 12px;
+  padding: 8px 14px;
+  border: 1px solid rgba(255, 255, 255, .7);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, .13);
+  color: #fff !important;
+  text-decoration: none !important;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0;
+  overflow-wrap: anywhere;
+}
+header .native-help-link:hover,
+.site-header .native-help-link:hover { background: rgba(255,255,255,.25); }
+header .native-help-link:focus-visible,
+.site-header .native-help-link:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 3px;
+}
+@media (max-width: 760px) {
+  header .native-help-link, .site-header .native-help-link { min-height: 44px; }
+}
+
 /* The original pages reference repository-only images. The native copy uses the Curralume header instead. */
 img[src^="img/"],
 .header-logo[src^="img/"] {
