@@ -1,4 +1,4 @@
-const VERSION = "crevelio-v84";
+const VERSION = "crevelio-v85";
 const SHELL_CACHE = `${VERSION}-shell`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
 const APP_SHELL = [
@@ -8,6 +8,7 @@ const APP_SHELL = [
   "/manifest.webmanifest",
   "/favicon.svg",
   "/brand/crevelio-mark.svg",
+  "/brand/crevelio-lockup.svg",
   "/brand/crevelio-icon-192.png",
   "/brand/crevelio-icon-512.png",
   "/brand/apple-touch-icon.png",

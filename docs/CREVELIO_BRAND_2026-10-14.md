@@ -19,7 +19,7 @@ ZENQAVIO Technologies is identified as the operating company; this description d
 
 Use **CREVELIO** as the visible app name in titles, website metadata, help, install prompts, native tools, export reports and application text. Present **by ZENQAVIO Technologies** as a discreet corporate descriptor. Keep Eduardo Augusto García Rodríguez credited as creator and copyright holder.
 
-The existing C-orbit symbol is reused as a provisional icon during the rename; a new CREVELIO-specific visual design requires separate review before commercial launch.
+A new CREVELIO-specific C/V vector symbol replaces the former C-orbit emblem. The open C represents creation and continuity; the ascending gold V signals validation, forward progress and learning. The distinctive icon is the master SVG in `public/brand/crevelio-mark.svg`, complemented by `crevelio-lockup.svg` for corporate presentations. PNG PWA and Apple icons are generated automatically from the SVG by `scripts/generate-crevelio-assets.mjs`. This is a design implementation, not a claim of trademark clearance or registered rights.
 
 ## Technical migration and safeguards
 

@@ -56,7 +56,7 @@ test("mobile fix preserves APA paper and offline essentials", async () => {
   assert.match(base, /\.apa-paper\s+\.apa-reference/);
   assert.match(workspace, /#apaWorkspaceBar/);
   assert.match(html, /contenteditable="true"/);
-  assert.match(sw, /crevelio-v84/);
+  assert.match(sw, /crevelio-v85/);
   assert.ok(sw.includes("/native-tools/estiloapa/styles.css"));
   assert.ok(sw.includes("/native-tools/estiloapa/ultrapage-theme.css"));
 });
