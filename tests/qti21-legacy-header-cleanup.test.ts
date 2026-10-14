@@ -40,5 +40,5 @@ test("editor, validation and LMS export features stay mounted after QTI style cl
   ]) assert.ok(html.includes("function " + functionName + "("), "Missing generator: " + functionName);
   assert.match($("footer").text(), /© 2026 Eduardo Augusto García Rodríguez/);
   const sw = await read("public/sw.js");
-  assert.match(sw, /curralume-v77/);
+  assert.match(sw, /curralume-v78/);
 });
