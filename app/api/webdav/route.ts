@@ -3,15 +3,19 @@ import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
 import { isUnsafeWebDavAddress } from "./security";
 import { guardApiRequest } from "../security";
+import { canSafelyReplaceWebDav, conditionalWebDavHeaders, WebDavWriteConflict, type RemoteWebDavVersion } from "./overwrite-guard";
 
 type WebDavRequest = {
-  action?: "list" | "read" | "download" | "write" | "writeBinary";
+  action?: "list" | "read" | "download" | "write" | "writeBinary" | "inspect";
   url?: string;
   username?: string;
   password?: string;
   content?: string;
   dataBase64?: string;
   fileName?: string;
+  overwrite?: boolean;
+  expectedETag?: string | null;
+  expectedLastModified?: string | null;
 };
 
 const WEBDAV_TIMEOUT_MS = 20_000;
@@ -36,6 +40,27 @@ async function safeWebDavUrl(raw: string) {
     throw new Error("The WebDAV host must resolve only to public internet addresses.");
   }
   return url;
+}
+
+async function inspectWebDavTarget(target: URL, authorization: string): Promise<RemoteWebDavVersion> {
+  const response = await fetch(target, {
+    method: "HEAD",
+    headers: { Authorization: authorization },
+    redirect: "manual",
+    signal: AbortSignal.timeout(WEBDAV_TIMEOUT_MS),
+  });
+  if (response.status === 404) return { exists: false, etag: null, lastModified: null };
+  if (response.status === 401 || response.status === 403) {
+    throw new Error("Blackboard rejected the credentials or access to the selected file.");
+  }
+  if (!response.ok) {
+    throw new Error(`Blackboard could not verify the selected file (HTTP ${response.status}). No changes were made.`);
+  }
+  return {
+    exists: true,
+    etag: response.headers.get("etag"),
+    lastModified: response.headers.get("last-modified"),
+  };
 }
 
 function decodeXml(value: string) {
@@ -105,9 +130,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ opened: true, content, name: decodeURIComponent(url.pathname.split("/").pop() || "documento.html"), href: url.toString() });
     }
 
-    if (action === "write" || action === "writeBinary") {
+    if (action === "inspect" || action === "write" || action === "writeBinary") {
       const fileName = (body.fileName || "").trim();
-      const allowedName = action === "writeBinary" ? /^[^/\\]+\.(docx|pdf|pptx|xlsx|png|jpe?g|gif|webp|svg)$/i : /^[^/\\]+\.(html?|txt)$/i;
+      const allowedName = action === "writeBinary"
+        ? /^[^/\\]+\.(docx|pdf|pptx|xlsx|png|jpe?g|gif|webp|svg)$/i
+        : action === "write"
+          ? /^[^/\\]+\.(html?|txt)$/i
+          : /^[^/\\]+\.(html?|txt|docx|pdf|pptx|xlsx|png|jpe?g|gif|webp|svg)$/i;
       if (!allowedName.test(fileName) || fileName.includes("..")) {
         return NextResponse.json({ error: action === "writeBinary" ? "Use a supported Word, PDF, PowerPoint, Excel, or image file." : "Use a valid file name ending in .html, .htm, or .txt." }, { status: 400 });
       }
@@ -119,18 +148,40 @@ export async function POST(request: NextRequest) {
       }
       const folderUrl = url.pathname.endsWith("/") ? url : new URL(`${url.toString()}/`);
       const target = await safeWebDavUrl(new URL(encodeURIComponent(fileName), folderUrl).toString());
+      const snapshot = await inspectWebDavTarget(target, authorization);
+      if (action === "inspect") {
+        return NextResponse.json({
+          ...snapshot,
+          canReplaceSafely: canSafelyReplaceWebDav(snapshot),
+        }, { headers: { "Cache-Control": "no-store" } });
+      }
+      let writeConditions: Record<string, string>;
+      try {
+        writeConditions = conditionalWebDavHeaders(snapshot, body);
+      } catch (error) {
+        if (error instanceof WebDavWriteConflict) {
+          return NextResponse.json({ error: error.message, conflict: true }, { status: 409 });
+        }
+        throw error;
+      }
       const lowerName = fileName.toLowerCase();
       const contentType = lowerName.endsWith(".docx") ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document" : lowerName.endsWith(".pdf") ? "application/pdf" : lowerName.endsWith(".pptx") ? "application/vnd.openxmlformats-officedocument.presentationml.presentation" : lowerName.endsWith(".xlsx") ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" : lowerName.endsWith(".svg") ? "image/svg+xml" : lowerName.endsWith(".png") ? "image/png" : /\.jpe?g$/.test(lowerName) ? "image/jpeg" : lowerName.endsWith(".gif") ? "image/gif" : lowerName.endsWith(".webp") ? "image/webp" : lowerName.endsWith(".txt") ? "text/plain; charset=utf-8" : "text/html; charset=utf-8";
       const uploadBody = action === "writeBinary" ? Buffer.from(body.dataBase64 || "", "base64") : body.content;
       const response = await fetch(target, {
         method: "PUT",
-        headers: { Authorization: authorization, "Content-Type": contentType },
+        headers: { Authorization: authorization, "Content-Type": contentType, ...writeConditions },
         body: uploadBody,
         redirect: "manual",
         signal: AbortSignal.timeout(WEBDAV_TIMEOUT_MS),
       });
       if (response.status === 401 || response.status === 403) {
         return NextResponse.json({ error: "Blackboard rejected the credentials or does not allow saving in this folder." }, { status: 401 });
+      }
+      if ([409, 412, 423, 428].includes(response.status)) {
+        return NextResponse.json({
+          error: "Blackboard rejected the conditional write. The remote file may have changed or is locked. Refresh and try again.",
+          conflict: true,
+        }, { status: 409 });
       }
       if (!response.ok) return NextResponse.json({ error: `The file could not be saved. Blackboard returned ${response.status}.` }, { status: 502 });
       return NextResponse.json({ saved: true, name: fileName, href: target.toString() });
