@@ -29,6 +29,27 @@ const topics: Topic[] = [
       tip: "Automated checks help identify issues; they do not replace testing inside the actual LMS." },
   },
   {
+    id: "webdav", category: "studio", icon: LockKeyhole, href: "/",
+    es: { title: "Blackboard Content Collection — WebDAV", summary: "Conectar, abrir, descargar y guardar archivos en las carpetas de Blackboard.",
+      steps: [
+        "En el editor principal, abra Content Collection.",
+        "Introduzca la dirección HTTPS WebDAV provista por su institución. La ruta debe comenzar con /bbcswebdav/.",
+        "Escriba las credenciales institucionales y seleccione Connect to Blackboard. Puede guardar la dirección, pero no se guarda la contraseña.",
+        "Abra archivos HTML o TXT para editarlos directamente. Para Word, PDF, PowerPoint, Excel o imágenes, descargue primero el archivo y utilice Upload Edited File para subir la versión editada.",
+        "Seleccione HTML, Word (.docx) o Accessible PDF, compruebe el nombre del documento y pulse Save to WebDAV para guardarlo en la carpeta actual."
+      ],
+      tip: "Verifique la carpeta de destino y conserve una copia antes de reemplazar archivos existentes. Nunca comparta sus credenciales institucionales." },
+    en: { title: "Blackboard Content Collection — WebDAV", summary: "Connect to Blackboard folders to open, download and save files.",
+      steps: [
+        "In the main editor, open Content Collection.",
+        "Enter the institutional HTTPS WebDAV address. Its path must begin with /bbcswebdav/.",
+        "Enter your institutional credentials and select Connect to Blackboard. You may save the address, but the password is not saved.",
+        "Open HTML or TXT files for direct editing. For Word, PDF, PowerPoint, Excel or images, download the file and use Upload Edited File to upload your edited version.",
+        "Choose HTML, Word (.docx) or Accessible PDF, check the document name, and select Save to WebDAV to save it in the current folder."
+      ],
+      tip: "Verify the destination folder and keep a backup before replacing an existing file. Never share institutional credentials." },
+  },
+  {
     id: "apa", category: "apa", icon: FileText, href: "/native-tools/estiloapa/index.html",
     es: { title: "EstiloAPA — documentos APA 7", summary: "Importación, edición, revisión y exportación académica.",
       steps: ["Abra EstiloAPA y seleccione archivos DOCX, PDF, TXT, MD o HTML en Load and process.", "Compruebe el perfil de formato y revise el documento editable antes de exportarlo.", "Use los controles de encabezados, referencias, tablas y revisión APA 7 según corresponda.", "Exporte a DOCX, PDF o HTML y revise el archivo resultante en Word o en su LMS."],
@@ -84,6 +105,10 @@ const topics: Topic[] = [
   },
 ];
 
+function normalizeHelpQuery(value: string) {
+  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase().trim();
+}
+
 const categories: Array<{ id: "all" | Category; es: string; en: string }> = [
   { id: "all", es: "Todos", en: "All" },
   { id: "studio", es: "Editor", en: "Editor" },
@@ -100,13 +125,13 @@ export default function HelpPage() {
   const spanish = language === "es";
   const filtered = useMemo(() => topics.filter((topic) => {
     if (category !== "all" && topic.category !== category) return false;
-    const value = [topic.id, topic.es.title, topic.es.summary, topic.en.title, topic.en.summary,
-      ...topic.es.steps, ...topic.en.steps].join(" ").toLocaleLowerCase();
-    return value.includes(query.trim().toLocaleLowerCase());
+    const value = [topic.id, topic.es.title, topic.es.summary, topic.es.tip,
+      topic.en.title, topic.en.summary, topic.en.tip, ...topic.es.steps, ...topic.en.steps].join(" ");
+    return normalizeHelpQuery(value).includes(normalizeHelpQuery(query));
   }), [category, query]);
 
   return (
-    <main className="curralume-help">
+    <main className="curralume-help" lang={spanish ? "es-PR" : "en-US"}>
       <a className="help-skip" href="#help-topics">{spanish ? "Ir a las instrucciones" : "Skip to instructions"}</a>
       <header className="help-topbar">
         <a href="/" className="help-back"><ArrowLeft size={18} aria-hidden="true" /> Curralume Studio</a>
@@ -121,7 +146,7 @@ export default function HelpPage() {
             <p>{spanish ? "Aprenda a editar, evaluar y exportar documentos y exámenes. Instrucciones prácticas para las herramientas de Curralume Studio." :
               "Learn to edit, review, and export documents and assessments with practical guides for Curralume Studio tools."}</p>
           </div>
-          <div className="help-languages" role="group" aria-label="Help language">
+          <div className="help-languages" role="group" aria-label={spanish ? "Idioma de la ayuda" : "Help language"}>
             <button type="button" lang="es-PR" aria-pressed={spanish} className={spanish ? "selected" : ""} onClick={() => setLanguage("es")}>Español</button>
             <button type="button" lang="en-US" aria-pressed={!spanish} className={!spanish ? "selected" : ""} onClick={() => setLanguage("en")}>English</button>
           </div>
@@ -156,7 +181,7 @@ export default function HelpPage() {
                 </div>
                 <ol>{text.steps.map((step, index) => <li key={index}>{step}</li>)}</ol>
                 <p className="help-tip"><CheckCircle2 size={17} aria-hidden="true"/><span>{text.tip}</span></p>
-                <a className="help-open" href={topic.href}>{spanish ? "Abrir herramienta" : "Open tool"} <ArrowUpRight size={17} aria-hidden="true"/></a>
+                <a className="help-open" href={topic.href}>{topic.href === "/tools" ? (spanish ? "Ver herramientas" : "Open tools") : topic.href === "/" ? (spanish ? "Abrir editor" : "Open editor") : (spanish ? "Abrir herramienta" : "Open tool")} <ArrowUpRight size={17} aria-hidden="true"/></a>
               </article>;
             })}
           </div>
