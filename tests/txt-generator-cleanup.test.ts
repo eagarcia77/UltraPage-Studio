@@ -112,6 +112,9 @@ test("TXT Generator uses local, responsive mobile styles and retains essential i
   assert.equal($("[data-native-ribbon]").length, 1);
   assert.equal($('meta[http-equiv="Content-Security-Policy"]').attr("content")?.includes("style-src 'self' 'unsafe-inline';"), true);
   assert.match(css, /#quizContent\s*\{\s*min-height:\s*18rem\s*!important/);
+  assert.doesNotMatch(css, /\.text-center\s*\{/);
+  assert.doesNotMatch(html, /textarea\.form-control\s*\{\s*min-height:\s*370px/);
+  assert.match(css, /#quizContent[\s\S]*?resize:\s*vertical/);
   assert.match(css, /#quizContent\s*\{\s*min-height:\s*12rem\s*!important/);
   assert.match(css, /#quizContent[\s\S]*?width:\s*100%\s*!important/);
   assert.match(css, /@media\s*\(max-width:\s*760px\)/);
@@ -121,7 +124,7 @@ test("TXT Generator uses local, responsive mobile styles and retains essential i
   assert.match(css, /\.row\s*>\s*\.col-12/);
   assert.match(css, /@media\s*\(min-width:\s*992px\)/);
   const sw = await readFile(new URL("../public/sw.js", import.meta.url), "utf8");
-  assert.match(sw, /curralume-v68/);
+  assert.match(sw, /curralume-v69/);
   assert.ok(sw.includes("/native-tools/txt-test-generator/txt-layout.css"));
 });
 
