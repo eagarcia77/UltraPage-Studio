@@ -1,4 +1,4 @@
-import type { RemoteWebDavVersion } from "./overwrite-guard";
+import { isStrongWebDavETag, type RemoteWebDavVersion } from "./overwrite-guard";
 
 const MAX_METADATA_BYTES = 64 * 1024;
 const TIMEOUT_MS = 20_000;
@@ -97,7 +97,7 @@ export async function inspectWebDavTarget(
   }
   if (head.ok) {
     const current = metadataFromHeaders(head);
-    if (current.etag && !current.etag.startsWith("W/") || current.lastModified) return current;
+    if (isStrongWebDavETag(current.etag) || current.lastModified) return current;
     return depthZeroPropfind(target, authorization, fetchImpl);
   }
   if (head.status === 405 || head.status === 501) return depthZeroPropfind(target, authorization, fetchImpl);
