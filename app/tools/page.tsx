@@ -39,7 +39,6 @@ type NativeManifest = {
     groups?: string[];
     publishedToRemote?: boolean;
   };
-  lastSync?: { checkedFiles?: number; updatedFiles?: string[] };
   tools?: ManifestTool[];
 };
 type ToolProbe = { id: ToolId; label: string; status: ProbeStatus; message: string };
@@ -248,7 +247,7 @@ export default function NativeToolsPage() {
     </div>
 
     <details className="native-tools-diagnostics">
-      <summary aria-label="Native tools diagnostics">
+      <summary>
         <span>{passed}/{tools.length} tool routes verified</span>
         {failed > 0 && <span className="native-diagnostics-warning"><AlertTriangle size={14}/> {failed} route(s) need review</span>}
         <span className="native-diagnostics-disclosure">Details</span>
