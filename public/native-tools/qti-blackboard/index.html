@@ -6,13 +6,6 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'; upgrade-insecure-requests;">
   <meta name="referrer" content="no-referrer">
   <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=(), payment=(), usb=()">
-
-  <!-- Creado por El Dr. Eduardo Augusto García Rodríguez -->
-  <!-- Desarrollador Curricular - Coordinador de Proyecto -->
-  <!-- Developing Postbacc and Postgrad Curriculum Program -->
-  <!-- University Center for Advancing and Nurturing Postbacc Quality (UCAN) -->
-  <!-- Title V PPOHA #P031M230038 -->
-
   <title>QTI 2.1 Package Builder | Curralume Studio</title>
   <style>
     :root {
@@ -274,7 +267,6 @@
 </head>
 <body data-native-draft-tool="qti-blackboard">
   <header>
-    <img src="img/LOGO-INTER-SG-HORIZONTAL_sticker.png" alt="Logo Inter San Germán" class="header-logo" loading="eager">
     <h1>QTI 2.1 Blackboard</h1>
     <p>Build stable QTI 2.1 ZIP packages for Blackboard Ultra, then reuse the same validated bank for Moodle or Canvas. Convert readable questions without assembling exchange files manually.</p>
   </header>
@@ -325,7 +317,7 @@ ESSAY 5. Explique dos implicaciones éticas del uso de la IA en la educación.</
       <div class="field-grid">
         <div class="field-row">
           <label for="packageName">Package name</label>
-          <input id="packageName" type="text" value="UCAN_QTI21_Blackboard" maxlength="50" autocomplete="off">
+          <input id="packageName" type="text" value="Assessment_QTI21_Blackboard" maxlength="50" autocomplete="off">
         </div>
         <div class="field-row">
           <label for="targetLms">Target LMS</label>
@@ -406,7 +398,7 @@ ESSAY 5. Explique dos implicaciones éticas del uso de la IA en la educación.</
     </section>
   </main>
 
-  <footer>UCAN QTI 2.1 | Local generator: content is not sent over the internet.</footer>
+  <footer>© 2026 Eduardo A. García Rodríguez. All rights reserved. Question banks are processed locally.</footer>
 
   <script>
     const SUPPORTED_TYPES = ['MC', 'MA', 'TF', 'FIB', 'ESSAY'];
@@ -445,13 +437,13 @@ ESSAY 5. Explique dos implicaciones éticas del uso de la IA en la educación.</
     }
 
     function sanitizeFileName(name, extension) {
-      const cleaned = String(name || 'UCAN_QTI21_Blackboard')
+      const cleaned = String(name || 'Assessment_QTI21_Blackboard')
         .normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '')
         .replace(/[^a-zA-Z0-9_-]/g, '_')
         .replace(/_+/g, '_')
         .replace(/^_+|_+$/g, '')
-        .substring(0, 50) || 'UCAN_QTI21_Blackboard';
+        .substring(0, 50) || 'Assessment_QTI21_Blackboard';
       return `${cleaned}.${extension}`;
     }
 
@@ -625,7 +617,7 @@ ${correctValues}
       <file href="items/item${item.number}.xml" />
     </resource>`).join('\n');
       return `<?xml version="1.0" encoding="UTF-8"?>
-<manifest xmlns="http://www.imsglobal.org/xsd/imscp_v1p1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" identifier="UCAN_QTI21_BLACKBOARD" xsi:schemaLocation="http://www.imsglobal.org/xsd/imscp_v1p1 http://www.imsglobal.org/xsd/imscp_v1p1.xsd">
+<manifest xmlns="http://www.imsglobal.org/xsd/imscp_v1p1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" identifier="ASSESSMENT_QTI21_BLACKBOARD" xsi:schemaLocation="http://www.imsglobal.org/xsd/imscp_v1p1 http://www.imsglobal.org/xsd/imscp_v1p1.xsd">
   <metadata>
     <schema>QTI Package</schema>
     <schemaversion>2.1</schemaversion>
@@ -1006,7 +998,7 @@ ${resources}
       try {
         document.getElementById('inputText').value = await file.text();
         const packageName = document.getElementById('packageName');
-        if (!packageName.value.trim() || packageName.value === 'UCAN_QTI21_Blackboard') packageName.value = file.name.replace(/\.[^.]+$/, '');
+        if (!packageName.value.trim() || packageName.value === 'Assessment_QTI21_Blackboard') packageName.value = file.name.replace(/\.[^.]+$/, '');
         runValidationReport(true);
         document.getElementById('inputText').focus();
       } catch (error) {
