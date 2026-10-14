@@ -278,9 +278,7 @@
       <p class="note"><strong>Recommended format:</strong> begin each question with its type. Use <code>*</code> to mark the correct answer or accepted responses. Leave one blank line between questions. This version supports the Blackboard-documented QTI types <code>MC</code>, <code>MA</code>, <code>TF</code>, <code>FIB</code>, and <code>ESSAY</code>.</p>
       <details class="qti-example-details">
         <summary>View question format examples (MC, MA, TF, FIB, Essay)</summary>
-        <pre><b><u>Copy these examples into Microsoft Word and adapt them to your assessment.</u></b>
-        
-MC 1. ¿Cuál es la mejor definición de inteligencia artificial en educación?
+        <pre id="qtiExampleBank">MC 1. ¿Cuál es la mejor definición de inteligencia artificial en educación?
 A. Uso de computadoras sin interacción humana
 *B. Capacidad de sistemas para realizar tareas que requieren inteligencia humana
 C. Uso exclusivo de robots en el aula
@@ -1092,27 +1090,8 @@ ${resources}
     }
 
     function loadExample() {
-      document.getElementById('inputText').value = `MC 1. ¿Cuál es la mejor definición de inteligencia artificial en educación?
-A. Uso de computadoras sin interacción humana
-*B. Capacidad de sistemas para realizar tareas que requieren inteligencia humana
-C. Uso exclusivo de robots en el aula
-D. Sustitución total del docente
-
-MA 2. Seleccione dos usos responsables de la IA educativa.
-*A. Personalizar apoyos de aprendizaje
-*B. Revisar sesgos y resultados
-C. Publicar datos privados del estudiante
-D. Sustituir toda decisión docente
-
-TF 3. La inteligencia artificial permite personalizar el aprendizaje según las necesidades del estudiante.
-*A. Verdadero
-B. Falso
-
-FIB 4. La inteligencia artificial permite ______ el aprendizaje.
-*personalizar
-*adaptar
-
-ESSAY 5. Explique dos implicaciones éticas del uso de IA en educación.`;
+      // The on-screen examples are the single source of truth for the sample.
+      document.getElementById('inputText').value = document.getElementById('qtiExampleBank').textContent.trim();
       generatePackage();
     }
 
