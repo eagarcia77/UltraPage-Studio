@@ -1,3 +1,4 @@
+/* Curralume Studio · © 2026 Eduardo Augusto García Rodríguez · Original contributions and integrations; third-party licenses preserved. */
 import * as mammoth from "mammoth";
 import { NextRequest } from "next/server";
 import { guardApiRequest } from "../security";

@@ -1,3 +1,4 @@
+/* Curralume Studio · © 2026 Eduardo Augusto García Rodríguez · Original contributions and integrations; third-party licenses preserved. */
 import { NextRequest, NextResponse } from "next/server";
 import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";

@@ -1,3 +1,4 @@
+/* Curralume Studio · © 2026 Eduardo Augusto García Rodríguez · Original contributions and integrations; third-party licenses preserved. */
 import { isStrongWebDavETag, type RemoteWebDavVersion } from "./overwrite-guard.ts";
 
 const MAX_METADATA_BYTES = 64 * 1024;
