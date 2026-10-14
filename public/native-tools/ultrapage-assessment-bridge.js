@@ -1,3 +1,4 @@
+/* Curralume Studio · © 2026 Eduardo Augusto García Rodríguez · Original contributions and integrations; third-party licenses preserved. */
 /* Curralume Studio local workflow bridge for TXT and QTI assessment tools.
  * Transfers editable source text only; target validation remains authoritative.
  */

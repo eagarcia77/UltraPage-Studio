@@ -1,3 +1,4 @@
+/* Curralume Studio · © 2026 Eduardo Augusto García Rodríguez · Original contributions and integrations; third-party licenses preserved. */
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import vm from "node:vm";

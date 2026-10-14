@@ -1,3 +1,4 @@
+/* Curralume Studio · © 2026 Eduardo Augusto García Rodríguez · Original contributions and integrations; third-party licenses preserved. */
 // Curralume Studio integration layer. The upstream CTEL-SG repository remains unchanged.
 (function createCanvasQti(global) {
   "use strict";
