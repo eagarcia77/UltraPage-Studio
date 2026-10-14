@@ -1,0 +1,151 @@
+/* Responsive containment for the QTI 2.1 tool only.
+   The shared native theme remains unchanged for all other editors. */
+body[data-native-draft-tool="qti-blackboard"] {
+  max-width: 100%;
+  overflow-x: clip;
+}
+body[data-native-draft-tool="qti-blackboard"] main {
+  min-width: 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+body[data-native-draft-tool="qti-blackboard"] main > .card,
+body[data-native-draft-tool="qti-blackboard"] .field-grid,
+body[data-native-draft-tool="qti-blackboard"] .field-row,
+body[data-native-draft-tool="qti-blackboard"] .chips,
+body[data-native-draft-tool="qti-blackboard"] .qti-example-details {
+  min-width: 0;
+  max-width: 100%;
+}
+body[data-native-draft-tool="qti-blackboard"] .field-grid {
+  grid-template-columns: minmax(0, 2fr) repeat(2, minmax(0, 1fr));
+}
+body[data-native-draft-tool="qti-blackboard"] .chips {
+  display: flex;
+  flex-wrap: wrap;
+}
+body[data-native-draft-tool="qti-blackboard"] .chip {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+body[data-native-draft-tool="qti-blackboard"] .note,
+body[data-native-draft-tool="qti-blackboard"] .security-note {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+body[data-native-draft-tool="qti-blackboard"] .qti-example-details {
+  margin-block: 1rem;
+}
+body[data-native-draft-tool="qti-blackboard"] .qti-example-details > summary {
+  cursor: pointer;
+  padding: .75rem .9rem;
+  border: 1px solid #cab4eb;
+  border-radius: 12px;
+  color: #48208b;
+  background: #f4efff;
+  font-weight: 750;
+  line-height: 1.5;
+}
+body[data-native-draft-tool="qti-blackboard"] .qti-example-details > summary:focus-visible {
+  outline: 3px solid #8c68d1;
+  outline-offset: 2px;
+}
+body[data-native-draft-tool="qti-blackboard"] .qti-example-details pre {
+  box-sizing: border-box;
+  display: block;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  margin: .75rem 0 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+body[data-native-draft-tool="qti-blackboard"] textarea,
+body[data-native-draft-tool="qti-blackboard"] input,
+body[data-native-draft-tool="qti-blackboard"] select {
+  min-width: 0;
+  max-width: 100%;
+}
+body[data-native-draft-tool="qti-blackboard"] .compatibility-table {
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+body[data-native-draft-tool="qti-blackboard"] .native-action-ribbon {
+  min-width: 0;
+  max-width: 100%;
+}
+
+@media (max-width: 950px) {
+  body[data-native-draft-tool="qti-blackboard"] main {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  body[data-native-draft-tool="qti-blackboard"] .field-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 760px) {
+  body[data-native-draft-tool="qti-blackboard"] main {
+    width: 100% !important;
+    padding-inline: 12px !important;
+    gap: 12px;
+  }
+  body[data-native-draft-tool="qti-blackboard"] main > .card {
+    padding: 14px;
+    overflow: hidden;
+  }
+  body[data-native-draft-tool="qti-blackboard"] .chip {
+    font-size: .85rem;
+    padding: 6px 10px;
+  }
+  body[data-native-draft-tool="qti-blackboard"] #inputText,
+  body[data-native-draft-tool="qti-blackboard"] #outputPreview {
+    width: 100%;
+    min-height: 12rem !important;
+    height: 29svh;
+    max-height: 24rem;
+    font-size: 16px;
+    overflow: auto;
+    resize: vertical;
+  }
+  body[data-native-draft-tool="qti-blackboard"] .native-action-ribbon {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr);
+    gap: .55rem !important;
+    padding: .5rem !important;
+    overflow-x: hidden;
+  }
+  body[data-native-draft-tool="qti-blackboard"] .native-ribbon-group {
+    width: 100%;
+    min-width: 0;
+    padding: .35rem;
+    border-right: 0;
+    border-bottom: 1px solid #d9d2e4;
+  }
+  body[data-native-draft-tool="qti-blackboard"] .native-ribbon-group:last-child {
+    border-bottom: 0;
+  }
+  body[data-native-draft-tool="qti-blackboard"] .native-ribbon-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .4rem;
+  }
+  body[data-native-draft-tool="qti-blackboard"] .native-ribbon-actions > button {
+    min-width: 0;
+    width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    font-size: .875rem;
+    padding: .5rem .4rem;
+  }
+  body[data-native-draft-tool="qti-blackboard"] .native-command-search-group .native-ribbon-actions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  body[data-native-draft-tool="qti-blackboard"] .native-ribbon-label {
+    margin-top: .25rem;
+  }
+}

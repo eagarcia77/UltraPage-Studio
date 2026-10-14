@@ -1,4 +1,4 @@
-const VERSION = "curralume-v70";
+const VERSION = "curralume-v71";
 const SHELL_CACHE = `${VERSION}-shell`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
 const APP_SHELL = [
@@ -51,7 +51,8 @@ const APP_SHELL = [
   "/native-tools/txt-test-generator/index.html",
   "/native-tools/txt-test-generator/txt-layout.css",
   "/native-tools/txt-test-generator/canvas-qti.js",
-  "/native-tools/qti-blackboard/index.html"
+  "/native-tools/qti-blackboard/index.html",
+  "/native-tools/qti-blackboard/qti-layout.css"
 ];
 
 self.addEventListener("install", (event) => {
