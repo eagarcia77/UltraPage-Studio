@@ -1,3 +1,4 @@
+/* Curralume Studio · © 2026 Eduardo Augusto García Rodríguez · Original contributions and integrations; third-party licenses preserved. */
 const PDF_ORIGINAL_MEDIA_VERSION = "3.4";
 const PDF_MEDIA_PDFJS_URL = "/vendor/pdf.mjs";
 const PDF_MEDIA_WORKER_URL = "/vendor/pdf.worker.mjs";

@@ -1,3 +1,4 @@
+/* Curralume Studio · © 2026 Eduardo Augusto García Rodríguez · Original contributions and integrations; third-party licenses preserved. */
 function ensureThesisAlignmentStyles() {
   if (document.querySelector("#thesis-alignment-v28")) return;
   const style = document.createElement("style");

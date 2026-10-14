@@ -1,3 +1,4 @@
+/* Curralume Studio · © 2026 Eduardo Augusto García Rodríguez · Original contributions and integrations; third-party licenses preserved. */
 const THESIS_DOCX_VERSION = "3.1";
 
 function thesisExportProfile() {
