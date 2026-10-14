@@ -251,7 +251,10 @@ test("dangerous normalizers are deferred during editing, not executed on delete"
   assert.match(sw, /curralume-v64/);
   assert.match(guard, /range\.deleteContents\(\)/);
   assert.match(guard, /range\.collapse\(true\)/);
-  assert.doesNotMatch(guard, /range\.collapse\(false\)/);
+  assert.match(guard, /range\.selectNodeContents\(preceding\);\s*range\.collapse\(false\)/);
+  const disasterRecovery = guard.slice(guard.indexOf("function aesCheckForDocumentWipe()"),
+    guard.indexOf("\nfunction aesBeforeDeletion("));
+  assert.doesNotMatch(disasterRecovery, /range\.collapse\(false\)/);
   assert.doesNotMatch(guard, /event\.preventDefault\(\)/);
   assert.match(sw, /url\.pathname\.startsWith\("\/native-tools\/estiloapa\/"\)/);
   const html = await source("public/native-tools/estiloapa/index.html");
