@@ -1,4 +1,4 @@
-const VERSION = "curralume-v80";
+const VERSION = "crevelio-v84";
 const SHELL_CACHE = `${VERSION}-shell`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
 const APP_SHELL = [
@@ -7,9 +7,9 @@ const APP_SHELL = [
   "/help",
   "/manifest.webmanifest",
   "/favicon.svg",
-  "/brand/curralume-mark.svg",
-  "/brand/curralume-icon-192.png",
-  "/brand/curralume-icon-512.png",
+  "/brand/crevelio-mark.svg",
+  "/brand/crevelio-icon-192.png",
+  "/brand/crevelio-icon-512.png",
   "/brand/apple-touch-icon.png",
   "/native-tools/ultrapage-native-theme.css",
   "/native-tools/ultrapage-native-ribbon.css",

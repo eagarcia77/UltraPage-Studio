@@ -78,13 +78,13 @@ try {
 
 
   const helpResponse = await fetch(origin + "/help", { signal: AbortSignal.timeout(8000) });
-  assert.equal(helpResponse.status, 200, "Curralume Help Center is not reachable");
+  assert.equal(helpResponse.status, 200, "CREVELIO Help Center is not reachable");
   assert.match(helpResponse.headers.get("content-type") || "", /text\/html/);
   const helpHtml = await helpResponse.text();
   assert.ok(helpHtml.includes('help-search-input'), "Help search control is missing from the rendered page");
   assert.ok(helpHtml.includes('Centro de ayuda'), "Spanish Help content was not server-rendered");
   assert.ok(helpHtml.includes('© 2026 Eduardo Augusto García Rodríguez'), "Owner attribution is missing from Help");
-  console.log("✓ Curralume bilingual Help Center: HTTP 200");
+  console.log("✓ CREVELIO bilingual Help Center: HTTP 200");
   console.log("✓ Short native URLs resolve to standalone editors in production build");
 } finally {
   if (child.exitCode === null) {
