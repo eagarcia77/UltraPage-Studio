@@ -230,7 +230,7 @@ export default function NativeToolsPage() {
   return <main className="native-tools-page">
     <header className="native-tools-header">
       <a href="/" className="native-tools-back"><ArrowLeft size={17}/> Back to Studio</a>
-      <div className="native-tools-brand"><span className="brandmark" aria-hidden="true"><img src="/brand/curralume-mark.svg" alt="" /></span><span><strong>Curralume Studio</strong><small>Native Tools</small></span></div>
+      <div className="native-tools-brand"><span className="brandmark" aria-hidden="true"><img src="/brand/curralume-mark.svg" alt="" /></span><span><strong>Curralume Studio</strong><small>ZENQAVIO Technologies · Native Tools</small></span></div>
       <a href={`/help#${selected}`} className="native-tools-help"><HelpCircle size={16} aria-hidden="true"/> Help</a>
     </header>
 
