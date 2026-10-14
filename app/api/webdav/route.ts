@@ -3,7 +3,8 @@ import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
 import { isUnsafeWebDavAddress } from "./security";
 import { guardApiRequest } from "../security";
-import { canSafelyReplaceWebDav, conditionalWebDavHeaders, WebDavWriteConflict, type RemoteWebDavVersion } from "./overwrite-guard";
+import { canSafelyReplaceWebDav, conditionalWebDavHeaders, WebDavWriteConflict } from "./overwrite-guard";
+import { inspectWebDavTarget } from "./inspection";
 
 type WebDavRequest = {
   action?: "list" | "read" | "download" | "write" | "writeBinary" | "inspect";
@@ -40,27 +41,6 @@ async function safeWebDavUrl(raw: string) {
     throw new Error("The WebDAV host must resolve only to public internet addresses.");
   }
   return url;
-}
-
-async function inspectWebDavTarget(target: URL, authorization: string): Promise<RemoteWebDavVersion> {
-  const response = await fetch(target, {
-    method: "HEAD",
-    headers: { Authorization: authorization },
-    redirect: "manual",
-    signal: AbortSignal.timeout(WEBDAV_TIMEOUT_MS),
-  });
-  if (response.status === 404) return { exists: false, etag: null, lastModified: null };
-  if (response.status === 401 || response.status === 403) {
-    throw new Error("Blackboard rejected the credentials or access to the selected file.");
-  }
-  if (!response.ok) {
-    throw new Error(`Blackboard could not verify the selected file (HTTP ${response.status}). No changes were made.`);
-  }
-  return {
-    exists: true,
-    etag: response.headers.get("etag"),
-    lastModified: response.headers.get("last-modified"),
-  };
 }
 
 function decodeXml(value: string) {
