@@ -1,17 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
   <title id="title">CREVELIO</title>
-  <desc id="desc">An open white orbit shaped like the letter C surrounds a golden four-point light.</desc>
+  <desc id="desc">A custom open C encloses an ascending gold V, representing creation, clarity and progress.</desc>
   <defs>
-    <linearGradient id="background" x1="72" y1="52" x2="440" y2="468" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#123B5D"/>
+    <linearGradient id="crevelio-navy-teal" x1="58" y1="54" x2="462" y2="478" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#102E4D"/>
+      <stop offset=".55" stop-color="#123B5D"/>
       <stop offset="1" stop-color="#087A70"/>
     </linearGradient>
-    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="12" stdDeviation="14" flood-color="#052B35" flood-opacity=".28"/>
-    </filter>
+    <linearGradient id="crevelio-gold" x1="208" y1="300" x2="355" y2="180" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F5CA7A"/>
+      <stop offset="1" stop-color="#FFE3A5"/>
+    </linearGradient>
   </defs>
-  <rect width="512" height="512" rx="116" fill="url(#background)"/>
-  <path d="M356 142a158 158 0 1 0 0 228" fill="none" stroke="#F8FAFC" stroke-width="58" stroke-linecap="round" filter="url(#shadow)"/>
-  <path d="M384 202c7 29 21 43 50 50-29 7-43 21-50 50-7-29-21-43-50-50 29-7 43-21 50-50Z" fill="#FFD166"/>
-  <circle cx="384" cy="252" r="8" fill="#FFF4C7"/>
+  <rect width="512" height="512" rx="112" fill="url(#crevelio-navy-teal)"/>
+  <path d="M351 139C323 121 290 112 254 112c-80 0-145 64-145 144s65 144 145 144c36 0 70-10 98-28" fill="none" stroke="#F5FAFC" stroke-width="48" stroke-linecap="round"/>
+  <path d="m202 229 61 71 95-107" fill="none" stroke="url(#crevelio-gold)" stroke-width="32" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

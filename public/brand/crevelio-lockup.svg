@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1170 250" role="img" aria-labelledby="title desc">
+  <title id="title">CREVELIO by ZENQAVIO Technologies</title>
+  <desc id="desc">CREVELIO's custom C and V symbol with its name and technology-company attribution.</desc>
+  <defs>
+    <linearGradient id="navy-teal" x1="0" y1="0" x2="210" y2="210"><stop stop-color="#123B5D"/><stop offset="1" stop-color="#087A70"/></linearGradient>
+    <linearGradient id="gold" x1="75" y1="120" x2="155" y2="55"><stop stop-color="#F3BD62"/><stop offset="1" stop-color="#FFE3A5"/></linearGradient>
+  </defs>
+  <rect x="18" y="18" width="208" height="208" rx="46" fill="url(#navy-teal)"/>
+  <path d="M163 76c-15-9-26-13-39-13-35 0-63 28-63 59s28 59 63 59c14 0 27-4 39-13" fill="none" stroke="#F5FAFC" stroke-width="21" stroke-linecap="round"/>
+  <path d="m104 111 25 31 42-47" fill="none" stroke="url(#gold)" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="258" y="139" font-family="Inter,Montserrat,Arial,Helvetica,sans-serif" font-size="102" font-weight="800" letter-spacing="7" fill="#123B5D">CREVELIO</text>
+  <text x="264" y="190" font-family="Inter,Montserrat,Arial,Helvetica,sans-serif" font-size="26" font-weight="700" letter-spacing="5" fill="#087A70">BY ZENQAVIO TECHNOLOGIES</text>
+</svg>
