@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
-  <title id="title">Curralume Studio</title>
+  <title id="title">CREVELIO</title>
   <desc id="desc">Open white C orbit with a golden light.</desc>
   <defs><linearGradient id="g" x1="8" y1="6" x2="56" y2="58"><stop stop-color="#123B5D"/><stop offset="1" stop-color="#087A70"/></linearGradient></defs>
   <rect width="64" height="64" rx="14" fill="url(#g)"/>

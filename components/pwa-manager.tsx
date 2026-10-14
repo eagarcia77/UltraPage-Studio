@@ -59,7 +59,7 @@ export default function PwaManager() {
       return;
     }
     if (iosInstall) {
-      window.alert("To install Curralume Studio on this device, tap Share and then Add to Home Screen.");
+      window.alert("To install CREVELIO on this device, tap Share and then Add to Home Screen.");
     }
   };
 
@@ -75,7 +75,7 @@ export default function PwaManager() {
       )}
       {(prompt || iosInstall) && (
         <button type="button" className={styles.install} onClick={install}>
-          Install Curralume
+          Install CREVELIO
         </button>
       )}
     </div>

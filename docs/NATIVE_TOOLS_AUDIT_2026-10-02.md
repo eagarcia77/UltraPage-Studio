@@ -2,7 +2,7 @@
 
 ## Scope
 
-This audit covers the Curralume Studio native copies of:
+This audit covers the CREVELIO native copies of:
 
 - EstiloAPA
 - TXT Test Generator

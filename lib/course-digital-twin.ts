@@ -1,4 +1,4 @@
-/** Curralume Studio — © 2026 Eduardo Augusto García Rodríguez. All rights reserved. */
+/** CREVELIO — © 2026 Eduardo Augusto García Rodríguez. All rights reserved. */
 export type TwinStatus = "stable" | "review" | "critical";
 export type TwinLmsProfile = "universal" | "blackboard" | "canvas" | "moodle" | "brightspace";
 export type TwinDevice = "desktop" | "tablet" | "mobile";
