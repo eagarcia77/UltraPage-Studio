@@ -1,3 +1,4 @@
+/* Curralume Studio — © 2026 Eduardo Augusto García Rodríguez. All rights reserved. */
 /* Curralume Studio native Ribbon keyboard behavior.
  * This integration file is not part of the original tool repositories.
  */
