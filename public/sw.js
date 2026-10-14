@@ -1,4 +1,4 @@
-const VERSION = "curralume-v62";
+const VERSION = "curralume-v63";
 const SHELL_CACHE = `${VERSION}-shell`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
 const APP_SHELL = [
@@ -22,7 +22,7 @@ const APP_SHELL = [
   "/native-tools/estiloapa/scrollbar-v31.css",
   "/native-tools/estiloapa/ultrapage-theme.css",
   "/native-tools/estiloapa/app.js",
-  "/native-tools/estiloapa/edit-stability-v348.js?v=62",
+  "/native-tools/estiloapa/edit-stability-v348.js?v=63",
   "/native-tools/estiloapa/enhancements.js",
   "/native-tools/estiloapa/pdf-smart.js",
   "/native-tools/estiloapa/apa-table-v29.js",
