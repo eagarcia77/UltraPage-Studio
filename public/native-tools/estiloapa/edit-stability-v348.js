@@ -1,3 +1,4 @@
+/* Curralume Studio · © 2026 Eduardo Augusto García Rodríguez · Original contributions and integrations; third-party licenses preserved. */
 // Protect the editable document from background normalizers while the user types.
 
 const APA_EDIT_STABILITY_VERSION = "3.4.8";

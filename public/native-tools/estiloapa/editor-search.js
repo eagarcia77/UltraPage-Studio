@@ -1,3 +1,4 @@
+/* Curralume Studio · © 2026 Eduardo Augusto García Rodríguez · Original contributions and integrations; third-party licenses preserved. */
 const MAX_RESULTS = 400;
 
 export function findOccurrences(documentText, searchText, limit = MAX_RESULTS) {

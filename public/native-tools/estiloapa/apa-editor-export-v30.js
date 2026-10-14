@@ -1,3 +1,4 @@
+/* Curralume Studio · © 2026 Eduardo Augusto García Rodríguez · Original contributions and integrations; third-party licenses preserved. */
 function exportProfile() {
   return document.querySelector("#formatProfile")?.value || "";
 }

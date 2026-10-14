@@ -1,3 +1,4 @@
+/* Curralume Studio · © 2026 Eduardo Augusto García Rodríguez · Original contributions and integrations; third-party licenses preserved. */
 import { setupDocumentFind } from "./editor-search.js";
 
 const ALLOWED_ZOOMS = new Set(["75", "90", "100", "110", "125"]);

@@ -1,3 +1,4 @@
+/* Curralume Studio · © 2026 Eduardo Augusto García Rodríguez · Original contributions and integrations; third-party licenses preserved. */
 export function validatedEditorLink(input) {
   const value = String(input || "").trim();
   if (!value || /[\u0000-\u001f\u007f]/u.test(value)) return "";

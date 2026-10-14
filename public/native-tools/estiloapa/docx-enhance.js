@@ -1,3 +1,4 @@
+/* Curralume Studio · © 2026 Eduardo Augusto García Rodríguez · Original contributions and integrations; third-party licenses preserved. */
 const DOCX_ENHANCE_VERSION = "3.5";
 
 async function waitDocx(timeoutMs = 12000) {

@@ -1,3 +1,4 @@
+/* Curralume Studio · © 2026 Eduardo Augusto García Rodríguez · Original contributions and integrations; third-party licenses preserved. */
 const RIBBON_TABS = [
   { id: "home", label: "Home", description: "Text and styles" },
   { id: "layout", label: "APA Layout", description: "Spacing and indents" },
