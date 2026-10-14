@@ -1,5 +1,8 @@
 "use client";
 
+/** Curralume Studio — © 2026 Eduardo Augusto García Rodríguez. All rights reserved. */
+
+
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AlertTriangle, Check, GitBranch, GitCompareArrows, Loader2, Merge, Orbit, Plus } from "lucide-react";
 import { toast } from "sonner";

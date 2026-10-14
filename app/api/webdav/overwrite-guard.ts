@@ -1,3 +1,4 @@
+/** Curralume Studio — © 2026 Eduardo Augusto García Rodríguez. All rights reserved. */
 /**
  * WebDAV conditional writes: never replace a remote resource without
  * explicit consent and a current strong ETag or Last-Modified validator.

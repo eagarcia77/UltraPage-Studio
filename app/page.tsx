@@ -1,5 +1,8 @@
 "use client";
 
+/** Curralume Studio — © 2026 Eduardo Augusto García Rodríguez. All rights reserved. */
+
+
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import JSZip from "jszip";
 import { Accessibility, AlertTriangle, AlignCenter, AlignJustify, AlignLeft, AlignRight, Bold, BookOpen, CalendarDays, Check, ChevronDown, ClipboardPaste, Cloud, Code2, Columns3, Copy, Download, Eraser, Eye, FileImage, FilePlus2, FileText, Folder, Heading2, HelpCircle, Highlighter, History, ImagePlus, Italic, Keyboard, Link2, List, ListOrdered, Loader2, LockKeyhole, Maximize2, Minus, Monitor, MoreHorizontal, Orbit, Palette, PanelRight, Pilcrow, PlugZap, Plus, Printer, Quote, Redo2, Rows3, Save, Scissors, Search, Settings2, Sigma, Smartphone, Sparkles, Stamp, Strikethrough, Subscript, Superscript, Table2, Tablet, Trash2, Underline, Undo2, Unlink, Upload, Video, Volume2, X, ZoomIn, ZoomOut } from "lucide-react";

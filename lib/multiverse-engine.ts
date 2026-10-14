@@ -1,3 +1,4 @@
+/** Curralume Studio — © 2026 Eduardo Augusto García Rodríguez. All rights reserved. */
 import { documentKey, sha256, stableStringify, type ContinuityDocument } from "./temporal-continuity.ts";
 
 export const MULTIVERSE_FORMAT = "ultrapage-multiverse";
