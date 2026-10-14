@@ -99,7 +99,7 @@ test("QTI 2.1 clipboard logic uses one path rather than duplicated fallback code
   assert.doesNotMatch(html, /\.chip\.yellow\s*\{/);
   assert.match(html, /© 2026 Eduardo Augusto García Rodríguez\. All rights reserved\./);
   assert.equal(load(html)("#btnCopyPreview, #btnCopyReport, #btnCopyImportChecklist").length, 3);
-  assert.match(await readFile(new URL("../public/sw.js", import.meta.url), "utf8"), /curralume-v74/);
+  assert.match(await readFile(new URL("../public/sw.js", import.meta.url), "utf8"), /curralume-v75/);
 });
 
 test("modern clipboard copies the preflight report, checklist, and QTI preview", async () => {

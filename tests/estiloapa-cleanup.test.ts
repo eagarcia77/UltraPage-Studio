@@ -53,5 +53,5 @@ test("legacy unused utilities and stale presentation copy are absent", async () 
   assert.doesNotMatch(ribbon, /apaRibbonCommandPicker|quickCommands/);
   assert.doesNotMatch(ribbonStyles, /apa-ribbon-head|apa-ribbon-quick-actions|apaRibbonCommandPicker/);
   assert.doesNotMatch(thesisStyles, /THESIS_ALIGNMENT_VERSION/);
-  assert.match(sw, /curralume-v74/);
+  assert.match(sw, /curralume-v75/);
 });
